@@ -1,0 +1,42 @@
+﻿
+<MudDialog>
+    <DialogContent>
+        <MudStack Spacing="3">
+            <MudSelect T="string" Label="Status" @bind-Value="Emp.Status" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true">
+                <MudSelectItem Value="@("Present")">Present</MudSelectItem>
+                <MudSelectItem Value="@("Absent")">Absent</MudSelectItem>
+                <MudSelectItem Value="@("Late")">Late</MudSelectItem>
+                <MudSelectItem Value="@("Leave")">Leave</MudSelectItem>
+                <MudSelectItem Value="@("WFH")">WFH</MudSelectItem>
+            </MudSelect>
+
+            <MudGrid Spacing="2">
+                <MudItem xs="6">
+                    <MudTextField T="string" Label="Time In" @bind-Value="Emp.Tin" InputType="InputType.Time"
+                                  Variant="Variant.Outlined" Margin="Margin.Dense" />
+                </MudItem>
+                <MudItem xs="6">
+                    <MudTextField T="string" Label="Time Out" @bind-Value="Emp.Tout" InputType="InputType.Time"
+                                  Variant="Variant.Outlined" Margin="Margin.Dense" />
+                </MudItem>
+            </MudGrid>
+
+            <MudTextField T="string" Label="Reason / Notes" @bind-Value="Emp.Reason"
+                          Variant="Variant.Outlined" Lines="2" />
+        </MudStack>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" DisableElevation="true" OnClick="Save">
+            Save Changes
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = default!;
+    [Parameter] public AttendanceEmployee Emp { get; set; } = default!;
+
+    private void Cancel() => MudDialog.Cancel();
+    private void Save() => MudDialog.Close(DialogResult.Ok(true));
+}

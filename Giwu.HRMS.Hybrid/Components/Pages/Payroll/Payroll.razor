@@ -1,0 +1,908 @@
+@using Pages.Payroll.Components
+@using static Giwu.HRMS.Hybrid.Models.PayrollFormatting
+@using Giwu.Contracts.Payroll
+@using Giwu.HRMS.Hybrid.Services.Payroll
+@using Giwu.HRMS.Hybrid.Services.Employees
+@using DomainPay = Giwu.Domain.Payroll
+
+@page "/payroll"
+
+@inject ISnackbar Snackbar
+@inject IDialogService DialogService
+@inject IPayrollApi PayrollApi
+@inject IEmployeesApi EmployeesApi
+
+<RoleGuard NavKey="@NavKeys.Payroll" />
+
+<PageTitle>Payroll</PageTitle>
+
+@* ═══════════════════════════════════════════════════
+   KPI STRIP
+═══════════════════════════════════════════════════ *@
+<MudGrid Spacing="3" Class="mb-4">
+    <MudItem xs="12" sm="6" md="3">
+        <MudPaper Class="pay-kpi" Elevation="0">
+            <div class="kpi-label">Current Period Payroll</div>
+            <div class="kpi-value">@MoneyCompact(CurrentRunGross)</div>
+            <div class="kpi-sub">
+                <span class="kpi-dot" style="background:var(--pay-green)"></span>
+                <span>Net: @MoneyCompact(CurrentRunNet)</span>
+            </div>
+        </MudPaper>
+    </MudItem>
+    <MudItem xs="12" sm="6" md="3">
+        <MudPaper Class="pay-kpi" Elevation="0">
+            <div class="kpi-label">Employees on Payroll</div>
+            <div class="kpi-value">@CurrentRun.Slips.Count</div>
+            <div class="kpi-sub">
+                <span class="kpi-dot" style="background:var(--pay-blue)"></span>
+                <span>@EditedSlipCount adjustments made</span>
+            </div>
+        </MudPaper>
+    </MudItem>
+    <MudItem xs="12" sm="6" md="3">
+        <MudPaper Class="pay-kpi" Elevation="0">
+            <div class="kpi-label">Statutory Deductions</div>
+            <div class="kpi-value">@MoneyCompact(CurrentRunDeductions)</div>
+            <div class="kpi-sub">
+                <span class="kpi-dot" style="background:var(--pay-amber)"></span>
+                <span>SSS + PhilHealth + HDMF + WHT</span>
+            </div>
+        </MudPaper>
+    </MudItem>
+    <MudItem xs="12" sm="6" md="3">
+        <MudPaper Class="pay-kpi" Elevation="0">
+            <div class="kpi-label">YTD Payroll Cost</div>
+            <div class="kpi-value">@MoneyCompact(YtdPayrollCost)</div>
+            <div class="kpi-sub">
+                <span class="kpi-dot" style="background:var(--pay-purple)"></span>
+                <span>@ReleasedRunCount runs released</span>
+            </div>
+        </MudPaper>
+    </MudItem>
+</MudGrid>
+
+@* ═══════════════════════════════════════════════════
+   PAY RUN STATUS + HISTORY
+═══════════════════════════════════════════════════ *@
+<MudGrid Spacing="3" Class="mb-4">
+    @* ── Pay Run Status / Stepper ── *@
+    <MudItem xs="12" md="7">
+        <MudPaper Class="pay-card" Elevation="0">
+            <div class="pay-card-header">
+                <div>
+                    <MudText Typo="Typo.subtitle2" Class="fw-medium">Current Pay Run</MudText>
+                    <MudText Typo="Typo.caption" Style="opacity:.55">
+                        @CurrentRun.Period · @FmtPeriodRange(CurrentRun.PeriodStart, CurrentRun.PeriodEnd)
+                    </MudText>
+                </div>
+                <span class="@($"pay-badge {StatusBadgeClass(CurrentRun.Status)}")">@CurrentRun.Status</span>
+            </div>
+
+            <div class="stepper-wrap">
+                @{
+                    var currentIdx = Array.IndexOf(PayRunStages, CurrentRun.Status);
+                }
+                @for (int i = 0; i < PayRunStages.Length; i++)
+                {
+                    var idx = i;
+                    var reached = idx <= currentIdx;
+                    var active = idx == currentIdx;
+                    <div class="stepper-step @(reached ? "reached" : "") @(active ? "active" : "")">
+                        <div class="stepper-dot">
+                            @if (reached && !active)
+                            {
+                                <span>✓</span>
+                            }
+                            else
+                            {
+                                @(idx + 1)
+                            }
+                        </div>
+                        <div class="stepper-label">@PayRunStages[idx]</div>
+                    </div>
+                    if (i < PayRunStages.Length - 1)
+                    {
+                        <div class="stepper-line @(reached && idx < currentIdx ? "reached" : "")"></div>
+                    }
+                }
+            </div>
+
+            <div class="pay-run-actions">
+                @{
+                    var canCalculate = CurrentRun.Status == "Draft";
+                    var canApprove   = CurrentRun.Status == "Calculated";
+                    var canRelease   = CurrentRun.Status == "Approved";
+                    var canReopen    = CurrentRun.Status != "Draft" && CurrentRun.Status != "Released";
+                }
+
+                @if (canCalculate)
+                {
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary" DisableElevation="true"
+                               StartIcon="@Icons.Material.Outlined.Calculate"
+                               OnClick="CalculatePayRun">Calculate Payroll</MudButton>
+                }
+                @if (canApprove)
+                {
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary" DisableElevation="true"
+                               StartIcon="@Icons.Material.Outlined.CheckCircle"
+                               OnClick="OpenApproveDialog">Approve Run</MudButton>
+                }
+                @if (canRelease)
+                {
+                    <MudButton Variant="Variant.Filled" Color="Color.Success" DisableElevation="true"
+                               StartIcon="@Icons.Material.Outlined.Send"
+                               OnClick="ReleasePayRun">Release to Employees</MudButton>
+                }
+                @if (canReopen)
+                {
+                    <MudButton Variant="Variant.Outlined" Size="Size.Small"
+                               StartIcon="@Icons.Material.Outlined.Undo"
+                               OnClick="ReopenForEditing">Reopen for Editing</MudButton>
+                }
+                @if (CurrentRun.Status == "Released")
+                {
+                    <MudAlert Severity="Severity.Success" Dense="true" Class="pay-released-alert"
+                              Icon="@Icons.Material.Outlined.TaskAlt">
+                        Released @FmtDate(CurrentRun.ReleaseDate). Payslips sent to @CurrentRun.Slips.Count employees.
+                    </MudAlert>
+                }
+
+                <MudSpacer />
+
+                <MudButton Variant="Variant.Outlined" Size="Size.Small"
+                           StartIcon="@Icons.Material.Outlined.MenuBook"
+                           OnClick="OpenReferenceDialog">Reference Tables</MudButton>
+                <MudButton Variant="Variant.Outlined" Size="Size.Small"
+                           StartIcon="@Icons.Material.Outlined.Add"
+                           OnClick="OpenNewRunDialog">New Pay Run</MudButton>
+            </div>
+        </MudPaper>
+    </MudItem>
+
+    @* ── Recent Pay Runs (history sidebar) ── *@
+    <MudItem xs="12" md="5">
+        <MudPaper Class="pay-card" Elevation="0">
+            <div class="pay-card-header">
+                <MudText Typo="Typo.subtitle2" Class="fw-medium">Recent Pay Runs</MudText>
+                <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined"
+                         Style="height:20px;font-size:.7rem">Last 6</MudChip>
+            </div>
+            @if (AllRuns.Count <= 1)
+            {
+                <div class="pay-empty">
+                    <div class="pay-empty-icon">—</div>
+                    <MudText Typo="Typo.body2">No previous runs yet.</MudText>
+                </div>
+            }
+            else
+            {
+                @foreach (var run in AllRuns.Where(r => r.Id != CurrentRun.Id).Take(6))
+                {
+                    var total = run.Slips.Sum(s => s.Net);
+                    <div class="history-item" @onclick="@(() => ViewHistoricalRun(run.Id))">
+                        <div class="history-meta">
+                            <MudText Typo="Typo.body2" Class="fw-medium">@run.Period</MudText>
+                            <MudText Typo="Typo.caption" Style="opacity:.55">
+                                @run.Slips.Count employees · @Money(total)
+                            </MudText>
+                        </div>
+                        <span class="@($"pay-badge {StatusBadgeClass(run.Status)}")">@run.Status</span>
+                    </div>
+                }
+            }
+        </MudPaper>
+    </MudItem>
+</MudGrid>
+
+@* ═══════════════════════════════════════════════════
+   MAIN TABS: CURRENT RUN DETAIL / HISTORY
+═══════════════════════════════════════════════════ *@
+<MudPaper Class="pay-card" Elevation="0">
+    <MudTabs Elevation="0" Rounded="false" ApplyEffectsToContainer="true"
+             PanelClass="pay-tab-panel" TabPanelClass="pay-tab-item"
+             @bind-ActivePanelIndex="ActiveTab">
+
+        @* ══ CURRENT RUN TAB ══ *@
+        <MudTabPanel Text="Current Run" Icon="@Icons.Material.Outlined.Receipt">
+            <div class="pay-card-header">
+                <div>
+                    <MudText Typo="Typo.subtitle2" Class="fw-medium">@CurrentRun.Period Payroll Lines</MudText>
+                    <MudText Typo="Typo.caption" Style="opacity:.55">
+                        @FilteredSlips.Count() of @CurrentRun.Slips.Count employees
+                    </MudText>
+                </div>
+                <MudStack Row="true" Spacing="2">
+                    <MudButton Variant="Variant.Outlined" Size="Size.Small"
+                               StartIcon="@Icons.Material.Outlined.FileDownload"
+                               OnClick="ExportPayrollCsv"
+                               Disabled="@(CurrentRun.Status == "Draft")">
+                        Export CSV
+                    </MudButton>
+                    @if (CurrentRun.Status != "Released")
+                    {
+                        <MudButton Variant="Variant.Outlined" Size="Size.Small"
+                                   StartIcon="@Icons.Material.Outlined.PersonAdd"
+                                   OnClick="OpenAddEmployeeDialog">Add Employee</MudButton>
+                    }
+                </MudStack>
+            </div>
+
+            <div class="filter-row">
+                <MudChipSet T="string" @bind-SelectedValue="DeptFilter" CheckMark="false" Mandatory="true">
+                    <MudChip T="string" Value="@("All")" Size="Size.Small">All</MudChip>
+                    @foreach (var d in DepartmentList)
+                    {
+                        <MudChip T="string" Value="@d" Size="Size.Small">@d</MudChip>
+                    }
+                </MudChipSet>
+                <MudSpacer />
+                <MudTextField @bind-Value="SearchText" Placeholder="Search name, role…"
+                              Variant="Variant.Outlined" Margin="Margin.Dense" Class="pay-search"
+                              Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Outlined.Search"
+                              DebounceInterval="200" Immediate="true" />
+            </div>
+
+            <MudTable T="Payslip" Items="@FilteredSlips" Dense="true" Hover="true"
+                      Elevation="0" Breakpoint="Breakpoint.Sm"
+                      @bind-RowsPerPage="PageSize" @bind-Page="CurrentPage"
+                      Class="pay-mud-table">
+                <HeaderContent>
+                    <MudTh><MudTableSortLabel T="Payslip" SortBy="@(s => s.Name)">Employee</MudTableSortLabel></MudTh>
+                    <MudTh><MudTableSortLabel T="Payslip" SortBy="@(s => s.Dept)">Department</MudTableSortLabel></MudTh>
+                    <MudTh Style="text-align:right"><MudTableSortLabel T="Payslip" SortBy="@(s => s.BasicSalary)">Basic</MudTableSortLabel></MudTh>
+                    <MudTh Style="text-align:right"><MudTableSortLabel T="Payslip" SortBy="@(s => s.Gross)">Gross</MudTableSortLabel></MudTh>
+                    <MudTh Style="text-align:right">Deductions</MudTh>
+                    <MudTh Style="text-align:right"><MudTableSortLabel T="Payslip" SortBy="@(s => s.Net)">Net</MudTableSortLabel></MudTh>
+                    <MudTh Style="text-align:right">Actions</MudTh>
+                </HeaderContent>
+                <RowTemplate>
+                    <MudTd DataLabel="Employee">
+                        <div style="display:flex;align-items:center;gap:9px">
+                            <MudAvatar Style="@AvatarStyle(context.Av)" Class="pay-av-sm">@context.Init</MudAvatar>
+                            <div>
+                                <div style="display:flex;align-items:center;gap:6px">
+                                    <MudText Typo="Typo.body2" Class="fw-medium" Style="line-height:1.2">@context.Name</MudText>
+                                    @if (context.IsEdited)
+                                    {
+                                        <span class="pay-edited-dot" title="Manually adjusted"></span>
+                                    }
+                                </div>
+                                <MudText Typo="Typo.caption" Style="opacity:.55">@context.Role</MudText>
+                            </div>
+                        </div>
+                    </MudTd>
+                    <MudTd DataLabel="Department" Style="opacity:.75">@context.Dept</MudTd>
+                    <MudTd DataLabel="Basic" Style="text-align:right;font-variant-numeric:tabular-nums">@Money(context.BasicSalary)</MudTd>
+                    <MudTd DataLabel="Gross" Style="text-align:right;font-variant-numeric:tabular-nums">@Money(context.Gross)</MudTd>
+                    <MudTd DataLabel="Deductions" Style="text-align:right;font-variant-numeric:tabular-nums;color:var(--pay-red-text)">
+                        −@Money(context.TotalDeductions)
+                    </MudTd>
+                    <MudTd DataLabel="Net" Style="text-align:right;font-variant-numeric:tabular-nums;font-weight:500">
+                        @Money(context.Net)
+                    </MudTd>
+                    <MudTd DataLabel="Actions" Style="text-align:right">
+                        <MudStack Row="true" Spacing="1" Justify="Justify.FlexEnd">
+                            <MudIconButton Icon="@Icons.Material.Outlined.Receipt" Size="Size.Small"
+                                           Title="View payslip"
+                                           OnClick="@(() => OpenPayslipDialog(context.Id))" />
+                            @if (CurrentRun.Status != "Released")
+                            {
+                                <MudIconButton Icon="@Icons.Material.Outlined.Edit" Size="Size.Small"
+                                               Title="Adjust"
+                                               OnClick="@(() => OpenAdjustDialog(context.Id))" />
+                            }
+                        </MudStack>
+                    </MudTd>
+                </RowTemplate>
+                <NoRecordsContent>
+                    <div class="pay-empty">
+                        <div class="pay-empty-icon">⊘</div>
+                        <MudText Typo="Typo.body2">No employees match your filter.</MudText>
+                    </div>
+                </NoRecordsContent>
+                <PagerContent>
+                    <MudTablePager PageSizeOptions="new int[] { 10, 25, 50, 100 }" />
+                </PagerContent>
+                <FooterContent>
+                    <MudTd colspan="2" Class="pay-totals-cell" Style="font-weight:500">Totals</MudTd>
+                    <MudTd Class="pay-totals-cell" Style="text-align:right;font-variant-numeric:tabular-nums">@Money(FilteredSlips.Sum(s => s.BasicSalary))</MudTd>
+                    <MudTd Class="pay-totals-cell" Style="text-align:right;font-variant-numeric:tabular-nums">@Money(FilteredSlips.Sum(s => s.Gross))</MudTd>
+                    <MudTd Class="pay-totals-cell" Style="text-align:right;font-variant-numeric:tabular-nums;color:var(--pay-red-text)">
+                        −@Money(FilteredSlips.Sum(s => s.TotalDeductions))
+                    </MudTd>
+                    <MudTd Class="pay-totals-cell" Style="text-align:right;font-variant-numeric:tabular-nums;font-weight:600">
+                        @Money(FilteredSlips.Sum(s => s.Net))
+                    </MudTd>
+                    <MudTd Class="pay-totals-cell"></MudTd>
+                </FooterContent>
+            </MudTable>
+        </MudTabPanel>
+
+        @* ══ HISTORY TAB ══ *@
+        <MudTabPanel Text="@($"History ({AllRuns.Count(r => r.Status == "Released")})")"
+                     Icon="@Icons.Material.Outlined.History">
+            <div class="pay-card-header">
+                <div>
+                    <MudText Typo="Typo.subtitle2" Class="fw-medium">Pay Run History</MudText>
+                    <MudText Typo="Typo.caption" Style="opacity:.55">All past pay runs</MudText>
+                </div>
+            </div>
+
+            <MudTable T="PayRun" Items="@AllRuns" Dense="true" Hover="true"
+                      Elevation="0" Breakpoint="Breakpoint.Sm"
+                      Class="pay-mud-table">
+                <HeaderContent>
+                    <MudTh>Period</MudTh>
+                    <MudTh>Frequency</MudTh>
+                    <MudTh>Employees</MudTh>
+                    <MudTh Style="text-align:right">Total Gross</MudTh>
+                    <MudTh Style="text-align:right">Total Net</MudTh>
+                    <MudTh>Status</MudTh>
+                    <MudTh>Released</MudTh>
+                    <MudTh Style="text-align:right">Actions</MudTh>
+                </HeaderContent>
+                <RowTemplate>
+                    <MudTd DataLabel="Period">
+                        <div>
+                            <MudText Typo="Typo.body2" Class="fw-medium" Style="line-height:1.2">@context.Period</MudText>
+                            <MudText Typo="Typo.caption" Style="opacity:.55">
+                                @FmtPeriodRange(context.PeriodStart, context.PeriodEnd)
+                            </MudText>
+                        </div>
+                    </MudTd>
+                    <MudTd DataLabel="Frequency" Style="opacity:.75;font-size:12px">@context.Frequency</MudTd>
+                    <MudTd DataLabel="Employees" Style="font-size:13px">@context.Slips.Count</MudTd>
+                    <MudTd DataLabel="Total Gross" Style="text-align:right;font-variant-numeric:tabular-nums">
+                        @Money(context.Slips.Sum(s => s.Gross))
+                    </MudTd>
+                    <MudTd DataLabel="Total Net" Style="text-align:right;font-variant-numeric:tabular-nums;font-weight:500">
+                        @Money(context.Slips.Sum(s => s.Net))
+                    </MudTd>
+                    <MudTd DataLabel="Status">
+                        <span class="@($"pay-badge {StatusBadgeClass(context.Status)}")">@context.Status</span>
+                    </MudTd>
+                    <MudTd DataLabel="Released" Style="opacity:.7;font-size:12px">@FmtDate(context.ReleaseDate)</MudTd>
+                    <MudTd DataLabel="Actions" Style="text-align:right">
+                        <MudIconButton Icon="@Icons.Material.Outlined.Visibility" Size="Size.Small"
+                                       OnClick="@(() => ViewHistoricalRun(context.Id))" />
+                    </MudTd>
+                </RowTemplate>
+                <NoRecordsContent>
+                    <div class="pay-empty">
+                        <div class="pay-empty-icon">—</div>
+                        <MudText Typo="Typo.body2">No pay runs yet.</MudText>
+                    </div>
+                </NoRecordsContent>
+            </MudTable>
+        </MudTabPanel>
+    </MudTabs>
+</MudPaper>
+
+@* ═══════════════════════════════════════════════════
+   STYLES
+═══════════════════════════════════════════════════ *@
+<style>
+    :root {
+        --pay-green:        #1D9E75;
+        --pay-green-light:  #E1F5EE;
+        --pay-green-dark:   #0F6E56;
+        --pay-green-text:   #085041;
+        --pay-red:          #E24B4A;
+        --pay-red-light:    #FCEBEB;
+        --pay-red-text:     #ab3232;
+        --pay-amber:        #BA7517;
+        --pay-amber-light:  #FAEEDA;
+        --pay-amber-text:   #633806;
+        --pay-purple:       #534AB7;
+        --pay-purple-light: #EEEDFE;
+        --pay-purple-text:  #3C3489;
+        --pay-blue:         #185FA5;
+        --pay-blue-light:   #E6F1FB;
+        --pay-blue-text:    #0C447C;
+    }
+
+    /* ── KPI ──────────────────────────────────────────────── */
+    .pay-kpi {
+        padding: 16px;
+        border: 0.5px solid var(--mud-palette-divider);
+        border-radius: 10px;
+        background: var(--mud-palette-background);
+    }
+    .kpi-label { font-size: 10.5px; letter-spacing: .07em; text-transform: uppercase; opacity: .55; margin-bottom: 6px; font-weight: 500; }
+    .kpi-value { font-size: 1.9rem; font-weight: 500; line-height: 1; margin-bottom: 5px; font-variant-numeric: tabular-nums; }
+    .kpi-sub   { font-size: 11.5px; opacity: .6; display: flex; align-items: center; gap: 5px; }
+    .kpi-dot   { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; display: inline-block; }
+
+    /* ── Card shell ───────────────────────────────────────── */
+    .pay-card {
+        border: 0.5px solid var(--mud-palette-divider);
+        border-radius: 10px;
+        overflow: hidden;
+        background: var(--mud-palette-background);
+    }
+    .pay-card-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 12px 16px;
+        border-bottom: 0.5px solid var(--mud-palette-divider);
+        gap: 8px;
+    }
+    .fw-medium { font-weight: 500; }
+
+    /* ── Avatars ──────────────────────────────────────────── */
+    .pay-av-sm {
+        width: 30px !important;
+        height: 30px !important;
+        font-size: 11px !important;
+        font-weight: 500;
+    }
+
+    /* ── Badges ───────────────────────────────────────────── */
+    .pay-badge {
+        display: inline-block;
+        font-size: 11px;
+        padding: 2px 9px;
+        border-radius: 100px;
+        font-weight: 500;
+        white-space: nowrap;
+    }
+    .pay-badge-draft      { background: var(--mud-palette-background-grey); color: var(--mud-palette-text-secondary); }
+    .pay-badge-calculated { background: var(--pay-blue-light);   color: var(--pay-blue-text);   }
+    .pay-badge-approved   { background: var(--pay-amber-light);  color: var(--pay-amber-text);  }
+    .pay-badge-released   { background: var(--pay-green-light);  color: var(--pay-green-text);  }
+
+    /* ── Stepper (pay run lifecycle) ──────────────────────── */
+    .stepper-wrap {
+        display: flex;
+        align-items: center;
+        gap: 0;
+        padding: 22px 20px 14px;
+    }
+    .stepper-step {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 6px;
+        flex-shrink: 0;
+    }
+    .stepper-dot {
+        width: 30px; height: 30px;
+        border-radius: 50%;
+        border: 1.5px solid var(--mud-palette-divider);
+        background: var(--mud-palette-background);
+        display: flex; align-items: center; justify-content: center;
+        font-size: 12px; font-weight: 500;
+        opacity: .5;
+        transition: all .2s;
+    }
+    .stepper-step.reached .stepper-dot {
+        background: var(--pay-green);
+        color: white;
+        border-color: var(--pay-green);
+        opacity: 1;
+    }
+    .stepper-step.active .stepper-dot {
+        box-shadow: 0 0 0 4px var(--pay-green-light);
+    }
+    .stepper-label {
+        font-size: 11px;
+        opacity: .6;
+        text-align: center;
+        white-space: nowrap;
+    }
+    .stepper-step.active .stepper-label {
+        font-weight: 600;
+        opacity: 1;
+        color: var(--pay-green-text);
+    }
+    .stepper-line {
+        flex: 1;
+        height: 2px;
+        background: var(--mud-palette-divider);
+        margin: 0 4px;
+        margin-bottom: 20px;
+    }
+    .stepper-line.reached { background: var(--pay-green); }
+
+    /* ── Pay run action bar ────────────────────────────────── */
+    .pay-run-actions {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 12px 16px 16px;
+        border-top: 0.5px solid var(--mud-palette-divider);
+        flex-wrap: wrap;
+    }
+    .pay-released-alert {
+        flex: 1;
+        font-size: 12.5px !important;
+    }
+
+    /* ── Recent runs history list ──────────────────────────── */
+    .history-item {
+        display: flex; align-items: center; gap: 10px;
+        padding: 11px 16px;
+        border-bottom: 0.5px solid var(--mud-palette-divider);
+        cursor: pointer;
+        transition: background .1s;
+    }
+    .history-item:last-child { border-bottom: none; }
+    .history-item:hover { background: var(--mud-palette-background-grey); }
+    .history-meta { flex: 1; min-width: 0; }
+
+    /* ── Filter row ────────────────────────────────────────── */
+    .filter-row {
+        display: flex; flex-wrap: wrap; align-items: center; gap: 8px;
+        padding: 10px 14px;
+        border-bottom: 0.5px solid var(--mud-palette-divider);
+    }
+    .pay-search { max-width: 260px; }
+
+    /* ── Edited marker ─────────────────────────────────────── */
+    .pay-edited-dot {
+        width: 6px; height: 6px; border-radius: 50%;
+        background: var(--pay-amber);
+        display: inline-block;
+    }
+
+    /* ── Totals row in footer ──────────────────────────────── */
+    .pay-mud-table .pay-totals-cell {
+        background: var(--mud-palette-background-grey) !important;
+        border-top: 0.5px solid var(--mud-palette-divider);
+        font-size: 13px !important;
+    }
+
+    /* ── Empty state ───────────────────────────────────────── */
+    .pay-empty { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 40px 16px; opacity: .55; gap: 8px; }
+    .pay-empty-icon { font-size: 28px; }
+
+    /* ── Tabs ──────────────────────────────────────────────── */
+    .pay-tab-panel { padding: 0 !important; }
+    .pay-tab-item  { min-width: unset !important; text-transform: none !important; font-size: 13px !important; }
+
+    /* ── MudTable overrides ────────────────────────────────── */
+    .pay-mud-table .mud-table-container { border-radius: 0; }
+    .pay-mud-table th { font-size: 10.5px !important; font-weight: 500 !important; letter-spacing: .055em !important; text-transform: uppercase !important; opacity: .65; }
+    .pay-mud-table td { font-size: 13px !important; vertical-align: middle; }
+
+    /* ── Responsive ─────────────────────────────────────────── */
+    @@media (max-width: 600px) {
+        .pay-search { max-width: 100%; width: 100%; }
+        .stepper-label { font-size: 10px; }
+    }
+</style>
+
+@code {
+    // ─── State ──────────────────────────────────────────────────
+    private int ActiveTab { get; set; } = 0;
+    private string SearchText { get; set; } = "";
+    private string DeptFilter { get; set; } = "All";
+    private int CurrentPage { get; set; } = 0;
+    private int PageSize { get; set; } = 25;
+
+    private PayRun CurrentRun => AllRuns.FirstOrDefault(r => r.Id == CurrentRunId) ?? AllRuns.FirstOrDefault() ?? _emptyRun;
+    private string CurrentRunId { get; set; } = "";
+
+    private static readonly PayRun _emptyRun = new() { Period = "—", Status = "Draft", Slips = new() };
+
+    // ─── Derived data ───────────────────────────────────────────
+    private decimal CurrentRunGross => CurrentRun.Slips.Sum(s => s.Gross);
+    private decimal CurrentRunNet => CurrentRun.Slips.Sum(s => s.Net);
+    private decimal CurrentRunDeductions => CurrentRun.Slips.Sum(s => s.TotalDeductions);
+    private int EditedSlipCount => CurrentRun.Slips.Count(s => s.IsEdited);
+
+    private decimal YtdPayrollCost => AllRuns
+        .Where(r => r.Status == "Released" && r.PeriodStart.Year == DateTime.Now.Year)
+        .Sum(r => r.Slips.Sum(s => s.Gross));
+
+    private int ReleasedRunCount => AllRuns.Count(r => r.Status == "Released");
+
+    private List<string> DepartmentList => CurrentRun.Slips
+        .Select(s => s.Dept).Distinct().OrderBy(d => d).ToList();
+
+    private IEnumerable<Payslip> FilteredSlips
+    {
+        get
+        {
+            var q = (SearchText ?? "").Trim().ToLower();
+            return CurrentRun.Slips.Where(s =>
+                (DeptFilter == "All" || s.Dept == DeptFilter) &&
+                (string.IsNullOrEmpty(q)
+                    || s.Name.ToLower().Contains(q)
+                    || s.Role.ToLower().Contains(q))
+            );
+        }
+    }
+
+    // ─── Actions ────────────────────────────────────────────────
+    private async Task CalculatePayRun()
+    {
+        if (!Guid.TryParse(CurrentRun.Id, out _)) return;
+
+        foreach (var slip in CurrentRun.Slips)
+            PhPayrollCalculator.RecalculateStatutory(slip);
+
+        // Persist recomputed statutory deductions
+        var updates = CurrentRun.Slips
+            .Where(s => Guid.TryParse(s.Id, out _))
+            .Select(s => PayrollApi.UpdatePayslipAsync(Guid.Parse(s.Id), new UpdatePayslipRequest(
+                BasicSalary: s.BasicSalary, Overtime: s.Overtime, Bonus: s.Bonus, Allowance: s.Allowance,
+                Sss: s.Sss, PhilHealth: s.PhilHealth, PagIbig: s.PagIbig,
+                WithholdingTax: s.WithholdingTax, LoanDeduction: s.LoanDeduction,
+                OtherDeduction: s.OtherDeduction, Notes: s.Notes)))
+            .ToArray();
+        await Task.WhenAll(updates);
+
+        CurrentRun.Status = "Calculated";
+        Snackbar.Add($"Statutory deductions recalculated for {CurrentRun.Slips.Count} employees", Severity.Success);
+    }
+
+    private async Task OpenApproveDialog()
+    {
+        var parameters = new DialogParameters { ["Run"] = CurrentRun };
+        var options = new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true };
+        var dialog = await DialogService.ShowAsync<ApprovePayRunDialog>($"Approve {CurrentRun.Period} Payroll", parameters, options);
+        var result = await dialog.Result;
+        if (result is not null && !result.Canceled && result.Data is string approver)
+        {
+            if (!Guid.TryParse(CurrentRun.Id, out var pid)) return;
+            var apiResult = await PayrollApi.ApprovePeriodAsync(pid, new ApprovePayPeriodRequest($"Approved by {approver}"));
+            if (apiResult.Success)
+            {
+                Snackbar.Add($"Pay run approved by {approver}", Severity.Success);
+                await ReloadAsync();
+            }
+            else
+            {
+                Snackbar.Add(apiResult.ErrorMessage ?? "Failed to approve pay run.", Severity.Error);
+            }
+        }
+    }
+
+    private async Task ReleasePayRun()
+    {
+        if (!Guid.TryParse(CurrentRun.Id, out var pid)) return;
+        var apiResult = await PayrollApi.ReleasePeriodAsync(pid);
+        if (apiResult.Success)
+        {
+            Snackbar.Add($"Payslips released to {CurrentRun.Slips.Count} employees", Severity.Success);
+            await ReloadAsync();
+        }
+        else
+        {
+            Snackbar.Add(apiResult.ErrorMessage ?? "Failed to release pay run.", Severity.Error);
+        }
+    }
+
+    private void ReopenForEditing()
+    {
+        // Note: API has no reopen path once released. Local-only convenience.
+        CurrentRun.Status = "Draft";
+        CurrentRun.ApprovedBy = null;
+        CurrentRun.ApprovedOn = null;
+        Snackbar.Add("Pay run reopened locally (server status unchanged once released).", Severity.Info);
+    }
+
+    private async Task OpenNewRunDialog()
+    {
+        var options = new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true };
+        var dialog = await DialogService.ShowAsync<NewPayRunDialog>("Create New Pay Run", new DialogParameters(), options);
+        var result = await dialog.Result;
+        if (result is not null && !result.Canceled && result.Data is PayRun newRun)
+        {
+            var code = $"PR{newRun.PeriodStart:yyyyMM}";
+            var createResult = await PayrollApi.CreatePeriodAsync(new CreatePayPeriodRequest(
+                Code: code,
+                PeriodStart: DateOnly.FromDateTime(newRun.PeriodStart),
+                PeriodEnd: DateOnly.FromDateTime(newRun.PeriodEnd),
+                ReleaseDate: null,
+                Frequency: newRun.Frequency,
+                Notes: newRun.Notes ?? ""));
+
+            if (!createResult.Success || createResult.Value is null)
+            {
+                Snackbar.Add(createResult.ErrorMessage ?? "Failed to create pay run.", Severity.Error);
+                return;
+            }
+
+            // Seed payslips from the current employee roster
+            var newPeriodId = createResult.Value.Id;
+            var employeesResult = await EmployeesApi.ListAsync(page: 1, pageSize: 200);
+            if (employeesResult is { Success: true, Value: { } emps })
+            {
+                foreach (var e in emps.Items)
+                {
+                    var slip = new Payslip { BasicSalary = 0m, Allowance = 0m };
+                    await PayrollApi.CreatePayslipAsync(new CreatePayslipRequest(
+                        PayPeriodId: newPeriodId, EmployeeId: e.Id,
+                        BasicSalary: 0m, Overtime: 0m, Bonus: 0m, Allowance: 0m,
+                        Sss: 0m, PhilHealth: 0m, PagIbig: 0m, WithholdingTax: 0m,
+                        LoanDeduction: 0m, OtherDeduction: 0m, Notes: ""));
+                }
+            }
+
+            Snackbar.Add($"Created pay run for {newRun.Period}", Severity.Success);
+            CurrentRunId = newPeriodId.ToString();
+            await ReloadAsync();
+        }
+    }
+
+    private async Task OpenPayslipDialog(string slipId)
+    {
+        var slip = CurrentRun.Slips.FirstOrDefault(s => s.Id == slipId);
+        if (slip == null) return;
+        var parameters = new DialogParameters
+        {
+            ["Slip"] = slip,
+            ["Run"] = CurrentRun
+        };
+        var options = new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true };
+        await DialogService.ShowAsync<PayslipDialog>("Payslip", parameters, options);
+    }
+
+    private async Task OpenAdjustDialog(string slipId)
+    {
+        var slip = CurrentRun.Slips.FirstOrDefault(s => s.Id == slipId);
+        if (slip == null) return;
+
+        var parameters = new DialogParameters { ["Slip"] = slip };
+        var options = new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true };
+        var dialog = await DialogService.ShowAsync<AdjustPayslipDialog>($"Adjust — {slip.Name}", parameters, options);
+        var result = await dialog.Result;
+        if (result is not null && !result.Canceled)
+        {
+            slip.IsEdited = true;
+            if (Guid.TryParse(slip.Id, out var sid))
+            {
+                var apiResult = await PayrollApi.UpdatePayslipAsync(sid, new UpdatePayslipRequest(
+                    BasicSalary: slip.BasicSalary, Overtime: slip.Overtime, Bonus: slip.Bonus, Allowance: slip.Allowance,
+                    Sss: slip.Sss, PhilHealth: slip.PhilHealth, PagIbig: slip.PagIbig,
+                    WithholdingTax: slip.WithholdingTax, LoanDeduction: slip.LoanDeduction,
+                    OtherDeduction: slip.OtherDeduction, Notes: slip.Notes));
+                if (!apiResult.Success)
+                {
+                    Snackbar.Add(apiResult.ErrorMessage ?? "Failed to save adjustment.", Severity.Error);
+                    return;
+                }
+            }
+            Snackbar.Add($"{slip.Name}'s payslip adjusted", Severity.Success);
+            StateHasChanged();
+        }
+    }
+
+    private async Task OpenAddEmployeeDialog()
+    {
+        // For the demo, just show info snackbar; production would open an employee-picker dialog
+        Snackbar.Add("Employee roster is seeded from HR — not wired in this demo", Severity.Info);
+        await Task.CompletedTask;
+    }
+
+    private async Task OpenReferenceDialog()
+    {
+        // No specific employee context — just show all reference tables
+        var options = new DialogOptions { MaxWidth = MaxWidth.Medium, FullWidth = true };
+        await DialogService.ShowAsync<DeductionsReferenceDialog>(
+            "PH Statutory Deductions Reference",
+            new DialogParameters(),
+            options);
+    }
+
+    private void ViewHistoricalRun(string runId)
+    {
+        var target = AllRuns.FirstOrDefault(r => r.Id == runId);
+        if (target == null) return;
+        CurrentRunId = runId;
+        ActiveTab = 0;
+        Snackbar.Add($"Viewing {target.Period}", Severity.Info);
+    }
+
+    private void ExportPayrollCsv()
+    {
+        // In production this would stream CSV via JS interop; for the demo we just toast.
+        Snackbar.Add($"Exported {FilteredSlips.Count()} payslips to CSV", Severity.Success);
+    }
+
+    // ─── Data ───────────────────────────────────────────────────
+    private List<PayRun> AllRuns { get; set; } = new();
+
+    protected override async Task OnInitializedAsync() => await ReloadAsync();
+
+    private async Task ReloadAsync()
+    {
+        var periodsTask  = PayrollApi.ListPeriodsAsync();
+        var slipsTask    = PayrollApi.ListPayslipsAsync();
+
+        await Task.WhenAll(periodsTask, slipsTask);
+
+        if (!periodsTask.Result.Success || periodsTask.Result.Value is null)
+        {
+            Snackbar.Add(periodsTask.Result.ErrorMessage ?? "Failed to load pay periods.", Severity.Error);
+            return;
+        }
+
+        var allSlips = slipsTask.Result.Value ?? Array.Empty<PayslipDto>();
+        var slipsByPeriod = allSlips.GroupBy(s => s.PayPeriodId).ToDictionary(g => g.Key, g => g.ToList());
+
+        AllRuns = periodsTask.Result.Value
+            .OrderByDescending(p => p.PeriodStart)
+            .Select(p =>
+            {
+                var run = new PayRun
+                {
+                    Id = p.Id.ToString(),
+                    Period = $"{p.PeriodStart:MMMM yyyy}",
+                    PeriodStart = p.PeriodStart.ToDateTime(TimeOnly.MinValue),
+                    PeriodEnd = p.PeriodEnd.ToDateTime(TimeOnly.MinValue),
+                    ReleaseDate = p.ReleaseDate?.ToDateTime(TimeOnly.MinValue),
+                    Status = StatusFromEnum(p.Status),
+                    Frequency = p.Frequency,
+                    ApprovedOn = p.ApprovedAt?.LocalDateTime,
+                    ApprovedBy = p.ApprovedById?.ToString(),
+                    Notes = p.Notes,
+                    Slips = slipsByPeriod.TryGetValue(p.Id, out var slips)
+                        ? slips.Select(MapSlip).ToList()
+                        : new List<Payslip>(),
+                };
+                return run;
+            })
+            .ToList();
+
+        if (string.IsNullOrEmpty(CurrentRunId) || !AllRuns.Any(r => r.Id == CurrentRunId))
+            CurrentRunId = AllRuns.FirstOrDefault()?.Id ?? "";
+
+        StateHasChanged();
+    }
+
+    private static Payslip MapSlip(PayslipDto d)
+    {
+        var initials = MakeInitials(d.EmployeeName);
+        var av = AvatarTones[Math.Abs(d.Id.GetHashCode()) % AvatarTones.Length];
+        return new Payslip
+        {
+            Id = d.Id.ToString(),
+            EmployeeId = d.EmployeeId.ToString(),
+            Name = d.EmployeeName,
+            Init = initials,
+            Av = av,
+            Role = d.JobTitle,
+            Dept = d.DepartmentName,
+            BasicSalary = d.BasicSalary,
+            Overtime = d.Overtime,
+            Bonus = d.Bonus,
+            Allowance = d.Allowance,
+            Sss = d.Sss,
+            PhilHealth = d.PhilHealth,
+            PagIbig = d.PagIbig,
+            WithholdingTax = d.WithholdingTax,
+            LoanDeduction = d.LoanDeduction,
+            OtherDeduction = d.OtherDeduction,
+            Notes = d.Notes,
+            IsEdited = false,
+        };
+    }
+
+    private static string MakeInitials(string name)
+    {
+        if (string.IsNullOrWhiteSpace(name)) return "—";
+        var parts = name.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        return parts.Length switch
+        {
+            0 => "—",
+            1 => parts[0][..Math.Min(2, parts[0].Length)].ToUpperInvariant(),
+            _ => $"{parts[0][0]}{parts[^1][0]}".ToUpperInvariant(),
+        };
+    }
+
+    private static readonly string[] AvatarTones = { "green", "blue", "amber", "purple", "primary", "red" };
+
+    private static string StatusFromEnum(DomainPay.PayPeriodStatus s) => s switch
+    {
+        DomainPay.PayPeriodStatus.Draft      => "Draft",
+        DomainPay.PayPeriodStatus.Calculated => "Calculated",
+        DomainPay.PayPeriodStatus.Approved   => "Approved",
+        DomainPay.PayPeriodStatus.Released   => "Released",
+        _ => s.ToString(),
+    };
+}

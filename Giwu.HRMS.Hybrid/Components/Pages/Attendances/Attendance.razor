@@ -1,0 +1,371 @@
+@page "/attendance"
+@using static Giwu.HRMS.Hybrid.Models.AttendanceFormatting
+@using Giwu.Contracts.Attendance
+@using Giwu.Domain.Attendance
+@using Giwu.HRMS.Hybrid.Services.Attendance
+@inject ISnackbar Snackbar
+@inject IDialogService DialogService
+@inject IJSRuntime JS
+@inject IAttendanceApi AttendanceApi
+
+@using Pages.Attendances.Components
+<PageTitle>Attendance</PageTitle>
+
+<MudGrid Spacing="3" Class="mb-4">
+    <MudItem xs="12" sm="6" md="3">
+        <MudPaper Class="@KpiClass("Present")" Elevation="0" @onclick="@(() => KpiFilter("Present"))">
+            <div class="kpi-label">Present Today</div>
+            <div class="kpi-value">@Counts.Present</div>
+            <div class="kpi-sub">
+                <span class="kpi-dot" style="background:var(--att-green)"></span>
+                <span>@PresentPct% of workforce</span>
+            </div>
+        </MudPaper>
+    </MudItem>
+    <MudItem xs="12" sm="6" md="3">
+        <MudPaper Class="@KpiClass("Absent")" Elevation="0" @onclick="@(() => KpiFilter("Absent"))">
+            <div class="kpi-label">Absent</div>
+            <div class="kpi-value">@Counts.Absent</div>
+            <div class="kpi-sub">
+                <span class="kpi-dot" style="background:var(--att-red)"></span>
+                <span>@UnexcusedCount unexcused</span>
+            </div>
+        </MudPaper>
+    </MudItem>
+    <MudItem xs="12" sm="6" md="3">
+        <MudPaper Class="@KpiClass("Late")" Elevation="0" @onclick="@(() => KpiFilter("Late"))">
+            <div class="kpi-label">Late Arrivals</div>
+            <div class="kpi-value">@Counts.Late</div>
+            <div class="kpi-sub">
+                <span class="kpi-dot" style="background:var(--att-amber)"></span>
+                <span>today</span>
+            </div>
+        </MudPaper>
+    </MudItem>
+    <MudItem xs="12" sm="6" md="3">
+        <MudPaper Class="@KpiClass("Leave")" Elevation="0" @onclick="@(() => KpiFilter("Leave"))">
+            <div class="kpi-label">On Leave</div>
+            <div class="kpi-value">@Counts.Leave</div>
+            <div class="kpi-sub">
+                <span class="kpi-dot" style="background:var(--att-purple)"></span>
+                <span>approved</span>
+            </div>
+        </MudPaper>
+    </MudItem>
+</MudGrid>
+
+<MudPaper Class="att-card" Elevation="0">
+    <div class="att-card-header">
+        <div>
+            <MudText Typo="Typo.subtitle2" Class="fw-medium">@TableTitle</MudText>
+            <MudText Typo="Typo.caption" Style="opacity:.55">@FilteredTotal of @Employees.Count records</MudText>
+        </div>
+        <MudStack Row="true" Spacing="2">
+            <MudButton Variant="Variant.Outlined" Size="Size.Small"
+                       StartIcon="@Icons.Material.Outlined.Refresh"
+                       OnClick="ReloadAsync">Refresh</MudButton>
+            <MudButton Variant="Variant.Outlined" Size="Size.Small"
+                       StartIcon="@Icons.Material.Outlined.FileDownload"
+                       OnClick="ExportCsv">Export CSV</MudButton>
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" Size="Size.Small"
+                       StartIcon="@Icons.Material.Outlined.Login" DisableElevation="true"
+                       OnClick="ClockInSelf">Clock In</MudButton>
+            <MudButton Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Small"
+                       StartIcon="@Icons.Material.Outlined.Logout"
+                       OnClick="ClockOutSelf">Clock Out</MudButton>
+        </MudStack>
+    </div>
+
+    <div class="filter-row">
+        <MudChipSet T="string" @bind-SelectedValue="CurrentFilter" CheckMark="false" Mandatory="true">
+            <MudChip T="string" Value="@("All")" Size="Size.Small">All</MudChip>
+            <MudChip T="string" Value="@("Present")" Size="Size.Small">Present</MudChip>
+            <MudChip T="string" Value="@("Absent")" Size="Size.Small">Absent</MudChip>
+            <MudChip T="string" Value="@("Late")" Size="Size.Small">Late</MudChip>
+            <MudChip T="string" Value="@("Leave")" Size="Size.Small">Leave</MudChip>
+        </MudChipSet>
+        <MudSpacer />
+        <MudTextField @bind-Value="SearchText" Placeholder="Search name…"
+                      Variant="Variant.Outlined" Margin="Margin.Dense" Class="att-search"
+                      Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Outlined.Search"
+                      DebounceInterval="200" Immediate="true" />
+    </div>
+
+    @if (_loading)
+    {
+        <div style="padding:32px;display:flex;justify-content:center">
+            <MudProgressCircular Indeterminate="true" Size="Size.Medium" />
+        </div>
+    }
+    else if (_loadError is not null)
+    {
+        <div style="padding:16px">
+            <MudAlert Severity="Severity.Error" Variant="Variant.Outlined">@_loadError</MudAlert>
+        </div>
+    }
+    else
+    {
+        <MudTable T="AttendanceEmployee" Items="@FilteredEmployees" Dense="true" Hover="true"
+                  Elevation="0" Breakpoint="Breakpoint.Sm"
+                  @bind-RowsPerPage="PageSize" @bind-Page="CurrentPage"
+                  Class="att-mud-table">
+            <HeaderContent>
+                <MudTh><MudTableSortLabel T="AttendanceEmployee" SortBy="@(e => e.Name)">Employee</MudTableSortLabel></MudTh>
+                <MudTh><MudTableSortLabel T="AttendanceEmployee" SortBy="@(e => e.Dept)">Department</MudTableSortLabel></MudTh>
+                <MudTh><MudTableSortLabel T="AttendanceEmployee" SortBy="@(e => e.Status)">Status</MudTableSortLabel></MudTh>
+                <MudTh>Time In</MudTh>
+                <MudTh>Time Out</MudTh>
+                <MudTh>Hours</MudTh>
+                <MudTh Style="text-align:right">Actions</MudTh>
+            </HeaderContent>
+            <RowTemplate>
+                <MudTd DataLabel="Employee">
+                    <div style="display:flex;align-items:center;gap:9px">
+                        <MudAvatar Style="@AvatarStyle(context.Av)" Class="att-av-sm">@context.Init</MudAvatar>
+                        <div>
+                            <MudText Typo="Typo.body2" Class="fw-medium" Style="line-height:1.2">@context.Name</MudText>
+                            <MudText Typo="Typo.caption" Style="opacity:.55">@context.Role</MudText>
+                        </div>
+                    </div>
+                </MudTd>
+                <MudTd DataLabel="Department" Style="opacity:.75">@context.Dept</MudTd>
+                <MudTd DataLabel="Status">
+                    <span class="@($"att-badge {BadgeClass(context.Status)}")">@context.Status</span>
+                </MudTd>
+                <MudTd DataLabel="Time In">@FmtTime(context.Tin)</MudTd>
+                <MudTd DataLabel="Time Out">@FmtTime(context.Tout)</MudTd>
+                <MudTd DataLabel="Hours">
+                    @{ var hw = HoursWorked(context.Tin, context.Tout); }
+                    @if (hw.HasValue)
+                    {
+                        var pct = (int)Math.Round(Math.Min(hw.Value / 9.0 * 100, 100));
+                        <div class="hours-wrap">
+                            <div class="hours-bar"><div class="hours-fill" style="@($"width:{pct}%")"></div></div>
+                            <span style="font-size:11px;opacity:.7">@FmtHours(hw)</span>
+                        </div>
+                    }
+                    else { <span style="opacity:.3">—</span> }
+                </MudTd>
+                <MudTd DataLabel="Actions" Style="text-align:right">
+                    <MudIconButton Icon="@Icons.Material.Outlined.Visibility" Size="Size.Small"
+                                   OnClick="@(() => OpenDetailDialog(context.Id))" />
+                </MudTd>
+            </RowTemplate>
+            <NoRecordsContent>
+                <div class="att-empty">
+                    <div class="att-empty-icon">⊘</div>
+                    <MudText Typo="Typo.body2">No records match your filter.</MudText>
+                </div>
+            </NoRecordsContent>
+            <PagerContent>
+                <MudTablePager PageSizeOptions="new int[] { 5, 10, 25, 50 }" />
+            </PagerContent>
+        </MudTable>
+    }
+</MudPaper>
+
+<style>
+    :root {
+        --att-green:#1D9E75;--att-green-light:#E1F5EE;--att-green-dark:#0F6E56;--att-green-text:#085041;
+        --att-red:#E24B4A;--att-red-light:#FCEBEB;--att-red-text:#791F1F;
+        --att-amber:#BA7517;--att-amber-light:#FAEEDA;--att-amber-text:#633806;
+        --att-purple:#534AB7;--att-purple-light:#EEEDFE;--att-purple-text:#3C3489;
+        --att-blue:#185FA5;--att-blue-light:#E6F1FB;--att-blue-text:#0C447C;
+    }
+    .att-kpi { padding:16px;border:0.5px solid var(--mud-palette-divider);border-radius:10px;cursor:pointer;transition:border-color .15s,box-shadow .15s;user-select:none;background:var(--mud-palette-background); }
+    .att-kpi:hover { border-color:var(--mud-palette-primary);box-shadow:0 0 0 1px var(--mud-palette-primary); }
+    .att-kpi.active { border-color:var(--mud-palette-primary);box-shadow:0 0 0 2px var(--mud-palette-primary); }
+    .kpi-label { font-size:10.5px;letter-spacing:.07em;text-transform:uppercase;opacity:.55;margin-bottom:6px;font-weight:500; }
+    .kpi-value { font-size:2.1rem;font-weight:500;line-height:1;margin-bottom:5px; }
+    .kpi-sub { font-size:11.5px;opacity:.6;display:flex;align-items:center;gap:5px; }
+    .kpi-dot { width:7px;height:7px;border-radius:50%;flex-shrink:0;display:inline-block; }
+    .att-card { border:0.5px solid var(--mud-palette-divider);border-radius:10px;overflow:hidden;background:var(--mud-palette-background); }
+    .att-card-header { display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:0.5px solid var(--mud-palette-divider);gap:8px; }
+    .fw-medium { font-weight:500; }
+    .att-av-sm { width:30px !important;height:30px !important;font-size:11px !important;font-weight:500; }
+    .att-badge { display:inline-block;font-size:11px;padding:2px 9px;border-radius:100px;font-weight:500;white-space:nowrap; }
+    .badge-present { background:var(--att-green-light);color:var(--att-green-text); }
+    .badge-absent { background:var(--att-red-light);color:var(--att-red-text); }
+    .badge-late { background:var(--att-amber-light);color:var(--att-amber-text); }
+    .badge-leave { background:var(--att-purple-light);color:var(--att-purple-text); }
+    .badge-wfh { background:var(--att-blue-light);color:var(--att-blue-text); }
+    .filter-row { display:flex;flex-wrap:wrap;align-items:center;gap:6px;padding:10px 14px;border-bottom:0.5px solid var(--mud-palette-divider); }
+    .att-search { max-width:260px; }
+    .hours-wrap { display:flex;align-items:center;gap:7px; }
+    .hours-bar { width:52px;height:5px;border-radius:3px;background:var(--mud-palette-divider);overflow:hidden;flex-shrink:0; }
+    .hours-fill { height:100%;border-radius:3px;background:var(--att-green); }
+    .att-empty { display:flex;flex-direction:column;align-items:center;justify-content:center;padding:40px 16px;opacity:.55;gap:8px; }
+    .att-empty-icon { font-size:28px; }
+    .att-mud-table .mud-table-container { border-radius:0; }
+    .att-mud-table .mud-table-toolbar { padding:0;min-height:0; }
+    .att-mud-table th { font-size:10.5px !important;font-weight:500 !important;letter-spacing:.055em !important;text-transform:uppercase !important;opacity:.65; }
+    .att-mud-table td { font-size:13px !important;vertical-align:middle; }
+    @@media (max-width:600px) { .att-search { max-width:100%;width:100%; } }
+</style>
+
+@code {
+    private List<AttendanceEmployee> Employees { get; set; } = new();
+    private bool _loading = true;
+    private string? _loadError;
+
+    private string CurrentFilter { get; set; } = "All";
+    private string SearchText { get; set; } = "";
+    private int CurrentPage { get; set; } = 0;
+    private int PageSize { get; set; } = 10;
+    private string TableTitle { get; set; } = "";
+
+    private (int Present, int Absent, int Late, int Leave) Counts =>
+        (Employees.Count(e => e.Status == "Present"),
+         Employees.Count(e => e.Status == "Absent"),
+         Employees.Count(e => e.Status == "Late"),
+         Employees.Count(e => e.Status == "Leave"));
+
+    private int PresentPct => Employees.Count == 0 ? 0 : (int)Math.Round(Counts.Present / (double)Employees.Count * 100);
+    private int UnexcusedCount => Employees.Count(e => e.Status == "Absent");
+
+    private IEnumerable<AttendanceEmployee> FilteredEmployees
+    {
+        get
+        {
+            var q = (SearchText ?? "").Trim().ToLower();
+            return Employees.Where(e =>
+                (CurrentFilter == "All" || e.Status == CurrentFilter) &&
+                (string.IsNullOrEmpty(q)
+                    || e.Name.ToLower().Contains(q)
+                    || e.Dept.ToLower().Contains(q)
+                    || e.Role.ToLower().Contains(q)));
+        }
+    }
+
+    private int FilteredTotal => FilteredEmployees.Count();
+
+    private string KpiClass(string kind) => CurrentFilter == kind ? "att-kpi active" : "att-kpi";
+
+    private void KpiFilter(string f) { CurrentFilter = f; CurrentPage = 0; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        TableTitle = $"Today's Attendance — {DateTime.Now:MMMM d, yyyy}";
+        await ReloadAsync();
+    }
+
+    private async Task ReloadAsync()
+    {
+        _loading = true;
+        _loadError = null;
+        StateHasChanged();
+
+        var today = DateOnly.FromDateTime(DateTime.Today);
+        var result = await AttendanceApi.ListAsync(from: today, to: today, page: 1, pageSize: 100);
+        _loading = false;
+
+        if (!result.Success || result.Value is null)
+        {
+            _loadError = result.ErrorMessage ?? "Failed to load attendance";
+            return;
+        }
+
+        Employees = result.Value.Items.Select(MapToUi).ToList();
+    }
+
+    private static AttendanceEmployee MapToUi(AttendanceRecordDto dto) => new()
+    {
+        Id = dto.Id.ToString(),
+        Name = dto.EmployeeName,
+        Init = MakeInitials(dto.EmployeeName),
+        Av = AvatarTone(dto.EmployeeId),
+        Role = "",
+        Dept = "",
+        Status = StatusToLabel(dto.Status),
+        Tin = dto.ClockIn?.LocalDateTime.ToString("HH:mm") ?? "",
+        Tout = dto.ClockOut?.LocalDateTime.ToString("HH:mm") ?? "",
+        Reason = dto.Notes ?? "",
+        Pending = false,
+    };
+
+    private static string MakeInitials(string name)
+    {
+        if (string.IsNullOrWhiteSpace(name)) return "·";
+        var parts = name.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        return parts.Length switch
+        {
+            0 => "·",
+            1 => parts[0].Substring(0, Math.Min(2, parts[0].Length)).ToUpperInvariant(),
+            _ => $"{parts[0][0]}{parts[^1][0]}".ToUpperInvariant(),
+        };
+    }
+
+    private static readonly string[] _avTones = { "green", "blue", "amber", "purple", "primary" };
+    private static string AvatarTone(Guid id) => _avTones[Math.Abs(id.GetHashCode()) % _avTones.Length];
+
+    private static string StatusToLabel(AttendanceStatus s) => s switch
+    {
+        AttendanceStatus.Present   => "Present",
+        AttendanceStatus.Late      => "Late",
+        AttendanceStatus.Absent    => "Absent",
+        AttendanceStatus.OnLeave   => "Leave",
+        AttendanceStatus.Holiday   => "Holiday",
+        AttendanceStatus.RestDay   => "Rest Day",
+        AttendanceStatus.Suspended => "Suspended",
+        _ => s.ToString(),
+    };
+
+    private async Task ClockInSelf()
+    {
+        var result = await AttendanceApi.ClockInAsync(new ClockInRequest(Source: "App", Location: ""));
+        if (result.Success)
+        {
+            Snackbar.Add("Clocked in successfully.", Severity.Success);
+            await ReloadAsync();
+        }
+        else
+        {
+            Snackbar.Add(result.ErrorMessage ?? "Failed to clock in.", Severity.Error);
+        }
+    }
+
+    private async Task ClockOutSelf()
+    {
+        var result = await AttendanceApi.ClockOutAsync(new ClockOutRequest(Source: "App", Location: ""));
+        if (result.Success)
+        {
+            Snackbar.Add("Clocked out successfully.", Severity.Success);
+            await ReloadAsync();
+        }
+        else
+        {
+            Snackbar.Add(result.ErrorMessage ?? "Failed to clock out.", Severity.Error);
+        }
+    }
+
+    private async Task OpenDetailDialog(string id)
+    {
+        var emp = Employees.FirstOrDefault(e => e.Id == id);
+        if (emp == null) return;
+
+        var parameters = new DialogParameters
+        {
+            ["Emp"] = emp,
+            ["OnEdit"] = EventCallback.Factory.Create(this, () => Task.CompletedTask)
+        };
+        var options = new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true };
+        await DialogService.ShowAsync<AttendanceDetailDialog>("Attendance Detail", parameters, options);
+    }
+
+    private async Task ExportCsv()
+    {
+        var rows = FilteredEmployees.ToList();
+        var sb = new System.Text.StringBuilder();
+        sb.AppendLine("Employee,Department,Status,Time In,Time Out,Hours");
+        foreach (var e in rows)
+        {
+            var hw = HoursWorked(e.Tin, e.Tout);
+            sb.AppendLine(string.Join(",", new[] { e.Name, e.Dept, e.Status, FmtTime(e.Tin), FmtTime(e.Tout), FmtHours(hw) }));
+        }
+        var filename = $"attendance_{DateTime.Now:yyyy-MM-dd}.csv";
+        var base64 = Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes(sb.ToString()));
+        await JS.InvokeVoidAsync("eval",
+            $@"(function(){{var bin=atob('{base64}');var bytes=new Uint8Array(bin.length);for(var i=0;i<bin.length;i++)bytes[i]=bin.charCodeAt(i);var blob=new Blob([bytes],{{type:'text/csv'}});var url=URL.createObjectURL(blob);var a=document.createElement('a');a.href=url;a.download='{filename}';document.body.appendChild(a);a.click();document.body.removeChild(a);URL.revokeObjectURL(url);}})();");
+        Snackbar.Add($"Exported {rows.Count} records to CSV", Severity.Success);
+    }
+}

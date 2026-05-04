@@ -1,0 +1,113 @@
+@* ── Add Department Dialog ── *@
+<MudDialog>
+    <TitleContent>
+        <div style="display:flex;align-items:center;gap:10px">
+            <div style="width:32px;height:32px;background:#E6F1FB;border-radius:8px;display:flex;align-items:center;justify-content:center">
+                <svg width="15" height="15" fill="none" viewBox="0 0 16 16">
+                    <rect x="1" y="1" width="6" height="6" rx="1.5" stroke="#185FA5" stroke-width="1.3"/>
+                    <rect x="9" y="1" width="6" height="6" rx="1.5" stroke="#185FA5" stroke-width="1.3"/>
+                    <rect x="1" y="9" width="6" height="6" rx="1.5" stroke="#185FA5" stroke-width="1.3"/>
+                    <path d="M12 9.5v5M9.5 12h5" stroke="#185FA5" stroke-width="1.5" stroke-linecap="round"/>
+                </svg>
+            </div>
+            <div>
+                <MudText Typo="Typo.subtitle1" Style="font-weight:600;line-height:1.2">New Department</MudText>
+                <MudText Typo="Typo.caption" Style="opacity:.55">Set up a new department</MudText>
+            </div>
+        </div>
+    </TitleContent>
+
+    <DialogContent>
+        <MudForm @ref="_form" @bind-IsValid="_isValid">
+
+            <MudText Typo="Typo.caption"
+                     Style="font-weight:600;text-transform:uppercase;letter-spacing:.06em;opacity:.5;margin-bottom:10px;display:block">
+                Basic Information
+            </MudText>
+            <MudGrid Spacing="2" Style="margin-bottom:16px">
+                <MudItem xs="12" sm="8">
+                    <MudTextField @bind-Value="_model.Name" Label="Department name"
+                                  Variant="Variant.Outlined" Margin="Margin.Dense"
+                                  Required="true" RequiredError="Name is required" />
+                </MudItem>
+                <MudItem xs="12" sm="4">
+                    <MudTextField @bind-Value="_model.Code" Label="Code"
+                                  Variant="Variant.Outlined" Margin="Margin.Dense"
+                                  Placeholder="e.g. ENG-01" />
+                </MudItem>
+                <MudItem xs="12">
+                    <MudTextField @bind-Value="_model.Description" Label="Description"
+                                  Variant="Variant.Outlined" Margin="Margin.Dense" Lines="2" />
+                </MudItem>
+            </MudGrid>
+
+            <MudDivider Style="margin-bottom:16px" />
+
+            <MudText Typo="Typo.caption"
+                     Style="font-weight:600;text-transform:uppercase;letter-spacing:.06em;opacity:.5;margin-bottom:10px;display:block">
+                Leadership & Budget
+            </MudText>
+            <MudGrid Spacing="2">
+                <MudItem xs="12" sm="6">
+                    <MudTextField @bind-Value="_model.CostCenter" Label="Cost center"
+                                  Variant="Variant.Outlined" Margin="Margin.Dense"
+                                  Placeholder="e.g. CC-1001" />
+                </MudItem>
+                <MudItem xs="12" sm="6">
+                    <MudNumericField @bind-Value="_model.Budget" Label="Monthly budget (₱)"
+                                     Variant="Variant.Outlined" Margin="Margin.Dense" Format="N2" />
+                </MudItem>
+                <MudItem xs="12" sm="6">
+                    <MudNumericField @bind-Value="_model.HeadcountTarget" Label="Headcount target"
+                                     Variant="Variant.Outlined" Margin="Margin.Dense" />
+                </MudItem>
+                <MudItem xs="12" sm="6">
+                    <MudSelect @bind-Value="_model.Status" Label="Status"
+                               Variant="Variant.Outlined" Margin="Margin.Dense">
+                        <MudSelectItem Value="@("Active")">Active</MudSelectItem>
+                        <MudSelectItem Value="@("Inactive")">Inactive</MudSelectItem>
+                    </MudSelect>
+                </MudItem>
+            </MudGrid>
+
+        </MudForm>
+    </DialogContent>
+
+    <DialogActions>
+        <MudButton Variant="Variant.Text" Style="text-transform:none" OnClick="Cancel">Cancel</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                   Style="text-transform:none;border-radius:8px"
+                   StartIcon="@Icons.Material.Outlined.Add"
+                   OnClick="Submit" Disabled="!_isValid">
+            Create Department
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] IMudDialogInstance MudDialog { get; set; } = default!;
+
+    MudForm _form = default!;
+    bool _isValid;
+
+    public class DeptForm
+    {
+        public string  Name            { get; set; } = "";
+        public string  Code            { get; set; } = "";
+        public string  Description     { get; set; } = "";
+        public string  CostCenter      { get; set; } = "";
+        public decimal Budget          { get; set; }
+        public int     HeadcountTarget { get; set; }
+        public string  Status          { get; set; } = "Active";
+    }
+
+    readonly DeptForm _model = new();
+
+    async Task Submit()
+    {
+        await _form.Validate();
+        if (_isValid) MudDialog.Close(DialogResult.Ok(_model));
+    }
+
+    void Cancel() => MudDialog.Cancel();
+}

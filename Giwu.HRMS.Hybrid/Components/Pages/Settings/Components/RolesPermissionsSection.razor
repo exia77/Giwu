@@ -1,0 +1,219 @@
+﻿@inject RoleAuthService Roles
+@inject ISnackbar Snackbar
+
+<div class="settings-card">
+    <div class="settings-card-header">
+        <div>
+            <MudText Typo="Typo.subtitle2" Class="fw-medium">Permission matrix</MudText>
+            <MudText Typo="Typo.caption" Style="opacity:.6">
+                Toggle which sidebar areas each role can see. Changes take effect immediately
+                across the app for any user signed in with that role.
+            </MudText>
+        </div>
+        <MudButton Variant="Variant.Outlined" Size="Size.Small"
+                   StartIcon="@Icons.Material.Outlined.RestartAlt"
+                   OnClick="ResetMatrix">Reset to defaults</MudButton>
+    </div>
+
+    <div class="settings-card-body" style="padding:0;overflow-x:auto">
+        <table class="role-matrix">
+            <thead>
+                <tr>
+                    <th class="role-matrix-corner">Sidebar item</th>
+                    @foreach (var role in AllRoles)
+                    {
+                        <th>
+                            <div class="role-matrix-col-head">
+                                <span class="@($"role-pill role-pill-sm {RoleAuthService.RoleBadgeClass(role)}")">
+                                    @RoleAuthService.RoleLabel(role)
+                                </span>
+                            </div>
+                        </th>
+                    }
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var key in NavKeys.All)
+                {
+                    <tr>
+                        <td class="role-matrix-row-label">
+                            <div style="display:flex;align-items:center;gap:8px">
+                                <MudIcon Icon="@NavIcon(key)" Size="Size.Small" Style="opacity:.7" />
+                                <span>@NavKeys.Label(key)</span>
+                            </div>
+                        </td>
+                        @foreach (var role in AllRoles)
+                        {
+                            var navKey = key;
+                            var navRole = role;
+                            var locked = navRole == UserRole.HrAdmin && navKey == NavKeys.Settings;
+                            <td class="role-matrix-cell">
+                                <MudCheckBox T="bool"
+                                             Value="@IsAllowed(navRole, navKey)"
+                                             ValueChanged="@((bool v) => Toggle(navRole, navKey, v))"
+                                             Disabled="@locked"
+                                             Color="Color.Primary"
+                                             Dense="true" />
+                            </td>
+                        }
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div class="settings-card">
+    <div class="settings-card-header">
+        <div>
+            <MudText Typo="Typo.subtitle2" Class="fw-medium">Preview as user</MudText>
+            <MudText Typo="Typo.caption" Style="opacity:.6">
+                Switch the active demo user to verify what the sidebar looks like for each role.
+            </MudText>
+        </div>
+    </div>
+    <div class="settings-card-body" style="padding:0">
+        @foreach (var u in Roles.AvailableUsers)
+        {
+            var isActive = u.Id == Roles.CurrentUser.Id;
+            <button type="button"
+                    class="@($"role-preview-row {(isActive ? "active" : "")}")"
+                    @onclick="@(() => SwitchUser(u.Id))">
+                <MudAvatar Style="@($"width:32px;height:32px;font-size:12px;{AvatarStyleFor(u.AvatarColor)}")">
+                    @u.Initials
+                </MudAvatar>
+                <div class="role-preview-meta">
+                    <div class="role-preview-name">@u.Name</div>
+                    <div class="role-preview-sub">@u.JobTitle Â· @u.Department</div>
+                </div>
+                <span class="@($"role-pill role-pill-sm {RoleAuthService.RoleBadgeClass(u.Role)}")">
+                    @RoleAuthService.RoleLabel(u.Role)
+                </span>
+                @if (isActive)
+                {
+                    <MudChip T="string" Size="Size.Small" Color="Color.Success" Variant="Variant.Filled"
+                             Style="height:20px;font-size:.65rem">Active</MudChip>
+                }
+            </button>
+        }
+    </div>
+</div>
+
+<style>
+    .role-matrix {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 13px;
+    }
+    .role-matrix th, .role-matrix td {
+        padding: 10px 12px;
+        border-bottom: 0.5px solid var(--mud-palette-divider);
+        text-align: center;
+    }
+    .role-matrix thead th {
+        background: var(--mud-palette-background-grey);
+        font-weight: 500;
+        font-size: 11.5px;
+        position: sticky;
+        top: 0;
+        z-index: 1;
+    }
+    .role-matrix-corner {
+        text-align: left !important;
+        min-width: 180px;
+    }
+    .role-matrix-col-head { display: flex; justify-content: center; }
+    .role-matrix-row-label {
+        text-align: left !important;
+        font-weight: 500;
+        white-space: nowrap;
+    }
+    .role-matrix-cell { width: 110px; }
+    .role-matrix tbody tr:hover { background: var(--mud-palette-background-grey); }
+    .role-matrix tbody tr:last-child td { border-bottom: none; }
+
+    .role-preview-row {
+        display: flex; align-items: center; gap: 12px;
+        width: 100%;
+        padding: 12px 18px;
+        border: none;
+        background: none;
+        text-align: left;
+        cursor: pointer;
+        font-family: inherit;
+        border-bottom: 0.5px solid var(--mud-palette-divider);
+        transition: background .1s;
+    }
+    .role-preview-row:last-child { border-bottom: none; }
+    .role-preview-row:hover { background: var(--mud-palette-background-grey); }
+    .role-preview-row.active {
+        background: rgba(29, 158, 117, 0.14);
+        box-shadow: inset 3px 0 0 var(--set-green, #1D9E75);
+    }
+    .role-preview-meta { flex: 1; min-width: 0; color: var(--mud-palette-text-primary); }
+    .role-preview-name {
+        font-size: 13px; font-weight: 500; line-height: 1.2;
+        color: var(--mud-palette-text-primary);
+    }
+    .role-preview-sub {
+        font-size: 11.5px; margin-top: 2px;
+        color: var(--mud-palette-text-secondary);
+    }
+</style>
+
+@code {
+    private static readonly UserRole[] AllRoles =
+    {
+        UserRole.HrAdmin, UserRole.HrSpecialist,
+        UserRole.Manager, UserRole.Finance, UserRole.Employee
+    };
+
+    private bool IsAllowed(UserRole role, string navKey) =>
+        Roles.Permissions.TryGetValue(role, out var set) && set.Contains(navKey);
+
+    private void Toggle(UserRole role, string navKey, bool granted)
+    {
+        Roles.TogglePermission(role, navKey, granted);
+        var verb = granted ? "granted" : "revoked";
+        Snackbar.Add($"{NavKeys.Label(navKey)} {verb} for {RoleAuthService.RoleLabel(role)}",
+                     granted ? Severity.Success : Severity.Info);
+    }
+
+    private void ResetMatrix()
+    {
+        Roles.ResetPermissionsToDefaults();
+        Snackbar.Add("Permission matrix restored to defaults", Severity.Warning);
+    }
+
+    private void SwitchUser(string userId)
+    {
+        Roles.SetCurrentUser(userId);
+        Snackbar.Add($"Now viewing as {Roles.CurrentUser.Name}", Severity.Info);
+    }
+
+    private static string NavIcon(string key) => key switch
+    {
+        NavKeys.Dashboard   => Icons.Material.Outlined.GridView,
+        NavKeys.Employees   => Icons.Material.Outlined.Person,
+        NavKeys.Departments => Icons.Material.Outlined.Groups,
+        NavKeys.Attendance  => Icons.Material.Outlined.CalendarMonth,
+        NavKeys.Recruitment => Icons.Material.Outlined.WorkOutline,
+        NavKeys.Payroll     => Icons.Material.Outlined.CreditCard,
+        NavKeys.Benefits    => Icons.Material.Outlined.VolunteerActivism,
+        NavKeys.Leave       => Icons.Material.Outlined.Schedule,
+        NavKeys.Reports     => Icons.Material.Outlined.Description,
+        NavKeys.Settings    => Icons.Material.Outlined.Settings,
+        _ => Icons.Material.Outlined.Circle
+    };
+
+    private static string AvatarStyleFor(string av) => av switch
+    {
+        "green"   => "background:#E1F5EE;color:#085041",
+        "blue"    => "background:#E6F1FB;color:#0C447C",
+        "amber"   => "background:#FAEEDA;color:#633806",
+        "red"     => "background:#FCEBEB;color:#791F1F",
+        "purple"  => "background:#EEEDFE;color:#3C3489",
+        "primary" => "background:#E1F5EE;color:#085041",
+        _ => ""
+    };
+}

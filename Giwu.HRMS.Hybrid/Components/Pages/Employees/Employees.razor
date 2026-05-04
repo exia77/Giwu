@@ -1,0 +1,502 @@
+@page "/employees"
+@layout DashboardLayout
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+@inject IEmployeesApi EmployeesApi
+@inject IDepartmentsApi DepartmentsApi
+
+@using Giwu.Contracts.Departments
+@using Giwu.Contracts.Employees
+@using Giwu.Domain.Organization
+@using Giwu.HRMS.Hybrid.Services.Departments
+@using Giwu.HRMS.Hybrid.Services.Employees
+@using Pages.Employees.Components
+
+@* ── Toolbar row ── *@
+<div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;flex-wrap:wrap">
+
+    <MudTextField @bind-Value="_search"
+                  Placeholder="Search name, role, dept…"
+                  Adornment="Adornment.Start"
+                  AdornmentIcon="@Icons.Material.Outlined.Search"
+                  Variant="Variant.Outlined"
+                  Margin="Margin.Dense"
+                  Style="max-width:320px;flex:1"
+                  Immediate="true"
+                  DebounceInterval="300"
+                  OnDebounceIntervalElapsed="ReloadAsync" />
+
+    <MudSelect @bind-Value="_filterDept"
+               Placeholder="Department"
+               Variant="Variant.Outlined"
+               Margin="Margin.Dense"
+               Style="max-width:180px">
+        <MudSelectItem Value="@("")">All departments</MudSelectItem>
+        @foreach (var d in _departments)
+        {
+            <MudSelectItem Value="@d.Name">@d.Name</MudSelectItem>
+        }
+    </MudSelect>
+
+    <MudSelect @bind-Value="_filterStatus"
+               Placeholder="Status"
+               Variant="Variant.Outlined"
+               Margin="Margin.Dense"
+               Style="max-width:150px">
+        <MudSelectItem Value="@("")">All statuses</MudSelectItem>
+        <MudSelectItem Value="@("Active")">Active</MudSelectItem>
+        <MudSelectItem Value="@("On Leave")">On Leave</MudSelectItem>
+        <MudSelectItem Value="@("Suspended")">Suspended</MudSelectItem>
+        <MudSelectItem Value="@("Terminated")">Terminated</MudSelectItem>
+        <MudSelectItem Value="@("Resigned")">Resigned</MudSelectItem>
+    </MudSelect>
+
+    <MudSpacer />
+
+    <MudButton Variant="Variant.Filled" Color="Color.Primary"
+               StartIcon="@Icons.Material.Outlined.PersonAdd"
+               Size="Size.Small"
+               Style="border-radius:8px;text-transform:none"
+               OnClick="OpenAddDialog">
+        Add employee
+    </MudButton>
+</div>
+
+@* ── Summary chips ── *@
+<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:20px">
+    @foreach (var s in _summaryChips)
+    {
+        <div style="@($"display:flex;align-items:center;gap:6px;padding:5px 12px;border-radius:20px;border:1px solid var(--mud-palette-divider);background:{s.Bg}")">
+            <div style="@($"width:7px;height:7px;border-radius:50%;background:{s.Dot}")"></div>
+            <MudText Typo="Typo.caption" Style="font-weight:500">@s.Label</MudText>
+            <MudText Typo="Typo.caption" Style="opacity:.6">@s.Count</MudText>
+        </div>
+    }
+</div>
+
+@* ── Table ── *@
+<MudPaper Elevation="0"
+          Style="border:1px solid var(--mud-palette-divider);border-radius:10px;overflow:hidden">
+    @if (_loading)
+    {
+        <div style="padding:32px;display:flex;justify-content:center">
+            <MudProgressCircular Indeterminate="true" Size="Size.Medium" />
+        </div>
+    }
+    else if (_loadError is not null)
+    {
+        <div style="padding:24px">
+            <MudAlert Severity="Severity.Error" Variant="Variant.Outlined">@_loadError</MudAlert>
+        </div>
+    }
+    else
+    {
+        <MudTable Items="FilteredEmployees" Dense="true" Hover="true"
+                  Breakpoint="Breakpoint.Sm"
+                  Style="border-radius:10px"
+                  HeaderClass="table-header"
+                  Elevation="0">
+            <HeaderContent>
+                <MudTh Style="font-size:.72rem;font-weight:600;opacity:.6;text-transform:uppercase;letter-spacing:.05em">Employee</MudTh>
+                <MudTh Style="font-size:.72rem;font-weight:600;opacity:.6;text-transform:uppercase;letter-spacing:.05em">Department</MudTh>
+                <MudTh Style="font-size:.72rem;font-weight:600;opacity:.6;text-transform:uppercase;letter-spacing:.05em">Role</MudTh>
+                <MudTh Style="font-size:.72rem;font-weight:600;opacity:.6;text-transform:uppercase;letter-spacing:.05em">Status</MudTh>
+                <MudTh Style="font-size:.72rem;font-weight:600;opacity:.6;text-transform:uppercase;letter-spacing:.05em">Join Date</MudTh>
+                <MudTh Style="font-size:.72rem;font-weight:600;opacity:.6;text-transform:uppercase;letter-spacing:.05em"></MudTh>
+            </HeaderContent>
+            <RowTemplate>
+                <MudTd>
+                    <div style="display:flex;align-items:center;gap:10px">
+                        <MudAvatar Style="@($"background:{context.AvatarBg};color:{context.AvatarFg};font-size:.72rem;width:32px;height:32px;font-weight:600")">
+                            @context.Initials
+                        </MudAvatar>
+                        <div>
+                            <MudText Typo="Typo.body2" Style="font-weight:600;line-height:1.2">@context.Name</MudText>
+                            <MudText Typo="Typo.caption" Style="opacity:.45">@context.Email</MudText>
+                        </div>
+                    </div>
+                </MudTd>
+                <MudTd><MudText Typo="Typo.body2">@context.Dept</MudText></MudTd>
+                <MudTd><MudText Typo="Typo.body2" Style="opacity:.7">@context.Role</MudText></MudTd>
+                <MudTd>
+                    <MudChip T="string" Size="Size.Small" Color="@context.ChipColor"
+                             Variant="Variant.Filled"
+                             Style="height:22px;font-size:.68rem">
+                        @context.Status
+                    </MudChip>
+                </MudTd>
+                <MudTd><MudText Typo="Typo.body2" Style="opacity:.6">@context.JoinDate</MudText></MudTd>
+                <MudTd>
+                    <div style="display:flex;gap:2px">
+                        <MudIconButton Icon="@Icons.Material.Outlined.OpenInNew"
+                                       Size="Size.Small" Title="View profile"
+                                       OnClick="() => OpenViewDialog(context)" />
+                        <MudIconButton Icon="@Icons.Material.Outlined.Edit"
+                                       Size="Size.Small" Title="Edit"
+                                       OnClick="() => OpenEditDialog(context)" />
+                        <MudIconButton Icon="@Icons.Material.Outlined.DeleteOutline"
+                                       Size="Size.Small" Title="Remove"
+                                       Color="Color.Error"
+                                       OnClick="() => OpenDeleteDialog(context)" />
+                    </div>
+                </MudTd>
+            </RowTemplate>
+        </MudTable>
+    }
+</MudPaper>
+
+@* ── Pagination row ── *@
+<div style="display:flex;justify-content:space-between;align-items:center;margin-top:16px;flex-wrap:wrap;gap:8px;padding-bottom:60px">
+    <MudText Typo="Typo.caption" Style="opacity:.55">
+        Showing @FilteredEmployees.Count() of @_total employees
+    </MudText>
+    <MudPagination Count="@_totalPages"
+                   Selected="@_page"
+                   SelectedChanged="OnPageChanged"
+                   Variant="Variant.Outlined" Size="Size.Small"
+                   BoundaryCount="1" MiddleCount="3" />
+</div>
+
+@code {
+    [Inject] NavigationManager Navigation { get; set; } = default!;
+
+    string _search = "";
+    string _filterDept = "";
+    string _filterStatus = "";
+
+    bool _loading = true;
+    string? _loadError;
+
+    int _page = 1;
+    const int PageSize = 25;
+    int _total;
+    int _totalPages = 1;
+
+    IReadOnlyList<DepartmentDto> _departments = Array.Empty<DepartmentDto>();
+    readonly Dictionary<string, Guid> _deptByName = new(StringComparer.OrdinalIgnoreCase);
+    readonly List<Employee> _employees = new();
+
+    class Employee
+    {
+        public Guid   Id        { get; set; }
+        public string EmployeeNumber { get; set; } = "";
+        public string Initials  { get; set; } = "";
+        public string AvatarBg  { get; set; } = "";
+        public string AvatarFg  { get; set; } = "";
+        public string Name      { get; set; } = "";
+        public string FirstName { get; set; } = "";
+        public string LastName  { get; set; } = "";
+        public string Role      { get; set; } = "";
+        public string Dept      { get; set; } = "";
+        public Guid   DeptId    { get; set; }
+        public string Status    { get; set; } = "";
+        public Color  ChipColor { get; set; }
+        public string Email     { get; set; } = "";
+        public string JoinDate  { get; set; } = "";
+        public DateOnly HireDate { get; set; }
+        public EmploymentType EmploymentType { get; set; }
+    }
+
+    record SummaryChip(string Label, int Count, string Dot, string Bg);
+
+    SummaryChip[] _summaryChips = Array.Empty<SummaryChip>();
+
+    IEnumerable<Employee> FilteredEmployees => _employees.Where(e =>
+        (string.IsNullOrEmpty(_filterDept)   || e.Dept   == _filterDept) &&
+        (string.IsNullOrEmpty(_filterStatus) || e.Status == _filterStatus));
+
+    static readonly DialogOptions _dialogOptions = new()
+    {
+        MaxWidth = MaxWidth.Small,
+        FullWidth = true,
+        CloseButton = true,
+        BackdropClick = false,
+        CloseOnEscapeKey = true,
+        NoHeader = false,
+    };
+
+    protected override async Task OnInitializedAsync()
+    {
+        var deptResult = await DepartmentsApi.ListAsync();
+        if (deptResult is { Success: true, Value: not null })
+        {
+            _departments = deptResult.Value;
+            _deptByName.Clear();
+            foreach (var d in _departments) _deptByName[d.Name] = d.Id;
+        }
+        await ReloadAsync();
+    }
+
+    async Task ReloadAsync()
+    {
+        _loading = true;
+        _loadError = null;
+        StateHasChanged();
+
+        var search = string.IsNullOrWhiteSpace(_search) ? null : _search.Trim();
+        var result = await EmployeesApi.ListAsync(_page, PageSize, search);
+        _loading = false;
+
+        if (!result.Success || result.Value is null)
+        {
+            _loadError = result.ErrorMessage ?? "Failed to load employees";
+            return;
+        }
+
+        _employees.Clear();
+        foreach (var dto in result.Value.Items)
+            _employees.Add(MapToUi(dto));
+
+        _total = result.Value.Total;
+        _totalPages = Math.Max(1, result.Value.TotalPages);
+
+        _summaryChips = new[]
+        {
+            new SummaryChip("Active",     _employees.Count(e => e.Status == "Active"),     "#4caf50", "#4caf5012"),
+            new SummaryChip("On Leave",   _employees.Count(e => e.Status == "On Leave"),   "#ff9800", "#ff980012"),
+            new SummaryChip("Suspended",  _employees.Count(e => e.Status == "Suspended"),  "#2196f3", "#2196f312"),
+            new SummaryChip("Terminated", _employees.Count(e => e.Status == "Terminated"), "#9e9e9e", "#9e9e9e12"),
+            new SummaryChip("Resigned",   _employees.Count(e => e.Status == "Resigned"),   "#9e9e9e", "#9e9e9e12"),
+        };
+    }
+
+    async Task OnPageChanged(int page)
+    {
+        _page = page;
+        await ReloadAsync();
+    }
+
+    static Employee MapToUi(EmployeeDto dto)
+    {
+        var (bg, fg) = AvatarColors(dto.Id);
+        return new Employee
+        {
+            Id        = dto.Id,
+            EmployeeNumber = dto.EmployeeNumber,
+            FirstName = dto.FirstName,
+            LastName  = dto.LastName,
+            Name      = $"{dto.FirstName} {dto.LastName}".Trim(),
+            Initials  = $"{Initial(dto.FirstName)}{Initial(dto.LastName)}",
+            AvatarBg  = bg,
+            AvatarFg  = fg,
+            Email     = dto.Email,
+            Role      = dto.JobTitle,
+            Dept      = dto.DepartmentName,
+            DeptId    = dto.DepartmentId,
+            Status    = StatusToLabel(dto.Status),
+            ChipColor = StatusToColor(dto.Status),
+            JoinDate  = dto.HireDate.ToString("MMM d, yyyy"),
+            HireDate  = dto.HireDate,
+            EmploymentType = dto.EmploymentType,
+        };
+    }
+
+    static string Initial(string s) => string.IsNullOrEmpty(s) ? "" : s.Substring(0, 1).ToUpperInvariant();
+
+    static string StatusToLabel(EmploymentStatus s) => s switch
+    {
+        EmploymentStatus.Active     => "Active",
+        EmploymentStatus.OnLeave    => "On Leave",
+        EmploymentStatus.Suspended  => "Suspended",
+        EmploymentStatus.Terminated => "Terminated",
+        EmploymentStatus.Resigned   => "Resigned",
+        _ => s.ToString(),
+    };
+
+    static Color StatusToColor(EmploymentStatus s) => s switch
+    {
+        EmploymentStatus.Active     => Color.Success,
+        EmploymentStatus.OnLeave    => Color.Warning,
+        EmploymentStatus.Suspended  => Color.Error,
+        EmploymentStatus.Terminated => Color.Default,
+        EmploymentStatus.Resigned   => Color.Default,
+        _ => Color.Default,
+    };
+
+    static readonly (string Bg, string Fg)[] AvatarPalette =
+    {
+        ("#E6F1FB", "#0C447C"),
+        ("#EEEDFE", "#3C3489"),
+        ("#E1F5EE", "#085041"),
+        ("#FAEEDA", "#633806"),
+        ("#FCEBEB", "#791F1F"),
+        ("#EAF3DE", "#3B6D11"),
+    };
+
+    static (string Bg, string Fg) AvatarColors(Guid id) =>
+        AvatarPalette[Math.Abs(id.GetHashCode()) % AvatarPalette.Length];
+
+    // ════════════════════════════════════════════════════════════════════════
+    // ADD
+    // ════════════════════════════════════════════════════════════════════════
+    async Task OpenAddDialog()
+    {
+        var parameters = new DialogParameters<AddEmployeeDialog>
+        {
+            { x => x.Departments, _departments },
+        };
+
+        var dialog = await DialogService.ShowAsync<AddEmployeeDialog>(string.Empty, parameters, _dialogOptions);
+        var result = await dialog.Result;
+        if (result is not { Canceled: false, Data: AddEmployeeDialog.EmployeeForm form }) return;
+
+        if (!_deptByName.TryGetValue(form.Department, out var deptId) && form.DepartmentId != Guid.Empty)
+            deptId = form.DepartmentId;
+
+        var req = new CreateEmployeeRequest(
+            EmployeeNumber: form.EmployeeNumber,
+            FirstName:      form.FirstName,
+            LastName:       form.LastName,
+            Email:          form.Email,
+            JobTitle:       form.Role,
+            DepartmentId:   deptId,
+            HireDate:       DateOnly.FromDateTime(form.StartDate ?? DateTime.Today),
+            MonthlyBaseSalary: form.Salary,
+            EmploymentType: ParseEmploymentType(form.EmploymentType));
+
+        var apiResult = await EmployeesApi.CreateAsync(req);
+        if (apiResult.Success)
+        {
+            Snackbar.Add("Employee added successfully.", Severity.Success);
+            await ReloadAsync();
+        }
+        else
+        {
+            Snackbar.Add(apiResult.ErrorMessage ?? "Failed to add employee.", Severity.Error);
+        }
+    }
+
+    static EmploymentType ParseEmploymentType(string s) =>
+        Enum.TryParse<EmploymentType>(s, true, out var v) ? v : EmploymentType.Regular;
+
+    // ════════════════════════════════════════════════════════════════════════
+    // VIEW
+    // ════════════════════════════════════════════════════════════════════════
+    async Task OpenViewDialog(Employee e)
+    {
+        var profile = new ViewEmployeeDialog.EmployeeProfile
+        {
+            Initials = e.Initials,
+            AvatarBg = e.AvatarBg,
+            AvatarFg = e.AvatarFg,
+            Name = e.Name,
+            Role = e.Role,
+            Dept = e.Dept,
+            Status = e.Status,
+            ChipColor = e.ChipColor,
+            Email = e.Email,
+            Phone = "—",
+            JoinDate = e.JoinDate,
+            EmploymentType = e.EmploymentType.ToString(),
+            Salary = "—",
+            Address = "—",
+            BirthDate = "—",
+            Gender = "—",
+        };
+
+        var parameters = new DialogParameters<ViewEmployeeDialog> { { x => x.Employee, profile } };
+        var dialog = await DialogService.ShowAsync<ViewEmployeeDialog>(string.Empty, parameters, _dialogOptions);
+        var result = await dialog.Result;
+
+        if (result is { Canceled: false, Data: "edit" })
+            await OpenEditDialog(e);
+    }
+
+    // ════════════════════════════════════════════════════════════════════════
+    // EDIT
+    // ════════════════════════════════════════════════════════════════════════
+    async Task OpenEditDialog(Employee e)
+    {
+        var editModel = new EditEmployeeDialog.EmployeeEditModel
+        {
+            Initials = e.Initials,
+            AvatarBg = e.AvatarBg,
+            AvatarFg = e.AvatarFg,
+            Name = e.Name,
+            FirstName = e.FirstName,
+            LastName = e.LastName,
+            Email = e.Email,
+            Phone = "",
+            Department = e.Dept,
+            Role = e.Role,
+            Status = e.Status,
+            EmploymentType = e.EmploymentType.ToString(),
+            Salary = 0m,
+            StartDate = e.HireDate.ToDateTime(TimeOnly.MinValue),
+        };
+
+        var parameters = new DialogParameters<EditEmployeeDialog>
+        {
+            { x => x.Employee,    editModel },
+            { x => x.Departments, _departments },
+        };
+
+        var dialog = await DialogService.ShowAsync<EditEmployeeDialog>(string.Empty, parameters, _dialogOptions);
+        var result = await dialog.Result;
+        if (result is not { Canceled: false, Data: EditEmployeeDialog.EmployeeEditModel m }) return;
+
+        if (!_deptByName.TryGetValue(m.Department, out var deptId)) deptId = e.DeptId;
+
+        var req = new UpdateEmployeeRequest(
+            FirstName: m.FirstName,
+            LastName:  m.LastName,
+            Email:     m.Email,
+            JobTitle:  m.Role,
+            DepartmentId: deptId,
+            MonthlyBaseSalary: m.Salary);
+
+        var apiResult = await EmployeesApi.UpdateAsync(e.Id, req);
+        if (apiResult.Success)
+        {
+            Snackbar.Add("Employee profile updated.", Severity.Success);
+            await ReloadAsync();
+        }
+        else
+        {
+            Snackbar.Add(apiResult.ErrorMessage ?? "Failed to update employee.", Severity.Error);
+        }
+    }
+
+    // ════════════════════════════════════════════════════════════════════════
+    // DELETE
+    // ════════════════════════════════════════════════════════════════════════
+    async Task OpenDeleteDialog(Employee e)
+    {
+        var target = new DeleteEmployeeDialog.DeleteTarget
+        {
+            Initials = e.Initials,
+            AvatarBg = e.AvatarBg,
+            AvatarFg = e.AvatarFg,
+            Name = e.Name,
+            Role = e.Role,
+            Dept = e.Dept,
+            Status = e.Status,
+            ChipColor = e.ChipColor,
+            Email = e.Email,
+        };
+
+        var parameters = new DialogParameters<DeleteEmployeeDialog> { { x => x.Employee, target } };
+        var deleteOptions = new DialogOptions
+        {
+            MaxWidth = MaxWidth.ExtraSmall,
+            FullWidth = true,
+            CloseButton = true,
+            BackdropClick = false,
+        };
+
+        var dialog = await DialogService.ShowAsync<DeleteEmployeeDialog>(string.Empty, parameters, deleteOptions);
+        var result = await dialog.Result;
+        if (result is not { Canceled: false }) return;
+
+        var apiResult = await EmployeesApi.DeleteAsync(e.Id);
+        if (apiResult.Success)
+        {
+            Snackbar.Add($"{e.Name} has been removed.", Severity.Error);
+            await ReloadAsync();
+        }
+        else
+        {
+            Snackbar.Add(apiResult.ErrorMessage ?? "Failed to remove employee.", Severity.Error);
+        }
+    }
+}

@@ -1,0 +1,50 @@
+services:
+  api:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      ConnectionStrings__Db:       "Host=postgres;Port=5432;Database=giwu_hrms;Username=hrms;Password=${DB_PASSWORD:?set DB_PASSWORD}"
+      ConnectionStrings__Hangfire: "Host=postgres;Port=5432;Database=giwu_hrms_jobs;Username=hrms;Password=${DB_PASSWORD}"
+      Auth__Issuer:   "${JWT_ISSUER:-giwu-hrms}"
+      Auth__Audience: "${JWT_AUDIENCE:-giwu-hrms-clients}"
+      Auth__Key:      "${JWT_KEY:?set JWT_KEY (32+ chars)}"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: hrms
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: giwu_hrms
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./init-jobs-db.sql:/docker-entrypoint-initdb.d/01-jobs.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL","pg_isready -U hrms -d giwu_hrms"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  caddy:
+    image: caddy:2-alpine
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - api
+    restart: unless-stopped
+
+volumes:
+  pgdata:
+  caddy_data:
+  caddy_config:

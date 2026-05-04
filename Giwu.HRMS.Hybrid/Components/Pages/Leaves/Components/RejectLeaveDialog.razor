@@ -1,0 +1,50 @@
+﻿@using static Giwu.HRMS.Hybrid.Components.Pages.Leaves.LeaveFormatting
+
+<MudDialog>
+    <DialogContent>
+        <MudText Typo="Typo.body2" Style="opacity:.7" Class="mb-3">
+            Rejecting @Request.EmployeeName's @Request.LeaveTypeCode request for
+            @FmtDateRange(Request.StartDate, Request.EndDate) (@FmtDays(Request.DaysRequested)).
+            The pending days will be released back to their available balance.
+        </MudText>
+
+        <MudStack Spacing="3">
+            <MudSelect T="string" Label="Reason" @bind-Value="Reason"
+                       Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true">
+                <MudSelectItem Value="@("Insufficient balance")">Insufficient balance</MudSelectItem>
+                <MudSelectItem Value="@("Coverage gap")">Coverage gap (team needs you)</MudSelectItem>
+                <MudSelectItem Value="@("Conflicts with critical project")">Conflicts with critical project</MudSelectItem>
+                <MudSelectItem Value="@("Insufficient notice")">Insufficient advance notice</MudSelectItem>
+                <MudSelectItem Value="@("Missing supporting documents")">Missing supporting documents</MudSelectItem>
+                <MudSelectItem Value="@("Outside eligibility")">Outside eligibility</MudSelectItem>
+                <MudSelectItem Value="@("Other")">Other</MudSelectItem>
+            </MudSelect>
+
+            <MudTextField T="string" Label="Additional notes (optional)" @bind-Value="Notes"
+                          Placeholder="Reason will be visible to the employee."
+                          Variant="Variant.Outlined" Lines="3" />
+        </MudStack>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Error" DisableElevation="true" OnClick="Confirm">
+            Reject Request
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = default!;
+    [Parameter] public LeaveRequest Request { get; set; } = default!;
+
+    private string Reason { get; set; } = "Coverage gap";
+    private string Notes { get; set; } = "";
+
+    private void Cancel() => MudDialog.Cancel();
+
+    private void Confirm()
+    {
+        var fullReason = string.IsNullOrWhiteSpace(Notes) ? Reason : $"{Reason} â€” {Notes}";
+        MudDialog.Close(DialogResult.Ok<string>(fullReason));
+    }
+}

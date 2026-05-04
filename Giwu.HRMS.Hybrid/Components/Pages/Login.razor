@@ -1,0 +1,200 @@
+@page "/login"
+@layout EmptyLayout
+@inject NavigationManager Navigation
+@inject AuthService Auth
+@inject ThemeService Theme
+@inject IJSRuntime JS
+@implements IDisposable
+@using Giwu.HRMS.Hybrid.Models.Auth
+
+<div class="login-page @(Theme.IsDark ? "dark" : "")"
+     style="--primary:@Theme.PrimaryColor;--primary-dark:@Theme.PrimaryDark();--primary-15:@Theme.PrimaryAlpha(0.15);--primary-30:@Theme.PrimaryAlpha(0.30)">
+
+    <GiwuThemeToggle />
+
+    <div class="login-split">
+
+        <!-- ── Left brand panel ── -->
+        <aside class="brand-panel">
+            <div class="brand-top">
+                <div class="brand-mark">
+                    <div class="brand-mark-icon">
+<svg width="200" height="200" viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="gradLeft" x1="0" y1="0" x2="0" y2="200" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#0B3C8A"/>
+      <stop offset="100%" stop-color="#155FA0"/>
+    </linearGradient>
+    <linearGradient id="gradRight" x1="200" y1="0" x2="200" y2="200" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#1FA2A6"/>
+      <stop offset="100%" stop-color="#0F7F7F"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Left stroke -->
+  <path d="M40 140 V70 Q40 50 60 50 Q75 50 85 70 L100 100 V140"
+        stroke="url(#gradLeft)"
+        stroke-width="20"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        fill="none"/>
+
+  <!-- Right stroke -->
+  <path d="M160 140 V70 Q160 50 140 50 Q125 50 115 70 L100 100 V140"
+        stroke="url(#gradRight)"
+        stroke-width="20"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        fill="none"/>
+
+  <!-- Center stem -->
+  <path d="M100 140 V100"
+        stroke="#127C8A"
+        stroke-width="20"
+        stroke-linecap="round"/>
+
+  <!-- Head circle -->
+  <circle cx="100" cy="40" r="12" fill="#0B3C8A"/>
+</svg>
+                    </div>
+                    <span class="brand-wordmark"><span class="brand-wordmark-accent">Manna HRIS</span></span>
+                </div>
+                <div class="brand-underline"></div>
+            </div>
+
+            <div class="brand-copy">
+                <h1 class="brand-headline">Digital HR,<br />Organized.</h1>
+                <p class="brand-tagline">
+                    Manage employees, attendance, payroll, and benefits across business units &mdash; all in one place.
+                </p>
+            </div>
+
+            <div class="brand-foot">
+                <div class="hub-mark">
+                    <div class="hub-icon">
+                        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <circle cx="12" cy="12" r="3" fill="var(--primary)" />
+                            <circle cx="4" cy="6" r="2" stroke="var(--primary)" stroke-width="1.6" fill="#fff" />
+                            <circle cx="20" cy="6" r="2" stroke="var(--primary)" stroke-width="1.6" fill="#fff" />
+                            <circle cx="4" cy="18" r="2" stroke="var(--primary)" stroke-width="1.6" fill="#fff" />
+                            <circle cx="20" cy="18" r="2" stroke="var(--primary)" stroke-width="1.6" fill="#fff" />
+                            <path d="M5.5 7.2L10.2 10.8M18.5 7.2L13.8 10.8M5.5 16.8L10.2 13.2M18.5 16.8L13.8 13.2" stroke="var(--primary)" stroke-width="1.4" stroke-linecap="round" />
+                        </svg>
+                    </div>
+                    <div class="hub-text">
+                        <strong>KOUMIZEN Central</strong>
+                        <span>YOUR GATEWAY TO THE GIWU APPS</span>
+                    </div>
+                </div>
+                <a href="#" class="hub-explore">Explore more apps on Koumizen Hub</a>
+            </div>
+
+            <div class="brand-copyright">&copy; 2026 Giwu HRIS. Created by Koumizen Inc.</div>
+        </aside>
+
+        <!-- ── Right form panel ── -->
+        <section class="form-panel">
+            <div class="form-shell">
+                <div class="card-heading">
+                    <h2>Sign In</h2>
+                    <p>Welcome back &mdash; enter your credentials.</p>
+                </div>
+
+                <button type="button" class="google-btn" @onclick="HandleGoogle">
+                    <svg width="18" height="18" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
+                        <path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.7 32.4 29.2 35.5 24 35.5c-6.4 0-11.5-5.1-11.5-11.5S17.6 12.5 24 12.5c2.9 0 5.6 1.1 7.7 2.9l5.7-5.7C33.9 6.5 29.2 4.5 24 4.5 13.2 4.5 4.5 13.2 4.5 24S13.2 43.5 24 43.5 43.5 34.8 43.5 24c0-1.2-.1-2.3-.4-3.5z" />
+                        <path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.7 16 19 12.5 24 12.5c2.9 0 5.6 1.1 7.7 2.9l5.7-5.7C33.9 6.5 29.2 4.5 24 4.5 16.3 4.5 9.6 8.9 6.3 14.7z" />
+                        <path fill="#4CAF50" d="M24 43.5c5.1 0 9.7-2 13.2-5.2l-6.1-5.2C29.1 34.6 26.7 35.5 24 35.5c-5.1 0-9.5-3.1-11.3-7.4l-6.5 5C9.5 39 16.2 43.5 24 43.5z" />
+                        <path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.4-2.4 4.4-4.5 5.6l6.1 5.2C40.7 36 43.5 30.5 43.5 24c0-1.2-.1-2.3.1-3.5z" />
+                    </svg>
+                    <span>Continue with Google</span>
+                </button>
+
+                <div class="divider"><span>or</span></div>
+
+                <EditForm Model="@loginModel" OnValidSubmit="HandleLogin">
+                    <DataAnnotationsValidator />
+
+                    <GiwuEmailField @bind-Value="loginModel.Email"
+                                    Label="Email"
+                                    Placeholder="you@company.com"
+                                    Required="true"
+                                    For="@(() => loginModel.Email)"
+                                    Class="mb-3" />
+
+                    <GiwuPasswordField @bind-Value="loginModel.Password"
+                                       Required="true"
+                                       For="@(() => loginModel.Password)"
+                                       Class="mb-2" />
+
+                    <div class="form-row">
+                        <GiwuCheckbox @bind-Value="loginModel.RememberMe" Label="Remember me" />
+                        <a href="#" class="forgot-link">Forgot password?</a>
+                    </div>
+
+                    @if (!string.IsNullOrEmpty(_error))
+                    {
+                        <MudAlert Severity="Severity.Error" Dense="true" Class="mb-3" Variant="Variant.Filled">@_error</MudAlert>
+                    }
+
+                    <GiwuButton ButtonType="ButtonType.Submit" FullWidth="true" Class="signin-btn-mud" Disabled="_busy">
+                        @(_busy ? "Signing in…" : "Sign In")
+                    </GiwuButton>
+                </EditForm>
+            </div>
+        </section>
+
+    </div>
+
+    <div class="watermark-wrap">
+        <GiwuWatermark />
+    </div>
+
+</div>
+
+@code {
+    private LoginModel loginModel = new();
+    private bool _busy;
+    private string? _error;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (Auth.IsLoggedIn) { Navigation.NavigateTo("/"); return; }
+        Theme.OnChange += StateHasChanged;
+
+        // Restore session from stored tokens (silently no-ops if nothing saved)
+        await Auth.TryRestoreAsync();
+        if (Auth.IsLoggedIn) Navigation.NavigateTo("/");
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender) await ApplyTheme();
+    }
+
+    private async Task HandleLogin()
+    {
+        if (_busy) return;
+        _busy = true;
+        _error = null;
+
+        var error = await Auth.LoginAsync(loginModel.Email, loginModel.Password);
+        _busy = false;
+
+        if (error is null) Navigation.NavigateTo("/");
+        else               _error = error;
+    }
+
+    private Task HandleGoogle()
+    {
+        // TODO: hook up Google OAuth on the API side first.
+        _error = "Google sign-in is not yet wired up.";
+        return Task.CompletedTask;
+    }
+
+    private Task ApplyTheme() =>
+        JS.InvokeVoidAsync("document.documentElement.setAttribute",
+            "data-theme", Theme.IsDark ? "dark" : "light").AsTask();
+
+    public void Dispose() => Theme.OnChange -= StateHasChanged;
+}

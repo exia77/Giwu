@@ -1,0 +1,1263 @@
+﻿@page "/reports"
+@using static Giwu.HRMS.Hybrid.Models.ReportsFormatting
+@inject ISnackbar Snackbar
+@inject IDialogService DialogService
+
+@using Pages.Reports.Components
+
+<PageTitle>Reports</PageTitle>
+
+@* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+   KPI STRIP
+â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• *@
+<MudGrid Spacing="3" Class="mb-4">
+    <MudItem xs="12" sm="6" md="3">
+        <MudPaper Class="rep-kpi" Elevation="0">
+            <div class="kpi-label">Reports Available</div>
+            <div class="kpi-value">@ReportDefinitions.Count</div>
+            <div class="kpi-sub">
+                <span class="kpi-dot" style="background:var(--rep-green)"></span>
+                <span>across @CategoriesUsedCount categories</span>
+            </div>
+        </MudPaper>
+    </MudItem>
+    <MudItem xs="12" sm="6" md="3">
+        <MudPaper Class="rep-kpi" Elevation="0">
+            <div class="kpi-label">Generated This Month</div>
+            <div class="kpi-value">@GeneratedThisMonthCount</div>
+            <div class="kpi-sub">
+                <span class="kpi-dot" style="background:var(--rep-blue)"></span>
+                <span>@RecentSuccessfulRuns successful</span>
+            </div>
+        </MudPaper>
+    </MudItem>
+    <MudItem xs="12" sm="6" md="3">
+        <MudPaper Class="rep-kpi" Elevation="0">
+            <div class="kpi-label">Scheduled Reports</div>
+            <div class="kpi-value">@ActiveScheduleCount</div>
+            <div class="kpi-sub">
+                <span class="kpi-dot" style="background:var(--rep-purple)"></span>
+                <span>@TotalRecipientsCount recipients total</span>
+            </div>
+        </MudPaper>
+    </MudItem>
+    <MudItem xs="12" sm="6" md="3">
+        <MudPaper Class="rep-kpi" Elevation="0">
+            <div class="kpi-label">Compliance Due Soon</div>
+            <div class="kpi-value">@ComplianceDueSoonCount</div>
+            <div class="kpi-sub">
+                <span class="kpi-dot" style="background:var(--rep-amber)"></span>
+                <span>within 30 days</span>
+            </div>
+        </MudPaper>
+    </MudItem>
+</MudGrid>
+
+@* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+   MIDDLE ROW: COMPLIANCE CALENDAR + RECENT RUNS
+â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• *@
+<MudGrid Spacing="3" Class="mb-4">
+    @* â”€â”€ Compliance calendar â”€â”€ *@
+    <MudItem xs="12" md="7">
+        <MudPaper Class="rep-card" Elevation="0">
+            <div class="rep-card-header">
+                <div>
+                    <MudText Typo="Typo.subtitle2" Class="fw-medium">Compliance Calendar</MudText>
+                    <MudText Typo="Typo.caption" Style="opacity:.55">Statutory filing deadlines</MudText>
+                </div>
+                <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Style="height:20px;font-size:.7rem">
+                    Next 60 days
+                </MudChip>
+            </div>
+            @{
+                var upcoming = ComplianceDeadlines
+                    .Where(c => !c.IsFiled && c.DueDate <= DateTime.Today.AddDays(60))
+                    .OrderBy(c => c.DueDate)
+                    .ToList();
+            }
+            @if (upcoming.Count == 0)
+            {
+                <div class="rep-empty">
+                    <div class="rep-empty-icon">âœ“</div>
+                    <MudText Typo="Typo.body2">No filings due in the next 60 days.</MudText>
+                </div>
+            }
+            else
+            {
+                @foreach (var c in upcoming.Take(6))
+                {
+                    var severity = DaysUntilSeverity(c.DueDate, c.IsFiled);
+                    <div class="compliance-row" @onclick="@(() => RunComplianceReport(c.Id))">
+                        <div class="@($"compliance-date severity-{severity}")">
+                            <div class="compliance-mo">@c.DueDate.ToString("MMM").ToUpper()</div>
+                            <div class="compliance-day">@c.DueDate.Day</div>
+                        </div>
+                        <div class="compliance-meta">
+                            <div class="compliance-headline">
+                                <span class="@($"rep-agency {AgencyBadgeClass(c.Agency)}")">@c.Agency</span>
+                                <span class="fw-medium">@c.FormCode</span>
+                                <span style="opacity:.7">â€” @c.Name</span>
+                            </div>
+                            <div class="compliance-detail">
+                                @c.PeriodCovered Â· @DaysUntilLabel(c.DueDate)
+                            </div>
+                        </div>
+                        <MudIconButton Icon="@Icons.Material.Outlined.PlayArrow" Size="Size.Small"
+                                       Title="Run filing report" Color="Color.Primary"
+                                       OnClick="@(() => RunComplianceReport(c.Id))" />
+                    </div>
+                }
+            }
+        </MudPaper>
+    </MudItem>
+
+    @* â”€â”€ Recent runs â”€â”€ *@
+    <MudItem xs="12" md="5">
+        <MudPaper Class="rep-card" Elevation="0">
+            <div class="rep-card-header">
+                <MudText Typo="Typo.subtitle2" Class="fw-medium">Recent Runs</MudText>
+                <MudButton Variant="Variant.Text" Size="Size.Small"
+                           OnClick="@(() => ActiveTab = 2)">View all</MudButton>
+            </div>
+            @{
+                var recent = Runs.OrderByDescending(r => r.QueuedAt).Take(5).ToList();
+            }
+            @if (recent.Count == 0)
+            {
+                <div class="rep-empty">
+                    <div class="rep-empty-icon">â€”</div>
+                    <MudText Typo="Typo.body2">No runs yet.</MudText>
+                </div>
+            }
+            else
+            {
+                @foreach (var run in recent)
+                {
+                    <div class="recent-row" @onclick="@(() => OpenRunDetail(run.Id))">
+                        <div class="recent-format">
+                            <MudIcon Icon="@FormatIcon(run.Format)" Size="Size.Small" Style="opacity:.7" />
+                        </div>
+                        <div class="recent-meta">
+                            <div class="recent-name">@run.DefinitionName</div>
+                            <div class="recent-detail">
+                                @RelativeTime(run.QueuedAt) Â· @run.RanBy
+                                @if (run.Status == ReportRunStatus.Completed && run.RowCount > 0)
+                                {
+                                    <span> Â· @run.RowCount.ToString("N0") rows</span>
+                                }
+                            </div>
+                        </div>
+                        <span class="@($"rep-status {StatusBadgeClass(run.Status)}")">@StatusLabel(run.Status)</span>
+                    </div>
+                }
+            }
+        </MudPaper>
+    </MudItem>
+</MudGrid>
+
+@* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+   MAIN TABS
+â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• *@
+<MudPaper Class="rep-card" Elevation="0">
+    <MudTabs Elevation="0" Rounded="false" ApplyEffectsToContainer="true"
+             PanelClass="rep-tab-panel" TabPanelClass="rep-tab-item"
+             @bind-ActivePanelIndex="ActiveTab">
+
+        @* â•â• CATALOG TAB â•â• *@
+        <MudTabPanel Text="@($"Report Catalog ({ReportDefinitions.Count})")"
+                     Icon="@Icons.Material.Outlined.LibraryBooks">
+            <div class="rep-card-header">
+                <div>
+                    <MudText Typo="Typo.subtitle2" Class="fw-medium">Available Reports</MudText>
+                    <MudText Typo="Typo.caption" Style="opacity:.55">
+                        Click any card to configure and run
+                    </MudText>
+                </div>
+                <MudButton Variant="Variant.Outlined" Size="Size.Small"
+                           StartIcon="@Icons.Material.Outlined.Add"
+                           OnClick="OpenCustomReportDialog">Custom Report</MudButton>
+            </div>
+
+            <div class="catalog-filter-row">
+                <MudChipSet T="string" @bind-SelectedValue="CatalogCategoryFilter" CheckMark="false" Mandatory="true">
+                    <MudChip T="string" Value="@("All")" Size="Size.Small">All</MudChip>
+                    @foreach (var cat in Enum.GetValues<ReportCategory>())
+                    {
+                        <MudChip T="string" Value="@CategoryLabel(cat)" Size="Size.Small">@CategoryLabel(cat)</MudChip>
+                    }
+                </MudChipSet>
+                <MudSpacer />
+                <MudTextField @bind-Value="CatalogSearch" Placeholder="Search reportsâ€¦"
+                              Variant="Variant.Outlined" Margin="Margin.Dense" Class="rep-search"
+                              Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Outlined.Search"
+                              DebounceInterval="200" Immediate="true" />
+            </div>
+
+            @if (FilteredDefinitions.Count == 0)
+            {
+                <div class="rep-empty">
+                    <div class="rep-empty-icon">âŠ˜</div>
+                    <MudText Typo="Typo.body2">No reports match your filter.</MudText>
+                </div>
+            }
+            else
+            {
+                <div class="catalog-grid">
+                    @foreach (var def in FilteredDefinitions)
+                    {
+                        <div class="catalog-card" @onclick="@(() => OpenRunReportDialog(def.Id))">
+                            <div class="catalog-card-head">
+                                <div class="@($"catalog-icon {CategoryBadgeClass(def.Category)}")">
+                                    <MudIcon Icon="@CategoryIcon(def.Category)" Size="Size.Small" />
+                                </div>
+                                <div class="catalog-card-meta">
+                                    <div class="catalog-card-title">
+                                        <span>@def.Name</span>
+                                        @if (def.IsCompliance)
+                                        {
+                                            <span class="rep-compliance-chip">Compliance</span>
+                                        }
+                                        @if (def.IsCustom)
+                                        {
+                                            <span class="rep-custom-chip">Custom</span>
+                                        }
+                                    </div>
+                                    <span class="@($"rep-badge {CategoryBadgeClass(def.Category)}")">
+                                        @CategoryLabel(def.Category)
+                                    </span>
+                                </div>
+                            </div>
+                            <div class="catalog-card-desc">@def.ShortDescription</div>
+                            <div class="catalog-card-footer">
+                                @if (!string.IsNullOrEmpty(def.RegulatoryReference))
+                                {
+                                    <span class="catalog-ref">
+                                        <MudIcon Icon="@Icons.Material.Outlined.Gavel" Size="Size.Small" Style="opacity:.6" />
+                                        @def.RegulatoryReference
+                                    </span>
+                                }
+                                else
+                                {
+                                    <span class="catalog-cols">@def.Columns.Count columns</span>
+                                }
+                                <div class="catalog-formats">
+                                    @foreach (var fmt in def.SupportedFormats)
+                                    {
+                                        <span class="catalog-format-chip" title="@FormatLabel(fmt)">@FormatLabel(fmt)</span>
+                                    }
+                                </div>
+                            </div>
+                        </div>
+                    }
+                </div>
+            }
+        </MudTabPanel>
+
+        @* â•â• SCHEDULED TAB â•â• *@
+        <MudTabPanel Text="@($"Scheduled ({Schedules.Count(s => s.IsActive)})")"
+                     Icon="@Icons.Material.Outlined.Schedule">
+            <div class="rep-card-header">
+                <div>
+                    <MudText Typo="Typo.subtitle2" Class="fw-medium">Scheduled Reports</MudText>
+                    <MudText Typo="Typo.caption" Style="opacity:.55">
+                        Reports that run automatically on a recurring basis
+                    </MudText>
+                </div>
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" Size="Size.Small"
+                           StartIcon="@Icons.Material.Outlined.AddAlert" DisableElevation="true"
+                           OnClick="OpenAddScheduleDialog">Add Schedule</MudButton>
+            </div>
+
+            <MudTable T="ReportSchedule" Items="@Schedules" Dense="true" Hover="true"
+                      Elevation="0" Breakpoint="Breakpoint.Sm"
+                      @bind-RowsPerPage="SchedulePageSize" @bind-Page="SchedulePage"
+                      Class="rep-mud-table">
+                <HeaderContent>
+                    <MudTh><MudTableSortLabel T="ReportSchedule" SortBy="@(s => s.DefinitionName)">Report</MudTableSortLabel></MudTh>
+                    <MudTh>Cadence</MudTh>
+                    <MudTh>Recipients</MudTh>
+                    <MudTh>Format</MudTh>
+                    <MudTh>Last Run</MudTh>
+                    <MudTh>Next Run</MudTh>
+                    <MudTh>Status</MudTh>
+                    <MudTh Style="text-align:right">Actions</MudTh>
+                </HeaderContent>
+                <RowTemplate>
+                    <MudTd DataLabel="Report">
+                        <div style="display:flex;align-items:center;gap:9px">
+                            <div class="@($"catalog-icon-sm {CategoryBadgeClass(context.Category)}")">
+                                <MudIcon Icon="@CategoryIcon(context.Category)" Size="Size.Small" />
+                            </div>
+                            <MudText Typo="Typo.body2" Class="fw-medium">@context.DefinitionName</MudText>
+                        </div>
+                    </MudTd>
+                    <MudTd DataLabel="Cadence" Style="font-size:12.5px;opacity:.85">@context.Cadence</MudTd>
+                    <MudTd DataLabel="Recipients" Style="font-size:12.5px">
+                        @if (context.Recipients.Count == 0)
+                        {
+                            <span style="opacity:.4">â€”</span>
+                        }
+                        else if (context.Recipients.Count == 1)
+                        {
+                            <span>@context.Recipients[0]</span>
+                        }
+                        else
+                        {
+                            <span>@context.Recipients[0] +@(context.Recipients.Count - 1)</span>
+                        }
+                    </MudTd>
+                    <MudTd DataLabel="Format">
+                        <span class="catalog-format-chip">@FormatLabel(context.Format)</span>
+                    </MudTd>
+                    <MudTd DataLabel="Last Run" Style="opacity:.7;font-size:12px">
+                        @(context.LastRunAt.HasValue ? RelativeTime(context.LastRunAt.Value) : "â€”")
+                    </MudTd>
+                    <MudTd DataLabel="Next Run" Style="font-size:12px">
+                        @if (context.IsActive)
+                        {
+                            <span>@RelativeTime(context.NextRunAt)</span>
+                        }
+                        else
+                        {
+                            <span style="opacity:.4">paused</span>
+                        }
+                    </MudTd>
+                    <MudTd DataLabel="Status">
+                        @if (context.IsActive)
+                        {
+                            <span class="rep-status rep-status-completed">Active</span>
+                        }
+                        else
+                        {
+                            <span class="rep-status rep-status-paused">Paused</span>
+                        }
+                    </MudTd>
+                    <MudTd DataLabel="Actions" Style="text-align:right">
+                        <MudStack Row="true" Spacing="1" Justify="Justify.FlexEnd">
+                            <MudIconButton Icon="@(context.IsActive ? Icons.Material.Outlined.Pause : Icons.Material.Outlined.PlayArrow)"
+                                           Size="Size.Small"
+                                           Title="@(context.IsActive ? "Pause" : "Resume")"
+                                           OnClick="@(() => ToggleSchedule(context.Id))" />
+                            <MudIconButton Icon="@Icons.Material.Outlined.Edit" Size="Size.Small"
+                                           OnClick="@(() => OpenEditScheduleDialog(context.Id))" />
+                            <MudIconButton Icon="@Icons.Material.Outlined.PlayCircle" Size="Size.Small"
+                                           Title="Run now" Color="Color.Primary"
+                                           OnClick="@(() => RunScheduleNow(context.Id))" />
+                        </MudStack>
+                    </MudTd>
+                </RowTemplate>
+                <NoRecordsContent>
+                    <div class="rep-empty">
+                        <div class="rep-empty-icon">âŠ˜</div>
+                        <MudText Typo="Typo.body2">No scheduled reports configured.</MudText>
+                    </div>
+                </NoRecordsContent>
+                <PagerContent>
+                    <MudTablePager PageSizeOptions="new int[] { 10, 25, 50 }" />
+                </PagerContent>
+            </MudTable>
+        </MudTabPanel>
+
+        @* â•â• HISTORY TAB â•â• *@
+        <MudTabPanel Text="@($"History ({Runs.Count})")"
+                     Icon="@Icons.Material.Outlined.History">
+            <div class="rep-card-header">
+                <div>
+                    <MudText Typo="Typo.subtitle2" Class="fw-medium">Run History</MudText>
+                    <MudText Typo="Typo.caption" Style="opacity:.55">
+                        @FilteredRuns.Count() of @Runs.Count runs
+                    </MudText>
+                </div>
+            </div>
+
+            <div class="catalog-filter-row">
+                <MudChipSet T="string" @bind-SelectedValue="RunStatusFilter" CheckMark="false" Mandatory="true">
+                    <MudChip T="string" Value="@("All")" Size="Size.Small">All</MudChip>
+                    <MudChip T="string" Value="@("Running")" Size="Size.Small">Running</MudChip>
+                    <MudChip T="string" Value="@("Completed")" Size="Size.Small">Completed</MudChip>
+                    <MudChip T="string" Value="@("Failed")" Size="Size.Small">Failed</MudChip>
+                </MudChipSet>
+                <MudSpacer />
+                <MudTextField @bind-Value="RunSearch" Placeholder="Search report, runnerâ€¦"
+                              Variant="Variant.Outlined" Margin="Margin.Dense" Class="rep-search"
+                              Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Outlined.Search"
+                              DebounceInterval="200" Immediate="true" />
+            </div>
+
+            <MudTable T="ReportRun" Items="@FilteredRuns" Dense="true" Hover="true"
+                      Elevation="0" Breakpoint="Breakpoint.Sm"
+                      @bind-RowsPerPage="RunPageSize" @bind-Page="RunPage"
+                      Class="rep-mud-table">
+                <HeaderContent>
+                    <MudTh><MudTableSortLabel T="ReportRun" SortBy="@(r => r.QueuedAt)">Run At</MudTableSortLabel></MudTh>
+                    <MudTh>Report</MudTh>
+                    <MudTh>Period</MudTh>
+                    <MudTh>Run By</MudTh>
+                    <MudTh>Format</MudTh>
+                    <MudTh Style="text-align:right">Rows</MudTh>
+                    <MudTh Style="text-align:right">Size</MudTh>
+                    <MudTh>Status</MudTh>
+                    <MudTh Style="text-align:right">Actions</MudTh>
+                </HeaderContent>
+                <RowTemplate>
+                    <MudTd DataLabel="Run At" Style="font-size:12px">
+                        <div>@FmtDateShort(context.QueuedAt)</div>
+                        <div style="opacity:.55;font-size:11px">@context.QueuedAt.ToString("h:mm tt")</div>
+                    </MudTd>
+                    <MudTd DataLabel="Report">
+                        <div style="display:flex;align-items:center;gap:9px">
+                            <div class="@($"catalog-icon-sm {CategoryBadgeClass(context.Category)}")">
+                                <MudIcon Icon="@CategoryIcon(context.Category)" Size="Size.Small" />
+                            </div>
+                            <div>
+                                <MudText Typo="Typo.body2" Class="fw-medium" Style="line-height:1.2">@context.DefinitionName</MudText>
+                                @if (!string.IsNullOrEmpty(context.ScheduleId))
+                                {
+                                    <MudText Typo="Typo.caption" Style="opacity:.55">scheduled</MudText>
+                                }
+                            </div>
+                        </div>
+                    </MudTd>
+                    <MudTd DataLabel="Period" Style="font-size:12px;opacity:.8">
+                        @if (context.PeriodStart.HasValue && context.PeriodEnd.HasValue)
+                        {
+                            <span>@FmtDateShort(context.PeriodStart.Value) â€“ @FmtDateShort(context.PeriodEnd.Value)</span>
+                        }
+                        else
+                        {
+                            <span style="opacity:.4">â€”</span>
+                        }
+                    </MudTd>
+                    <MudTd DataLabel="Run By">
+                        <div style="display:flex;align-items:center;gap:8px">
+                            <MudAvatar Style="@AvatarStyle(context.RanByAv)" Class="rep-av-sm">@context.RanByInit</MudAvatar>
+                            <span style="font-size:12.5px">@context.RanBy</span>
+                        </div>
+                    </MudTd>
+                    <MudTd DataLabel="Format">
+                        <span class="catalog-format-chip">@FormatLabel(context.Format)</span>
+                    </MudTd>
+                    <MudTd DataLabel="Rows" Style="text-align:right;font-variant-numeric:tabular-nums">
+                        @if (context.RowCount > 0)
+                        {
+                            @context.RowCount.ToString("N0")
+                        }
+                        else
+                        {
+                            <span style="opacity:.4">â€”</span>
+                        }
+                    </MudTd>
+                    <MudTd DataLabel="Size" Style="text-align:right;font-size:12px">
+                        @if (context.FileSizeBytes > 0)
+                        {
+                            @FmtFileSize(context.FileSizeBytes)
+                        }
+                        else
+                        {
+                            <span style="opacity:.4">â€”</span>
+                        }
+                    </MudTd>
+                    <MudTd DataLabel="Status">
+                        <span class="@($"rep-status {StatusBadgeClass(context.Status)}")">@StatusLabel(context.Status)</span>
+                    </MudTd>
+                    <MudTd DataLabel="Actions" Style="text-align:right">
+                        <MudStack Row="true" Spacing="1" Justify="Justify.FlexEnd">
+                            @if (context.Status == ReportRunStatus.Completed)
+                            {
+                                <MudIconButton Icon="@Icons.Material.Outlined.Download" Size="Size.Small"
+                                               Title="Download"
+                                               OnClick="@(() => DownloadRun(context.Id))" />
+                            }
+                            <MudIconButton Icon="@Icons.Material.Outlined.Visibility" Size="Size.Small"
+                                           OnClick="@(() => OpenRunDetail(context.Id))" />
+                        </MudStack>
+                    </MudTd>
+                </RowTemplate>
+                <NoRecordsContent>
+                    <div class="rep-empty">
+                        <div class="rep-empty-icon">âŠ˜</div>
+                        <MudText Typo="Typo.body2">No runs match your filter.</MudText>
+                    </div>
+                </NoRecordsContent>
+                <PagerContent>
+                    <MudTablePager PageSizeOptions="new int[] { 10, 25, 50, 100 }" />
+                </PagerContent>
+            </MudTable>
+        </MudTabPanel>
+    </MudTabs>
+</MudPaper>
+
+@* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+   STYLES
+â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• *@
+<style>
+    :root {
+        --rep-green:        #1D9E75;
+        --rep-green-light:  #E1F5EE;
+        --rep-green-text:   #085041;
+        --rep-red:          #E24B4A;
+        --rep-red-light:    #FCEBEB;
+        --rep-red-text:     #791F1F;
+        --rep-amber:        #BA7517;
+        --rep-amber-light:  #FAEEDA;
+        --rep-amber-text:   #633806;
+        --rep-purple:       #534AB7;
+        --rep-purple-light: #EEEDFE;
+        --rep-purple-text:  #3C3489;
+        --rep-blue:         #185FA5;
+        --rep-blue-light:   #E6F1FB;
+        --rep-blue-text:    #0C447C;
+        --rep-pink:         #B8336A;
+        --rep-pink-light:   #FBE8EE;
+        --rep-pink-text:    #631838;
+        --rep-teal:         #0E7C7B;
+        --rep-teal-light:   #DAF1F0;
+        --rep-teal-text:    #084040;
+    }
+
+    .rep-kpi {
+        padding: 16px;
+        border: 0.5px solid var(--mud-palette-divider);
+        border-radius: 10px;
+        background: var(--mud-palette-background);
+    }
+    .kpi-label { font-size: 10.5px; letter-spacing: .07em; text-transform: uppercase; opacity: .55; margin-bottom: 6px; font-weight: 500; }
+    .kpi-value { font-size: 2rem; font-weight: 500; line-height: 1; margin-bottom: 5px; font-variant-numeric: tabular-nums; }
+    .kpi-sub   { font-size: 11.5px; opacity: .6; display: flex; align-items: center; gap: 5px; }
+    .kpi-dot   { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; display: inline-block; }
+
+    .rep-card {
+        border: 0.5px solid var(--mud-palette-divider);
+        border-radius: 10px;
+        overflow: hidden;
+        background: var(--mud-palette-background);
+    }
+    .rep-card-header {
+        display: flex; align-items: center; justify-content: space-between;
+        padding: 12px 16px;
+        border-bottom: 0.5px solid var(--mud-palette-divider);
+        gap: 8px;
+    }
+    .fw-medium { font-weight: 500; }
+
+    .rep-av-sm { width: 26px !important; height: 26px !important; font-size: 10px !important; font-weight: 500; }
+
+    /* Category badges */
+    .rep-badge {
+        display: inline-block; font-size: 10.5px; padding: 2px 8px;
+        border-radius: 100px; font-weight: 500; white-space: nowrap;
+    }
+    .rep-badge-payroll     { background: var(--rep-green-light);  color: var(--rep-green-text); }
+    .rep-badge-attendance  { background: var(--rep-blue-light);   color: var(--rep-blue-text); }
+    .rep-badge-people      { background: var(--rep-purple-light); color: var(--rep-purple-text); }
+    .rep-badge-recruitment { background: var(--rep-amber-light);  color: var(--rep-amber-text); }
+    .rep-badge-benefits    { background: var(--rep-pink-light);   color: var(--rep-pink-text); }
+    .rep-badge-leave       { background: var(--rep-teal-light);   color: var(--rep-teal-text); }
+    .rep-badge-compliance  { background: var(--rep-red-light);    color: var(--rep-red-text); }
+    .rep-badge-custom      { background: var(--mud-palette-background-grey); color: var(--mud-palette-text-secondary); }
+    .rep-badge-other       { background: var(--mud-palette-background-grey); color: var(--mud-palette-text-secondary); }
+
+    .rep-compliance-chip, .rep-custom-chip {
+        font-size: 9px; font-weight: 500; letter-spacing: .04em; text-transform: uppercase;
+        padding: 1px 6px; border-radius: 100px;
+    }
+    .rep-compliance-chip { background: var(--rep-red-light); color: var(--rep-red-text); }
+    .rep-custom-chip     { background: var(--rep-purple-light); color: var(--rep-purple-text); }
+
+    /* Status badges */
+    .rep-status {
+        display: inline-block; font-size: 11px; padding: 2px 9px;
+        border-radius: 100px; font-weight: 500; white-space: nowrap;
+    }
+    .rep-status-queued    { background: var(--mud-palette-background-grey); color: var(--mud-palette-text-secondary); }
+    .rep-status-running   { background: var(--rep-amber-light); color: var(--rep-amber-text); }
+    .rep-status-completed { background: var(--rep-green-light); color: var(--rep-green-text); }
+    .rep-status-failed    { background: var(--rep-red-light);   color: var(--rep-red-text); }
+    .rep-status-paused    { background: var(--mud-palette-background-grey); color: var(--mud-palette-text-secondary); }
+
+    /* Agency badges */
+    .rep-agency {
+        display: inline-block; font-size: 10px; font-weight: 600; letter-spacing: .04em;
+        padding: 2px 7px; border-radius: 4px; white-space: nowrap;
+    }
+    .rep-agency-bir        { background: #FEF3C7; color: #78350F; }
+    .rep-agency-sss        { background: #DBEAFE; color: #1E40AF; }
+    .rep-agency-philhealth { background: #FCE7F3; color: #9D174D; }
+    .rep-agency-pagibig    { background: #DCFCE7; color: #14532D; }
+    .rep-agency-dole       { background: #FEE2E2; color: #7F1D1D; }
+    .rep-agency-other      { background: var(--mud-palette-background-grey); color: var(--mud-palette-text-secondary); }
+
+    /* Compliance calendar rows */
+    .compliance-row {
+        display: flex; align-items: center; gap: 12px;
+        padding: 10px 14px;
+        border-bottom: 0.5px solid var(--mud-palette-divider);
+        cursor: pointer; transition: background .1s;
+    }
+    .compliance-row:last-child { border-bottom: none; }
+    .compliance-row:hover { background: var(--mud-palette-background-grey); }
+    .compliance-date {
+        width: 42px; flex-shrink: 0;
+        background: var(--mud-palette-background-grey);
+        border-radius: 6px; padding: 6px 0; text-align: center;
+    }
+    .compliance-date.severity-overdue { background: var(--rep-red-light); color: var(--rep-red-text); }
+    .compliance-date.severity-urgent  { background: var(--rep-amber-light); color: var(--rep-amber-text); }
+    .compliance-date.severity-soon    { background: var(--rep-blue-light); color: var(--rep-blue-text); }
+    .compliance-date.severity-future  { background: var(--mud-palette-background-grey); }
+    .compliance-mo  { font-size: 9px; opacity: .7; letter-spacing: .05em; }
+    .compliance-day { font-size: 15px; font-weight: 600; line-height: 1.1; }
+    .compliance-meta { flex: 1; min-width: 0; }
+    .compliance-headline { display: flex; align-items: center; gap: 8px; font-size: 12.5px; flex-wrap: wrap; }
+    .compliance-detail { font-size: 11px; opacity: .55; margin-top: 3px; }
+
+    /* Recent runs */
+    .recent-row {
+        display: flex; align-items: center; gap: 10px;
+        padding: 10px 14px;
+        border-bottom: 0.5px solid var(--mud-palette-divider);
+        cursor: pointer; transition: background .1s;
+    }
+    .recent-row:last-child { border-bottom: none; }
+    .recent-row:hover { background: var(--mud-palette-background-grey); }
+    .recent-format {
+        width: 28px; height: 28px;
+        background: var(--mud-palette-background-grey);
+        border-radius: 6px;
+        display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+    }
+    .recent-meta { flex: 1; min-width: 0; }
+    .recent-name {
+        font-size: 12.5px; font-weight: 500; line-height: 1.2;
+        white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .recent-detail { font-size: 11px; opacity: .55; margin-top: 1px; }
+
+    /* Catalog grid */
+    .catalog-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+        gap: 12px;
+        padding: 16px;
+    }
+    .catalog-card {
+        border: 0.5px solid var(--mud-palette-divider);
+        border-radius: 10px;
+        padding: 14px;
+        cursor: pointer;
+        transition: border-color .1s, box-shadow .1s;
+        display: flex; flex-direction: column; gap: 10px;
+    }
+    .catalog-card:hover {
+        border-color: var(--rep-green);
+        box-shadow: 0 1px 3px rgba(0,0,0,.05);
+    }
+    .catalog-card-head { display: flex; gap: 10px; align-items: flex-start; }
+    .catalog-icon {
+        width: 36px; height: 36px; border-radius: 8px;
+        display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+    }
+    .catalog-icon-sm {
+        width: 28px; height: 28px; border-radius: 6px;
+        display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+    }
+    .catalog-card-meta { flex: 1; min-width: 0; }
+    .catalog-card-title {
+        font-size: 13px; font-weight: 500;
+        display: flex; flex-wrap: wrap; gap: 6px; align-items: center;
+        line-height: 1.3; margin-bottom: 4px;
+    }
+    .catalog-card-desc {
+        font-size: 11.5px; opacity: .65; line-height: 1.5; flex: 1;
+    }
+    .catalog-card-footer {
+        display: flex; justify-content: space-between; align-items: center;
+        gap: 8px; margin-top: 4px; padding-top: 8px;
+        border-top: 0.5px solid var(--mud-palette-divider);
+    }
+    .catalog-ref {
+        display: inline-flex; align-items: center; gap: 4px;
+        font-size: 10.5px; opacity: .7;
+    }
+    .catalog-cols { font-size: 10.5px; opacity: .55; }
+    .catalog-formats { display: flex; gap: 3px; }
+    .catalog-format-chip {
+        font-size: 9px; font-weight: 600; letter-spacing: .04em;
+        padding: 1px 5px; border-radius: 3px;
+        background: var(--mud-palette-background-grey);
+        color: var(--mud-palette-text-secondary);
+    }
+
+    .catalog-filter-row {
+        display: flex; flex-wrap: wrap; align-items: center; gap: 8px;
+        padding: 10px 14px;
+        border-bottom: 0.5px solid var(--mud-palette-divider);
+    }
+    .rep-search { max-width: 260px; }
+
+    .rep-empty { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 40px 16px; opacity: .55; gap: 8px; }
+    .rep-empty-icon { font-size: 28px; }
+
+    .rep-tab-panel { padding: 0 !important; }
+    .rep-tab-item  { min-width: unset !important; text-transform: none !important; font-size: 13px !important; }
+
+    .rep-mud-table .mud-table-container { border-radius: 0; }
+    .rep-mud-table th { font-size: 10.5px !important; font-weight: 500 !important; letter-spacing: .055em !important; text-transform: uppercase !important; opacity: .65; }
+    .rep-mud-table td { font-size: 13px !important; vertical-align: middle; }
+
+    @@media (max-width: 600px) {
+        .rep-search { max-width: 100%; width: 100%; }
+        .catalog-grid { grid-template-columns: 1fr; }
+    }
+</style>
+
+@code {
+    private int ActiveTab { get; set; } = 0;
+
+    // Catalog state
+    private string CatalogCategoryFilter { get; set; } = "All";
+    private string CatalogSearch { get; set; } = "";
+
+    // Schedule state
+    private int SchedulePage { get; set; } = 0;
+    private int SchedulePageSize { get; set; } = 10;
+
+    // Run history state
+    private string RunStatusFilter { get; set; } = "All";
+    private string RunSearch { get; set; } = "";
+    private int RunPage { get; set; } = 0;
+    private int RunPageSize { get; set; } = 25;
+
+    // â”€â”€â”€ Derived â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    private int CategoriesUsedCount => ReportDefinitions.Select(d => d.Category).Distinct().Count();
+    private int GeneratedThisMonthCount => Runs.Count(r =>
+        r.QueuedAt.Year == DateTime.Today.Year && r.QueuedAt.Month == DateTime.Today.Month);
+    private int RecentSuccessfulRuns => Runs.Count(r =>
+        r.QueuedAt.Year == DateTime.Today.Year && r.QueuedAt.Month == DateTime.Today.Month
+        && r.Status == ReportRunStatus.Completed);
+    private int ActiveScheduleCount => Schedules.Count(s => s.IsActive);
+    private int TotalRecipientsCount =>
+        Schedules.Where(s => s.IsActive).SelectMany(s => s.Recipients).Distinct().Count();
+    private int ComplianceDueSoonCount => ComplianceDeadlines.Count(c =>
+        !c.IsFiled && c.DueDate <= DateTime.Today.AddDays(30));
+
+    private List<ReportDefinition> FilteredDefinitions
+    {
+        get
+        {
+            var q = (CatalogSearch ?? "").Trim().ToLower();
+            return ReportDefinitions.Where(d =>
+                (CatalogCategoryFilter == "All" || CategoryLabel(d.Category) == CatalogCategoryFilter) &&
+                (string.IsNullOrEmpty(q)
+                    || d.Name.ToLower().Contains(q)
+                    || d.ShortDescription.ToLower().Contains(q)
+                    || (d.RegulatoryReference?.ToLower().Contains(q) ?? false))
+            ).ToList();
+        }
+    }
+
+    private IEnumerable<ReportRun> FilteredRuns
+    {
+        get
+        {
+            var q = (RunSearch ?? "").Trim().ToLower();
+            return Runs.Where(r =>
+                (RunStatusFilter == "All" || StatusLabel(r.Status) == RunStatusFilter) &&
+                (string.IsNullOrEmpty(q)
+                    || r.DefinitionName.ToLower().Contains(q)
+                    || r.RanBy.ToLower().Contains(q))
+            ).OrderByDescending(r => r.QueuedAt);
+        }
+    }
+
+    // â”€â”€â”€ Actions â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    private async Task OpenRunReportDialog(string defId)
+    {
+        var def = ReportDefinitions.FirstOrDefault(d => d.Id == defId);
+        if (def == null) return;
+        var parameters = new DialogParameters { ["Definition"] = def };
+        var options = new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true };
+        var dialog = await DialogService.ShowAsync<RunReportDialog>($"Run â€” {def.Name}", parameters, options);
+        var result = await dialog.Result;
+        if (result is not null && !result.Canceled && result.Data is ReportRun run)
+        {
+            run.Id = $"RUN-{Runs.Count + 1:0000}";
+            run.RanBy = "Jane Dela Cruz";
+            run.RanByInit = "JD";
+            run.RanByAv = "primary";
+            // Demo: instantly mark as completed with simulated metrics
+            run.Status = ReportRunStatus.Completed;
+            run.CompletedAt = DateTime.Now.AddSeconds(2);
+            run.RowCount = SimulateRowCount(def);
+            run.FileSizeBytes = SimulateFileSize(def, run.RowCount, run.Format);
+            run.FileName = $"{def.Id}_{run.QueuedAt:yyyyMMdd_HHmmss}.{FormatExtension(run.Format)}";
+            Runs.Insert(0, run);
+            Snackbar.Add($"Generated {def.Name} ({run.RowCount:N0} rows)", Severity.Success);
+        }
+    }
+
+    private async Task OpenCustomReportDialog()
+    {
+        var options = new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true };
+        var dialog = await DialogService.ShowAsync<EditReportTemplateDialog>("New Custom Report", new DialogParameters(), options);
+        var result = await dialog.Result;
+        if (result is not null && !result.Canceled && result.Data is ReportDefinition def)
+        {
+            def.Id = $"RD-CUSTOM-{ReportDefinitions.Count(d => d.IsCustom) + 1:000}";
+            def.IsCustom = true;
+            def.CreatedBy = "Jane Dela Cruz";
+            def.CreatedOn = DateTime.Now;
+            ReportDefinitions.Add(def);
+            Snackbar.Add($"Added custom report: {def.Name}", Severity.Success);
+        }
+    }
+
+    private async Task OpenAddScheduleDialog()
+    {
+        var parameters = new DialogParameters { ["AllDefinitions"] = ReportDefinitions };
+        var options = new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true };
+        var dialog = await DialogService.ShowAsync<ScheduleReportDialog>("Schedule Report", parameters, options);
+        var result = await dialog.Result;
+        if (result is not null && !result.Canceled && result.Data is ReportSchedule sched)
+        {
+            sched.Id = $"SCH-{Schedules.Count + 1:000}";
+            sched.CreatedBy = "Jane Dela Cruz";
+            sched.CreatedOn = DateTime.Now;
+            Schedules.Add(sched);
+            Snackbar.Add($"Scheduled: {sched.DefinitionName} â€” {sched.Cadence}", Severity.Success);
+        }
+    }
+
+    private async Task OpenEditScheduleDialog(string id)
+    {
+        var sched = Schedules.FirstOrDefault(s => s.Id == id);
+        if (sched == null) return;
+        var parameters = new DialogParameters
+        {
+            ["AllDefinitions"] = ReportDefinitions,
+            ["Existing"] = sched
+        };
+        var options = new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true };
+        var dialog = await DialogService.ShowAsync<ScheduleReportDialog>($"Edit Schedule â€” {sched.DefinitionName}", parameters, options);
+        var result = await dialog.Result;
+        if (result is not null && !result.Canceled)
+        {
+            Snackbar.Add($"Updated schedule for {sched.DefinitionName}", Severity.Success);
+            StateHasChanged();
+        }
+    }
+
+    private async Task OpenRunDetail(string id)
+    {
+        var run = Runs.FirstOrDefault(r => r.Id == id);
+        if (run == null) return;
+        var def = ReportDefinitions.FirstOrDefault(d => d.Id == run.DefinitionId);
+        var parameters = new DialogParameters
+        {
+            ["Run"] = run,
+            ["Definition"] = def
+        };
+        var options = new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true };
+        await DialogService.ShowAsync<ReportRunDetailDialog>("Run Detail", parameters, options);
+    }
+
+    private void ToggleSchedule(string id)
+    {
+        var sched = Schedules.FirstOrDefault(s => s.Id == id);
+        if (sched == null) return;
+        sched.IsActive = !sched.IsActive;
+        Snackbar.Add($"{sched.DefinitionName} {(sched.IsActive ? "resumed" : "paused")}",
+            sched.IsActive ? Severity.Success : Severity.Info);
+    }
+
+    private void RunScheduleNow(string id)
+    {
+        var sched = Schedules.FirstOrDefault(s => s.Id == id);
+        if (sched == null) return;
+        var def = ReportDefinitions.FirstOrDefault(d => d.Id == sched.DefinitionId);
+        if (def == null) return;
+
+        var run = new ReportRun
+        {
+            Id = $"RUN-{Runs.Count + 1:0000}",
+            DefinitionId = def.Id,
+            DefinitionName = def.Name,
+            Category = def.Category,
+            Format = sched.Format,
+            QueuedAt = DateTime.Now,
+            CompletedAt = DateTime.Now.AddSeconds(2),
+            Status = ReportRunStatus.Completed,
+            RanBy = "(Scheduled run)",
+            RanByInit = "SR",
+            RanByAv = "purple",
+            ScheduleId = sched.Id,
+            RowCount = SimulateRowCount(def),
+        };
+        run.FileSizeBytes = SimulateFileSize(def, run.RowCount, run.Format);
+        run.FileName = $"{def.Id}_{run.QueuedAt:yyyyMMdd_HHmmss}.{FormatExtension(run.Format)}";
+        Runs.Insert(0, run);
+        sched.LastRunAt = DateTime.Now;
+        Snackbar.Add($"Ran {def.Name} immediately", Severity.Success);
+    }
+
+    private void RunComplianceReport(string deadlineId)
+    {
+        var deadline = ComplianceDeadlines.FirstOrDefault(c => c.Id == deadlineId);
+        if (deadline == null) return;
+        if (!string.IsNullOrEmpty(deadline.RelatedReportId))
+        {
+            _ = OpenRunReportDialog(deadline.RelatedReportId);
+        }
+        else
+        {
+            Snackbar.Add($"No report linked for {deadline.Agency} {deadline.FormCode}.", Severity.Warning);
+        }
+    }
+
+    private void DownloadRun(string id)
+    {
+        var run = Runs.FirstOrDefault(r => r.Id == id);
+        if (run == null) return;
+        Snackbar.Add($"Downloading {run.FileName} ({FmtFileSize(run.FileSizeBytes)})", Severity.Info);
+    }
+
+    // â”€â”€â”€ Simulated metrics for demo â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    private static int SimulateRowCount(ReportDefinition def) => def.Category switch
+    {
+        ReportCategory.Payroll     => 18,
+        ReportCategory.Attendance  => 432,
+        ReportCategory.People      => 18,
+        ReportCategory.Recruitment => 47,
+        ReportCategory.Benefits    => 113,
+        ReportCategory.Leave       => 24,
+        ReportCategory.Compliance  => 18,
+        _ => 50
+    };
+
+    private static long SimulateFileSize(ReportDefinition def, int rows, ReportFormat fmt)
+    {
+        var baseBytes = rows * 200L;
+        return fmt switch
+        {
+            ReportFormat.Csv   => baseBytes,
+            ReportFormat.Excel => baseBytes * 5,
+            ReportFormat.Pdf   => baseBytes * 8,
+            _ => baseBytes
+        };
+    }
+
+    // â”€â”€â”€ Seed data â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    private List<ReportDefinition> ReportDefinitions { get; set; } = SeedDefinitions();
+    private List<ReportSchedule> Schedules { get; set; } = new();
+    private List<ReportRun> Runs { get; set; } = new();
+    private List<ComplianceDeadline> ComplianceDeadlines { get; set; } = SeedComplianceDeadlines();
+
+    protected override void OnInitialized()
+    {
+        SeedSchedules();
+        SeedRuns();
+    }
+
+    private static List<ReportDefinition> SeedDefinitions() => new()
+    {
+        // Payroll
+        new() { Id="RD-PAY-001", Name="Payroll Register", Category=ReportCategory.Payroll,
+                ShortDescription="Per-employee gross, deductions, and net pay for a pay period.",
+                LongDescription="Comprehensive payroll register showing earnings (basic, OT, bonus, allowances), statutory deductions (SSS, PhilHealth, Pag-IBIG, WHT), other deductions, and net pay for each employee in the selected pay period.",
+                RequiresDateRange=true,
+                SupportedFormats=new() { ReportFormat.Excel, ReportFormat.Pdf, ReportFormat.Csv },
+                Columns=new() { "Employee","Department","Basic","OT","Bonus","Allowance","Gross","SSS","PhilHealth","Pag-IBIG","WHT","Loans","Other","Net" } },
+        new() { Id="RD-PAY-002", Name="Statutory Remittance Summary", Category=ReportCategory.Payroll,
+                ShortDescription="Total SSS, PhilHealth, Pag-IBIG, and WHT to remit by agency.",
+                RequiresDateRange=true,
+                SupportedFormats=new() { ReportFormat.Excel, ReportFormat.Pdf },
+                Columns=new() { "Agency","Form","Period","Employee Share","Employer Share","Total" } },
+        new() { Id="RD-PAY-003", Name="13th Month Pay Computation", Category=ReportCategory.Payroll,
+                ShortDescription="Annual 13th month pay calculation per employee (PD 851).",
+                RequiresDateRange=true,
+                SupportedFormats=new() { ReportFormat.Excel, ReportFormat.Pdf },
+                RegulatoryReference="PD 851",
+                Columns=new() { "Employee","Hire Date","Months Worked","Total Basic Earned","13th Month Pay" } },
+        new() { Id="RD-PAY-004", Name="Loan Outstanding Balance", Category=ReportCategory.Payroll,
+                ShortDescription="Active company and SSS loans with remaining balance per employee.",
+                RequiresDateRange=false,
+                SupportedFormats=new() { ReportFormat.Excel, ReportFormat.Csv },
+                Columns=new() { "Employee","Loan Type","Original Amount","Monthly Deduction","Months Remaining","Balance" } },
+
+        // Attendance
+        new() { Id="RD-ATT-001", Name="Daily Time Record (DTR)", Category=ReportCategory.Attendance,
+                ShortDescription="Time-in / time-out per employee per day.",
+                RequiresDateRange=true,
+                SupportedFormats=new() { ReportFormat.Excel, ReportFormat.Csv, ReportFormat.Pdf },
+                Columns=new() { "Date","Employee","Time In","Time Out","Hours","Status" } },
+        new() { Id="RD-ATT-002", Name="Tardiness & Undertime Summary", Category=ReportCategory.Attendance,
+                ShortDescription="Late and undertime minutes per employee for the period.",
+                RequiresDateRange=true,
+                SupportedFormats=new() { ReportFormat.Excel, ReportFormat.Csv },
+                Columns=new() { "Employee","Late Days","Late Minutes","Undertime Days","Undertime Minutes","Total Deductions" } },
+        new() { Id="RD-ATT-003", Name="Overtime Report", Category=ReportCategory.Attendance,
+                ShortDescription="Approved overtime hours and pay per employee.",
+                RequiresDateRange=true,
+                SupportedFormats=new() { ReportFormat.Excel, ReportFormat.Csv },
+                Columns=new() { "Employee","OT Hours","Rest Day OT","Holiday OT","Night Diff","OT Pay" } },
+
+        // People
+        new() { Id="RD-PPL-001", Name="Headcount Snapshot", Category=ReportCategory.People,
+                ShortDescription="Active employees by department, role, and employment type.",
+                RequiresDateRange=false,
+                SupportedFormats=new() { ReportFormat.Excel, ReportFormat.Pdf, ReportFormat.Csv },
+                Columns=new() { "Department","Active","Probationary","Regular","Contractual","Total" } },
+        new() { Id="RD-PPL-002", Name="Tenure & Anniversary Report", Category=ReportCategory.People,
+                ShortDescription="Tenure distribution and upcoming work anniversaries.",
+                RequiresDateRange=false,
+                SupportedFormats=new() { ReportFormat.Excel, ReportFormat.Pdf },
+                Columns=new() { "Employee","Hire Date","Years","Anniversary","Department" } },
+        new() { Id="RD-PPL-003", Name="Turnover Analysis", Category=ReportCategory.People,
+                ShortDescription="Hires, separations, and turnover rate by department.",
+                RequiresDateRange=true,
+                SupportedFormats=new() { ReportFormat.Excel, ReportFormat.Pdf },
+                Columns=new() { "Department","Headcount","Hires","Separations","Net","Turnover Rate" } },
+
+        // Recruitment
+        new() { Id="RD-REC-001", Name="Hiring Pipeline", Category=ReportCategory.Recruitment,
+                ShortDescription="Active candidates by stage and open requisition.",
+                RequiresDateRange=false,
+                SupportedFormats=new() { ReportFormat.Excel, ReportFormat.Pdf },
+                Columns=new() { "Job","Applied","Screening","Interview","Offer","Hired" } },
+        new() { Id="RD-REC-002", Name="Time-to-Hire", Category=ReportCategory.Recruitment,
+                ShortDescription="Average days per stage and total time to fill.",
+                RequiresDateRange=true,
+                SupportedFormats=new() { ReportFormat.Excel, ReportFormat.Pdf },
+                Columns=new() { "Job","Posted","Filled","Days","Source" } },
+        new() { Id="RD-REC-003", Name="Source Effectiveness", Category=ReportCategory.Recruitment,
+                ShortDescription="Hire rate by candidate source (LinkedIn, referral, etc.)",
+                RequiresDateRange=true,
+                SupportedFormats=new() { ReportFormat.Excel, ReportFormat.Pdf },
+                Columns=new() { "Source","Applied","Interviewed","Hired","Hire Rate","Cost / Hire" } },
+
+        // Benefits
+        new() { Id="RD-BEN-001", Name="HMO Enrollment Roster", Category=ReportCategory.Benefits,
+                ShortDescription="Employees with HMO coverage and dependents.",
+                RequiresDateRange=false,
+                SupportedFormats=new() { ReportFormat.Excel, ReportFormat.Csv },
+                Columns=new() { "Employee","Plan","Tier","Dependents","Monthly Premium" } },
+        new() { Id="RD-BEN-002", Name="Benefits Cost Summary", Category=ReportCategory.Benefits,
+                ShortDescription="Monthly benefits cost by program and department.",
+                RequiresDateRange=true,
+                SupportedFormats=new() { ReportFormat.Excel, ReportFormat.Pdf },
+                Columns=new() { "Program","Provider","Enrolled","Monthly Cost","Employer","Employee" } },
+
+        // Leave
+        new() { Id="RD-LV-001", Name="Leave Balance Summary", Category=ReportCategory.Leave,
+                ShortDescription="VL, SL, EL, SIL balances per employee.",
+                RequiresDateRange=false,
+                SupportedFormats=new() { ReportFormat.Excel, ReportFormat.Pdf, ReportFormat.Csv },
+                Columns=new() { "Employee","VL","SL","EL","SIL","ML/PL","Total Used","Total Available" } },
+        new() { Id="RD-LV-002", Name="Leave Utilization", Category=ReportCategory.Leave,
+                ShortDescription="Leave usage trends by department and leave type.",
+                RequiresDateRange=true,
+                SupportedFormats=new() { ReportFormat.Excel, ReportFormat.Pdf },
+                Columns=new() { "Department","Leave Type","Days Used","Avg / Employee","% Utilized" } },
+
+        // Compliance
+        new() { Id="RD-CMP-001", Name="BIR Form 1601-C (Monthly Withholding)", Category=ReportCategory.Compliance,
+                ShortDescription="Monthly remittance return for compensation withholding tax.",
+                IsCompliance=true, RegulatoryReference="BIR Form 1601-C",
+                RequiresDateRange=true,
+                SupportedFormats=new() { ReportFormat.Excel, ReportFormat.Pdf },
+                Columns=new() { "Employee","TIN","Compensation","Tax Withheld" } },
+        new() { Id="RD-CMP-002", Name="BIR Form 2316 (Annual Compensation)", Category=ReportCategory.Compliance,
+                ShortDescription="Annual statement of compensation and tax withheld per employee.",
+                IsCompliance=true, RegulatoryReference="BIR Form 2316",
+                RequiresDateRange=true,
+                SupportedFormats=new() { ReportFormat.Pdf, ReportFormat.Excel },
+                Columns=new() { "Employee","TIN","Total Comp","Non-Taxable","Taxable","Tax Due","Tax Withheld" } },
+        new() { Id="RD-CMP-003", Name="SSS R-3 Contribution Collection List", Category=ReportCategory.Compliance,
+                ShortDescription="Monthly SSS contributions by employee for remittance.",
+                IsCompliance=true, RegulatoryReference="SSS R-3",
+                RequiresDateRange=true,
+                SupportedFormats=new() { ReportFormat.Excel, ReportFormat.Csv },
+                Columns=new() { "SSS No","Name","MSC","EE Share","ER Share","EC","Total" } },
+        new() { Id="RD-CMP-004", Name="PhilHealth RF-1 Employer Remittance", Category=ReportCategory.Compliance,
+                ShortDescription="Monthly PhilHealth premium remittance form.",
+                IsCompliance=true, RegulatoryReference="PhilHealth RF-1",
+                RequiresDateRange=true,
+                SupportedFormats=new() { ReportFormat.Excel, ReportFormat.Pdf },
+                Columns=new() { "PhilHealth No","Name","Salary Base","EE Share","ER Share","Total Premium" } },
+        new() { Id="RD-CMP-005", Name="Pag-IBIG MCRF (Monthly Contribution)", Category=ReportCategory.Compliance,
+                ShortDescription="Monthly Membership Contribution Remittance Form.",
+                IsCompliance=true, RegulatoryReference="Pag-IBIG MCRF",
+                RequiresDateRange=true,
+                SupportedFormats=new() { ReportFormat.Excel, ReportFormat.Csv },
+                Columns=new() { "Pag-IBIG No","Name","MFS","EE Share","ER Share","Total" } },
+        new() { Id="RD-CMP-006", Name="DOLE Establishment Report (Form 30)", Category=ReportCategory.Compliance,
+                ShortDescription="Annual establishment data filing required by DOLE.",
+                IsCompliance=true, RegulatoryReference="DOLE Form 30",
+                RequiresDateRange=false,
+                SupportedFormats=new() { ReportFormat.Pdf, ReportFormat.Excel },
+                Columns=new() { "Item","Value" } },
+    };
+
+    private static List<ComplianceDeadline> SeedComplianceDeadlines()
+    {
+        var today = DateTime.Today;
+        return new()
+        {
+            new() { Id="CD-001", Agency="BIR", FormCode="1601-C", Name="Monthly Withholding Tax",
+                    PeriodCovered="April 2026", DueDate=today.AddDays(8), IsFiled=false,
+                    RelatedReportId="RD-CMP-001",
+                    Description="Monthly remittance of withholding tax on compensation. Due on the 10th of the following month." },
+            new() { Id="CD-002", Agency="SSS", FormCode="R-3", Name="Monthly Contribution List",
+                    PeriodCovered="April 2026", DueDate=today.AddDays(13), IsFiled=false,
+                    RelatedReportId="RD-CMP-003",
+                    Description="Monthly remittance of SSS contributions. Due based on the 10th digit of the SSS employer ID." },
+            new() { Id="CD-003", Agency="PhilHealth", FormCode="RF-1", Name="Employer Remittance",
+                    PeriodCovered="April 2026", DueDate=today.AddDays(15), IsFiled=false,
+                    RelatedReportId="RD-CMP-004",
+                    Description="Monthly remittance of PhilHealth premiums." },
+            new() { Id="CD-004", Agency="Pag-IBIG", FormCode="MCRF", Name="Membership Contribution",
+                    PeriodCovered="April 2026", DueDate=today.AddDays(22), IsFiled=false,
+                    RelatedReportId="RD-CMP-005",
+                    Description="Monthly Membership Contribution Remittance Form." },
+            new() { Id="CD-005", Agency="BIR", FormCode="1604-C", Name="Annual Withholding Reconciliation",
+                    PeriodCovered="2025", DueDate=today.AddDays(45), IsFiled=false,
+                    Description="Annual reconciliation of compensation tax withheld. Due January 31 of following year." },
+            new() { Id="CD-006", Agency="DOLE", FormCode="Form 30", Name="Establishment Report",
+                    PeriodCovered="2025", DueDate=today.AddDays(55), IsFiled=false,
+                    RelatedReportId="RD-CMP-006",
+                    Description="Annual establishment data submission." },
+            new() { Id="CD-007", Agency="BIR", FormCode="1601-C", Name="Monthly Withholding Tax",
+                    PeriodCovered="March 2026", DueDate=today.AddDays(-22), IsFiled=true, FiledOn=today.AddDays(-23) },
+        };
+    }
+
+    private void SeedSchedules()
+    {
+        Schedules.Add(new ReportSchedule
+        {
+            Id = "SCH-001",
+            DefinitionId = "RD-PAY-001",
+            DefinitionName = "Payroll Register",
+            Category = ReportCategory.Payroll,
+            Frequency = ScheduleFrequency.BiWeekly,
+            Cadence = "Every 15th and 30th at 6:00 PM",
+            Recipients = new() { "finance@giwu.com", "ceo@giwu.com" },
+            Format = ReportFormat.Excel,
+            IsActive = true,
+            LastRunAt = DateTime.Today.AddDays(-DateTime.Today.Day + 15).AddHours(18),
+            NextRunAt = DateTime.Today.AddDays(30 - DateTime.Today.Day).AddHours(18),
+            CreatedBy = "Jane Dela Cruz",
+            CreatedOn = DateTime.Today.AddMonths(-6),
+        });
+        Schedules.Add(new ReportSchedule
+        {
+            Id = "SCH-002",
+            DefinitionId = "RD-PPL-001",
+            DefinitionName = "Headcount Snapshot",
+            Category = ReportCategory.People,
+            Frequency = ScheduleFrequency.Monthly,
+            Cadence = "1st of each month at 8:00 AM",
+            Recipients = new() { "ceo@giwu.com", "board@giwu.com" },
+            Format = ReportFormat.Pdf,
+            IsActive = true,
+            LastRunAt = DateTime.Today.AddDays(-DateTime.Today.Day + 1).AddHours(8),
+            NextRunAt = new DateTime(DateTime.Today.AddMonths(1).Year, DateTime.Today.AddMonths(1).Month, 1, 8, 0, 0),
+            CreatedBy = "Jane Dela Cruz",
+            CreatedOn = DateTime.Today.AddMonths(-12),
+        });
+        Schedules.Add(new ReportSchedule
+        {
+            Id = "SCH-003",
+            DefinitionId = "RD-CMP-003",
+            DefinitionName = "SSS R-3 Contribution Collection List",
+            Category = ReportCategory.Compliance,
+            Frequency = ScheduleFrequency.Monthly,
+            Cadence = "5th of each month at 9:00 AM",
+            Recipients = new() { "compliance@giwu.com" },
+            Format = ReportFormat.Excel,
+            IsActive = true,
+            LastRunAt = DateTime.Today.AddDays(-DateTime.Today.Day + 5).AddHours(9),
+            NextRunAt = new DateTime(DateTime.Today.AddMonths(1).Year, DateTime.Today.AddMonths(1).Month, 5, 9, 0, 0),
+            CreatedBy = "Jane Dela Cruz",
+            CreatedOn = DateTime.Today.AddMonths(-18),
+        });
+        Schedules.Add(new ReportSchedule
+        {
+            Id = "SCH-004",
+            DefinitionId = "RD-ATT-002",
+            DefinitionName = "Tardiness & Undertime Summary",
+            Category = ReportCategory.Attendance,
+            Frequency = ScheduleFrequency.Weekly,
+            Cadence = "Every Monday at 7:00 AM",
+            Recipients = new() { "hr@giwu.com", "managers@giwu.com" },
+            Format = ReportFormat.Csv,
+            IsActive = false,
+            LastRunAt = DateTime.Today.AddDays(-15),
+            NextRunAt = DateTime.Today.AddDays(7 - (int)DateTime.Today.DayOfWeek + 1).AddHours(7),
+            CreatedBy = "Jane Dela Cruz",
+            CreatedOn = DateTime.Today.AddMonths(-3),
+        });
+        Schedules.Add(new ReportSchedule
+        {
+            Id = "SCH-005",
+            DefinitionId = "RD-LV-001",
+            DefinitionName = "Leave Balance Summary",
+            Category = ReportCategory.Leave,
+            Frequency = ScheduleFrequency.Monthly,
+            Cadence = "Last Friday of each month at 5:00 PM",
+            Recipients = new() { "hr@giwu.com" },
+            Format = ReportFormat.Excel,
+            IsActive = true,
+            LastRunAt = DateTime.Today.AddDays(-7),
+            NextRunAt = DateTime.Today.AddDays(20),
+            CreatedBy = "Nadia Lim",
+            CreatedOn = DateTime.Today.AddMonths(-4),
+        });
+    }
+
+    private void SeedRuns()
+    {
+        var rng = new Random(42);
+        var runners = new[] {
+            ("Jane Dela Cruz", "JD", "primary"),
+            ("Nadia Lim",      "NL", "green"),
+            ("Liza Mendoza",   "LM", "amber"),
+            ("(Scheduled run)","SR", "purple"),
+        };
+        var counter = 0;
+
+        for (int i = 0; i < 30; i++)
+        {
+            counter++;
+            var def = ReportDefinitions[rng.Next(ReportDefinitions.Count)];
+            var runner = runners[rng.Next(runners.Length)];
+            var queuedAt = DateTime.Now.AddHours(-rng.Next(1, 24 * 60));
+            var status = rng.NextDouble() switch
+            {
+                < 0.05 => ReportRunStatus.Failed,
+                < 0.10 => ReportRunStatus.Running,
+                _      => ReportRunStatus.Completed
+            };
+            var rowCount = status == ReportRunStatus.Completed ? SimulateRowCount(def) + rng.Next(-5, 10) : 0;
+            var fmt = def.SupportedFormats[rng.Next(def.SupportedFormats.Count)];
+
+            Runs.Add(new ReportRun
+            {
+                Id = $"RUN-{counter:0000}",
+                DefinitionId = def.Id, DefinitionName = def.Name, Category = def.Category,
+                Format = fmt,
+                QueuedAt = queuedAt,
+                CompletedAt = status == ReportRunStatus.Completed ? queuedAt.AddSeconds(rng.Next(2, 30)) : null,
+                Status = status,
+                RanBy = runner.Item1, RanByInit = runner.Item2, RanByAv = runner.Item3,
+                ScheduleId = runner.Item1 == "(Scheduled run)" ? Schedules.ElementAtOrDefault(rng.Next(Schedules.Count))?.Id : null,
+                PeriodStart = def.RequiresDateRange ? queuedAt.AddDays(-30).Date : null,
+                PeriodEnd = def.RequiresDateRange ? queuedAt.Date : null,
+                RowCount = rowCount,
+                FileSizeBytes = status == ReportRunStatus.Completed ? SimulateFileSize(def, rowCount, fmt) : 0,
+                FileName = status == ReportRunStatus.Completed ? $"{def.Id}_{queuedAt:yyyyMMdd_HHmmss}.{FormatExtension(fmt)}" : null,
+                ErrorMessage = status == ReportRunStatus.Failed ? "Source data unavailable for the selected period." : null,
+            });
+        }
+    }
+}

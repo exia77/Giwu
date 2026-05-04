@@ -1,0 +1,26 @@
+@inject ThemeService Theme
+@implements IDisposable
+
+<MudThemeProvider IsDarkMode="@Theme.IsDark" />
+<MudPopoverProvider />
+<MudDialogProvider />
+<MudSnackbarProvider />
+
+<Router AppAssembly="typeof(MauiProgram).Assembly">
+    <Found Context="routeData">
+        <RouteView RouteData="routeData" DefaultLayout="typeof(Layout.DashboardLayout)" />
+        <FocusOnNavigate RouteData="routeData" Selector="h1" />
+    </Found>
+    <NotFound>
+        <LayoutView Layout="typeof(Layout.EmptyLayout)">
+            <p style="padding:2rem;font-family:'Segoe UI',sans-serif;color:#555">
+                Sorry, there's nothing at this address.
+            </p>
+        </LayoutView>
+    </NotFound>
+</Router>
+
+@code {
+    protected override void OnInitialized() => Theme.OnChange += StateHasChanged;
+    public void Dispose() => Theme.OnChange -= StateHasChanged;
+}

@@ -1,0 +1,440 @@
+﻿@using static Giwu.HRMS.Hybrid.Models.BenefitsFormatting
+
+<MudDialog>
+    <DialogContent>
+        @* Header *@
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px">
+            <MudAvatar Style="@($"width:48px;height:48px;font-size:14px;{AvatarStyle(View.Av)}")">
+                @View.Init
+            </MudAvatar>
+            <div style="flex:1;min-width:0">
+                <MudText Typo="Typo.subtitle1" Class="fw-medium">@View.Name</MudText>
+                <MudText Typo="Typo.caption" Style="opacity:.55">
+                    @View.Role Â· @View.Dept Â· Hired @FmtDate(View.HireDate)
+                </MudText>
+            </div>
+        </div>
+
+        <MudTabs Elevation="0" Rounded="false" PanelClass="emp-tab-panel" TabPanelClass="emp-tab-item">
+
+            @* â”€â”€ ENROLLMENTS â”€â”€ *@
+            <MudTabPanel Text="@($"Enrollments ({ActiveEnrollments.Count})")"
+                         Icon="@Icons.Material.Outlined.CardGiftcard">
+                <div class="emp-section-actions">
+                    <MudText Typo="Typo.caption" Style="opacity:.6">
+                        Monthly contribution: <strong>@Money(MonthlyContribution)</strong>
+                    </MudText>
+                    <MudSpacer />
+                    @if (AvailableProgramsToEnroll.Any())
+                    {
+                        <MudMenu Label="Enroll inâ€¦" Variant="Variant.Outlined" Size="Size.Small"
+                                 EndIcon="@Icons.Material.Outlined.KeyboardArrowDown" Dense="true">
+                            @foreach (var prog in AvailableProgramsToEnroll)
+                            {
+                                <MudMenuItem OnClick="@(() => EnrollIn(prog))">
+                                    <div style="display:flex;align-items:center;gap:8px">
+                                        <MudIcon Icon="@CategoryIcon(prog.Category)" Size="Size.Small"
+                                                 Style="opacity:.65" />
+                                        <span>@prog.Name</span>
+                                    </div>
+                                </MudMenuItem>
+                            }
+                        </MudMenu>
+                    }
+                </div>
+
+                @if (View.Enrollments.Count == 0)
+                {
+                    <div class="ben-empty">
+                        <div class="ben-empty-icon">â€”</div>
+                        <MudText Typo="Typo.body2">Not enrolled in any programs.</MudText>
+                    </div>
+                }
+                else
+                {
+                    @foreach (var enr in View.Enrollments.OrderBy(e => e.Status == "Active" ? 0 : 1).ThenByDescending(e => e.EnrolledOn))
+                    {
+                        var prog = AllPrograms.FirstOrDefault(p => p.Id == enr.ProgramId);
+                        if (prog == null) continue;
+                        var tier = prog.Tiers.FirstOrDefault(t => t.Id == enr.TierId);
+                        var isActive = enr.Status == "Active";
+                        <div class="enr-row @(isActive ? "" : "enr-row-inactive")">
+                            <div class="enr-icon @(CategoryBadgeClass(prog.Category))">
+                                <MudIcon Icon="@CategoryIcon(prog.Category)" Size="Size.Small" />
+                            </div>
+                            <div class="enr-meta">
+                                <div class="enr-name">
+                                    <span>@prog.Name</span>
+                                    @if (tier != null)
+                                    {
+                                        <span class="enr-tier-chip">@tier.Name</span>
+                                    }
+                                </div>
+                                <div class="enr-detail">
+                                    <span>Enrolled @FmtDate(enr.EnrolledOn)</span>
+                                    @if (enr.MonthlyContribution > 0)
+                                    {
+                                        <span> Â· You pay @Money(enr.MonthlyContribution)/mo</span>
+                                    }
+                                    @if (!isActive && enr.EndDate.HasValue)
+                                    {
+                                        <span> Â· Ended @FmtDate(enr.EndDate)</span>
+                                    }
+                                </div>
+                            </div>
+                            <span class="@($"ben-badge {(isActive ? "ben-badge-released" : "ben-badge-closed")}")">
+                                @enr.Status
+                            </span>
+                            @if (isActive && !prog.IsMandatory)
+                            {
+                                <MudIconButton Icon="@Icons.Material.Outlined.PersonRemove" Size="Size.Small"
+                                               Title="Unenroll"
+                                               OnClick="@(() => UnenrollFrom(enr.Id))" />
+                            }
+                        </div>
+                    }
+                }
+            </MudTabPanel>
+
+            @* â”€â”€ DEPENDENTS â”€â”€ *@
+            <MudTabPanel Text="@($"Dependents ({View.Dependents.Count})")"
+                         Icon="@Icons.Material.Outlined.FamilyRestroom">
+                <div class="emp-section-actions">
+                    <MudText Typo="Typo.caption" Style="opacity:.6">
+                        Dependents may be enrolled in HMO programs separately.
+                    </MudText>
+                    <MudSpacer />
+                    <MudButton Variant="Variant.Outlined" Size="Size.Small"
+                               StartIcon="@Icons.Material.Outlined.Add"
+                               OnClick="StartAddDependent">
+                        Add dependent
+                    </MudButton>
+                </div>
+
+                @if (ShowDependentForm)
+                {
+                    <div class="dep-form">
+                        <MudGrid Spacing="2">
+                            <MudItem xs="12" sm="6">
+                                <MudTextField T="string" Label="Full name" @bind-Value="NewDep.Name"
+                                              Variant="Variant.Outlined" Margin="Margin.Dense" />
+                            </MudItem>
+                            <MudItem xs="6" sm="3">
+                                <MudSelect T="string" Label="Relationship" @bind-Value="NewDep.Relationship"
+                                           Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true">
+                                    <MudSelectItem Value="@("Spouse")">Spouse</MudSelectItem>
+                                    <MudSelectItem Value="@("Child")">Child</MudSelectItem>
+                                    <MudSelectItem Value="@("Parent")">Parent</MudSelectItem>
+                                    <MudSelectItem Value="@("Sibling")">Sibling</MudSelectItem>
+                                </MudSelect>
+                            </MudItem>
+                            <MudItem xs="6" sm="3">
+                                <MudSelect T="string" Label="Gender" @bind-Value="NewDep.Gender"
+                                           Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true">
+                                    <MudSelectItem Value="@("F")">Female</MudSelectItem>
+                                    <MudSelectItem Value="@("M")">Male</MudSelectItem>
+                                </MudSelect>
+                            </MudItem>
+                            <MudItem xs="12" sm="6">
+                                <MudDatePicker Label="Date of birth" @bind-Date="NewDepBirthDate"
+                                               Variant="Variant.Outlined" Margin="Margin.Dense" />
+                            </MudItem>
+                            <MudItem xs="12" sm="6" Class="d-flex align-center">
+                                <MudCheckBox T="bool" @bind-Value="NewDep.IsEnrolledInHmo"
+                                             Size="Size.Small" Dense="true">
+                                    <MudText Typo="Typo.body2">Enroll in HMO</MudText>
+                                </MudCheckBox>
+                            </MudItem>
+                        </MudGrid>
+                        <div class="dep-form-actions">
+                            <MudButton Size="Size.Small" OnClick="CancelAddDependent">Cancel</MudButton>
+                            <MudButton Size="Size.Small" Variant="Variant.Filled" Color="Color.Primary"
+                                       DisableElevation="true" OnClick="SaveDependent">Save Dependent</MudButton>
+                        </div>
+                    </div>
+                }
+
+                @if (View.Dependents.Count == 0 && !ShowDependentForm)
+                {
+                    <div class="ben-empty">
+                        <div class="ben-empty-icon">â€”</div>
+                        <MudText Typo="Typo.body2">No dependents on file.</MudText>
+                    </div>
+                }
+                else
+                {
+                    @foreach (var dep in View.Dependents.OrderBy(d => d.Relationship == "Spouse" ? 0 : d.Relationship == "Child" ? 1 : 2))
+                    {
+                        <div class="dep-row">
+                            <div class="dep-rel-pill">@dep.Relationship</div>
+                            <div class="dep-meta">
+                                <MudText Typo="Typo.body2" Class="fw-medium">@dep.Name</MudText>
+                                <MudText Typo="Typo.caption" Style="opacity:.55">
+                                    @AgeFromBirthdate(dep.BirthDate) yrs Â· @dep.Gender Â· b. @FmtDate(dep.BirthDate)
+                                </MudText>
+                            </div>
+                            @if (dep.IsEnrolledInHmo)
+                            {
+                                <span class="ben-badge ben-badge-health">HMO</span>
+                            }
+                            <MudIconButton Icon="@Icons.Material.Outlined.Delete" Size="Size.Small"
+                                           Title="Remove"
+                                           OnClick="@(() => RemoveDependent(dep.Id))" />
+                        </div>
+                    }
+                }
+            </MudTabPanel>
+
+            @* â”€â”€ REQUEST HISTORY â”€â”€ *@
+            <MudTabPanel Text="@($"Activity ({View.Requests.Count})")"
+                         Icon="@Icons.Material.Outlined.History">
+                @if (View.Requests.Count == 0)
+                {
+                    <div class="ben-empty">
+                        <div class="ben-empty-icon">â€”</div>
+                        <MudText Typo="Typo.body2">No claim or loan history.</MudText>
+                    </div>
+                }
+                else
+                {
+                    @foreach (var req in View.Requests.OrderByDescending(r => r.RequestedOn))
+                    {
+                        <div class="req-row">
+                            <div class="req-date">
+                                <div class="req-date-mo">@req.RequestedOn.ToString("MMM").ToUpper()</div>
+                                <div class="req-date-day">@req.RequestedOn.Day</div>
+                            </div>
+                            <div class="req-meta">
+                                <div class="req-headline">
+                                    <span class="fw-medium">@RequestTypeLabel(req.Type) â€” @Money(req.Amount)</span>
+                                    <span class="@($"ben-badge {RequestStatusBadgeClass(req.Status)}")">
+                                        @RequestStatusLabel(req.Status)
+                                    </span>
+                                </div>
+                                <div class="req-detail">
+                                    @req.ProgramName Â· @req.Reason
+                                </div>
+                                @if (req.Type == BenefitRequestType.Loan && req.OutstandingBalance.HasValue && req.Status == BenefitRequestStatus.Repaying)
+                                {
+                                    <div class="req-balance">
+                                        Balance: <strong>@Money(req.OutstandingBalance.Value)</strong>
+                                        @if (req.MonthlyDeduction.HasValue)
+                                        {
+                                            <span> Â· @Money(req.MonthlyDeduction.Value)/mo for @req.TermMonths months</span>
+                                        }
+                                    </div>
+                                }
+                            </div>
+                        </div>
+                    }
+                }
+            </MudTabPanel>
+        </MudTabs>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Close">Close</MudButton>
+    </DialogActions>
+</MudDialog>
+
+<style>
+    .emp-tab-panel { padding: 14px 4px 4px !important; }
+    .emp-tab-item { min-width: unset !important; text-transform: none !important; font-size: 13px !important; }
+
+    .emp-section-actions {
+        display: flex; align-items: center; gap: 8px;
+        margin-bottom: 10px;
+    }
+
+    /* â”€â”€ Enrollments â”€â”€ */
+    .enr-row {
+        display: flex; align-items: center; gap: 12px;
+        padding: 10px 12px;
+        border: 0.5px solid var(--mud-palette-divider);
+        border-radius: 8px;
+        margin-bottom: 8px;
+    }
+    .enr-row-inactive { opacity: .6; }
+    .enr-icon {
+        width: 32px; height: 32px;
+        border-radius: 6px;
+        display: flex; align-items: center; justify-content: center;
+        flex-shrink: 0;
+    }
+    .enr-meta { flex: 1; min-width: 0; }
+    .enr-name {
+        display: flex; align-items: center; gap: 6px;
+        font-size: 13px; font-weight: 500;
+    }
+    .enr-tier-chip {
+        font-size: 9.5px;
+        font-weight: 500;
+        letter-spacing: .04em;
+        text-transform: uppercase;
+        padding: 1px 6px;
+        border-radius: 100px;
+        background: var(--ben-purple-light);
+        color: var(--ben-purple-text);
+    }
+    .enr-detail { font-size: 11.5px; opacity: .6; margin-top: 2px; }
+
+    /* â”€â”€ Dependents â”€â”€ */
+    .dep-form {
+        background: var(--mud-palette-background-grey);
+        border-radius: 8px;
+        padding: 12px;
+        margin-bottom: 10px;
+    }
+    .dep-form-actions {
+        display: flex; justify-content: flex-end; gap: 8px;
+        margin-top: 10px;
+    }
+    .dep-row {
+        display: flex; align-items: center; gap: 12px;
+        padding: 10px 12px;
+        border: 0.5px solid var(--mud-palette-divider);
+        border-radius: 8px;
+        margin-bottom: 8px;
+    }
+    .dep-rel-pill {
+        font-size: 9.5px;
+        font-weight: 500;
+        letter-spacing: .04em;
+        text-transform: uppercase;
+        padding: 3px 8px;
+        border-radius: 100px;
+        background: var(--ben-blue-light);
+        color: var(--ben-blue-text);
+        flex-shrink: 0;
+    }
+    .dep-meta { flex: 1; min-width: 0; }
+
+    /* â”€â”€ Requests â”€â”€ */
+    .req-row {
+        display: flex; gap: 12px;
+        padding: 10px 12px;
+        border-bottom: 0.5px solid var(--mud-palette-divider);
+    }
+    .req-row:last-child { border-bottom: none; }
+    .req-date {
+        width: 42px; flex-shrink: 0;
+        background: var(--mud-palette-background-grey);
+        border-radius: 6px;
+        padding: 6px 0;
+        text-align: center;
+    }
+    .req-date-mo { font-size: 9px; opacity: .6; letter-spacing: .05em; }
+    .req-date-day { font-size: 15px; font-weight: 600; line-height: 1.1; }
+    .req-meta { flex: 1; min-width: 0; }
+    .req-headline {
+        display: flex; justify-content: space-between; align-items: center;
+        font-size: 13px; gap: 8px;
+    }
+    .req-detail { font-size: 11.5px; opacity: .65; margin-top: 2px; }
+    .req-balance { font-size: 11.5px; margin-top: 4px; color: var(--ben-purple-text); }
+
+    /* â”€â”€ Mandatory chip (re-defined here in case dialog renders before main page CSS loads) â”€â”€ */
+    .ben-mandatory-chip {
+        font-size: 9px;
+        font-weight: 500;
+        letter-spacing: .04em;
+        text-transform: uppercase;
+        padding: 1px 6px;
+        border-radius: 100px;
+        background: var(--ben-amber-light);
+        color: var(--ben-amber-text);
+    }
+</style>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = default!;
+    [Parameter] public EmployeeBenefitsView View { get; set; } = default!;
+    [Parameter] public List<BenefitProgram> AllPrograms { get; set; } = new();
+    [Parameter] public EventCallback<BenefitEnrollment> OnEnroll { get; set; }
+    [Parameter] public EventCallback<string> OnUnenroll { get; set; }
+    [Parameter] public EventCallback<Dependent> OnAddDependent { get; set; }
+    [Parameter] public EventCallback<string> OnRemoveDependent { get; set; }
+
+    private List<BenefitEnrollment> ActiveEnrollments =>
+        View.Enrollments.Where(e => e.Status == "Active").ToList();
+
+    private decimal MonthlyContribution =>
+        ActiveEnrollments.Sum(e => e.MonthlyContribution);
+
+    private List<BenefitProgram> AvailableProgramsToEnroll =>
+        AllPrograms.Where(p => p.IsActive
+                               && !ActiveEnrollments.Any(e => e.ProgramId == p.Id))
+                   .OrderBy(p => p.Name)
+                   .ToList();
+
+    // â”€â”€ Enroll/unenroll â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    private async Task EnrollIn(BenefitProgram prog)
+    {
+        var enr = new BenefitEnrollment
+        {
+            Id = $"BE{Guid.NewGuid().ToString()[..6]}",
+            EmployeeId = View.EmployeeId,
+            ProgramId = prog.Id,
+            TierId = prog.Tiers.FirstOrDefault()?.Id,
+            EnrolledOn = DateTime.Today,
+            Status = "Active",
+            MonthlyContribution = prog.EmployeeShare,
+        };
+        View.Enrollments.Add(enr);
+        await OnEnroll.InvokeAsync(enr);
+        StateHasChanged();
+    }
+
+    private async Task UnenrollFrom(string enrollmentId)
+    {
+        var enr = View.Enrollments.FirstOrDefault(e => e.Id == enrollmentId);
+        if (enr == null) return;
+        enr.Status = "Terminated";
+        enr.EndDate = DateTime.Now;
+        await OnUnenroll.InvokeAsync(enrollmentId);
+        StateHasChanged();
+    }
+
+    // â”€â”€ Dependent form â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    private bool ShowDependentForm { get; set; } = false;
+    private Dependent NewDep { get; set; } = new();
+    private DateTime? NewDepBirthDate { get; set; }
+
+    private void StartAddDependent()
+    {
+        NewDep = new Dependent
+        {
+            EmployeeId = View.EmployeeId,
+            Relationship = "Child",
+            Gender = "F",
+        };
+        NewDepBirthDate = DateTime.Today.AddYears(-5);
+        ShowDependentForm = true;
+    }
+
+    private void CancelAddDependent()
+    {
+        ShowDependentForm = false;
+    }
+
+    private async Task SaveDependent()
+    {
+        if (string.IsNullOrWhiteSpace(NewDep.Name) || !NewDepBirthDate.HasValue) return;
+        NewDep.Id = $"DEP{Guid.NewGuid().ToString()[..6]}";
+        NewDep.BirthDate = NewDepBirthDate.Value;
+        View.Dependents.Add(NewDep);
+        await OnAddDependent.InvokeAsync(NewDep);
+        ShowDependentForm = false;
+        StateHasChanged();
+    }
+
+    private async Task RemoveDependent(string depId)
+    {
+        var dep = View.Dependents.FirstOrDefault(d => d.Id == depId);
+        if (dep == null) return;
+        View.Dependents.Remove(dep);
+        await OnRemoveDependent.InvokeAsync(depId);
+        StateHasChanged();
+    }
+
+    private void Close() => MudDialog.Close();
+}

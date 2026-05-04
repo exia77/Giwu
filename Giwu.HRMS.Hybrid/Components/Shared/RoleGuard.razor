@@ -1,0 +1,56 @@
+﻿@*
+    Drop into any page that needs role-based access control. If the current user
+    doesn't have permission for the supplied nav key, they're redirected to the
+    Dashboard (or whatever fallback you configure).
+
+    Usage at the top of a page:
+        <RoleGuard NavKey="@NavKeys.Settings" />
+
+    Place it as the first thing in the page markup. The render block is invisible
+    when the user IS allowed; when they're not, this component handles the
+    redirect during the OnInitialized lifecycle so the rest of the page never
+    renders for unauthorized users.
+*@
+
+@inject RoleAuthService RoleAuth
+@inject NavigationManager Navigation
+
+@if (_blocked)
+{
+    @* Brief blocking screen shown for one frame while the redirect fires.
+       Avoids flashing the page contents to a user about to be bounced. *@
+    <div class="role-guard-blocking">
+        <MudIcon Icon="@Icons.Material.Outlined.Lock" Size="Size.Large" Style="opacity:.5" />
+        <MudText Typo="Typo.body2" Style="opacity:.6" Class="mt-2">Redirectingâ€¦</MudText>
+    </div>
+
+    <style>
+        .role-guard-blocking {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 80px 20px;
+            opacity: .8;
+        }
+    </style>
+}
+
+@code {
+    /// <summary>The nav key whose permissions gate this page. See NavKeys constants.</summary>
+    [Parameter, EditorRequired] public string NavKey { get; set; } = "";
+
+    /// <summary>Where to send unauthorized users. Defaults to the dashboard.</summary>
+    [Parameter] public string FallbackUrl { get; set; } = "/";
+
+    private bool _blocked;
+
+    protected override void OnInitialized()
+    {
+        if (!RoleAuth.CanAccess(NavKey))
+        {
+            _blocked = true;
+            Navigation.NavigateTo(FallbackUrl, replace: true);
+        }
+    }
+}

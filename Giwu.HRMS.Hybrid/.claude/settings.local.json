@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(dotnet build *)",
+      "Bash(dotnet sln *)",
+      "Bash(dotnet ef *)",
+      "Read(//c/Users/alexi/source/repos/GIWU/**)",
+      "PowerShell(dotnet build Giwu.HRMS.Hybrid.csproj -f net10.0-windows10.0.19041.0 -nologo -v:m)",
+      "Bash(grep -iE \"\\(Services\\\\\\\\\\\\\\\\\\(Api|Employees|Departments|Attendance|Leaves|Tenancy\\)|EmployeesApiClient|DepartmentsApiClient|AttendanceApiClient|LeavesApiClient|TenancyApiClient|ApiClientCore|ApiResult\\)\" \"C:\\\\Users\\\\alexi\\\\.claude\\\\projects\\\\c--Users-alexi-source-repos-GIWU-Giwu-HRMS-Hybrid\\\\e2ba4aad-8f5c-4b6f-85ec-42fd4801308a\\\\tool-results\\\\bh8eqv77w.txt\")"
+    ]
+  }
+}

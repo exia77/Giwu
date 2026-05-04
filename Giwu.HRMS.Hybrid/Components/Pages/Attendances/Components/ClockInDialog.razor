@@ -1,0 +1,53 @@
+﻿
+<MudDialog>
+    <DialogContent>
+        <MudStack Spacing="3">
+            <MudSelect T="string" Label="Employee" @bind-Value="SelectedEmployeeId"
+                       Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true">
+                @foreach (var c in Candidates)
+                {
+                    <MudSelectItem Value="@c.Id">@c.Name (@c.Dept)</MudSelectItem>
+                }
+            </MudSelect>
+
+            <MudSelect T="string" Label="Status" @bind-Value="SelectedStatus"
+                       Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true">
+                <MudSelectItem Value="@("Present")">Present</MudSelectItem>
+                <MudSelectItem Value="@("WFH")">WFH</MudSelectItem>
+                <MudSelectItem Value="@("Late")">Late</MudSelectItem>
+            </MudSelect>
+
+            <MudTextField T="string" Label="Time In" @bind-Value="SelectedTime"
+                          InputType="InputType.Time" Variant="Variant.Outlined" Margin="Margin.Dense" />
+        </MudStack>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" DisableElevation="true" OnClick="Confirm">
+            Confirm Clock In
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = default!;
+    [Parameter] public List<AttendanceEmployee> Candidates { get; set; } = new();
+
+    private string SelectedEmployeeId { get; set; } = "";
+    private string SelectedStatus { get; set; } = "Present";
+    private string SelectedTime { get; set; } = "";
+
+    protected override void OnInitialized()
+    {
+        if (Candidates.Count > 0) SelectedEmployeeId = Candidates[0].Id;
+        SelectedTime = DateTime.Now.ToString("HH:mm");
+    }
+
+    private void Cancel() => MudDialog.Cancel();
+
+    private void Confirm()
+    {
+        if (string.IsNullOrEmpty(SelectedEmployeeId)) { MudDialog.Cancel(); return; }
+        MudDialog.Close(DialogResult.Ok(new ClockInResult(SelectedEmployeeId, SelectedStatus, SelectedTime)));
+    }
+}

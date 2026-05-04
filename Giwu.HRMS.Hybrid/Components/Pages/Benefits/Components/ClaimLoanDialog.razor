@@ -1,0 +1,377 @@
+﻿@using static Giwu.HRMS.Hybrid.Models.BenefitsFormatting
+
+<MudDialog>
+    <DialogContent>
+        @if (IsViewing)
+        {
+            @* Read-only view of an existing request *@
+            <div class="req-detail-header">
+                <MudAvatar Style="@($"width:42px;height:42px;font-size:13px;{AvatarStyle(Working.EmployeeAv)}")">
+                    @Working.EmployeeInit
+                </MudAvatar>
+                <div style="flex:1;min-width:0">
+                    <MudText Typo="Typo.subtitle2" Class="fw-medium">@Working.EmployeeName</MudText>
+                    <MudText Typo="Typo.caption" Style="opacity:.55">
+                        Filed @FmtDate(Working.RequestedOn)
+                    </MudText>
+                </div>
+                <span class="@($"ben-badge {RequestStatusBadgeClass(Working.Status)}")">
+                    @RequestStatusLabel(Working.Status)
+                </span>
+            </div>
+
+            <div class="req-summary">
+                <div class="req-summary-row">
+                    <span class="req-summary-key">Type</span>
+                    <span>@RequestTypeLabel(Working.Type)</span>
+                </div>
+                <div class="req-summary-row">
+                    <span class="req-summary-key">Program</span>
+                    <span>@Working.ProgramName</span>
+                </div>
+                <div class="req-summary-row">
+                    <span class="req-summary-key">Amount</span>
+                    <span class="num">@Money(Working.Amount)</span>
+                </div>
+                @if (Working.Type == BenefitRequestType.Loan)
+                {
+                    @if (Working.TermMonths.HasValue)
+                    {
+                        <div class="req-summary-row">
+                            <span class="req-summary-key">Term</span>
+                            <span>@Working.TermMonths months</span>
+                        </div>
+                    }
+                    @if (Working.MonthlyDeduction.HasValue)
+                    {
+                        <div class="req-summary-row">
+                            <span class="req-summary-key">Monthly deduction</span>
+                            <span class="num">@Money(Working.MonthlyDeduction.Value)</span>
+                        </div>
+                    }
+                    @if (Working.OutstandingBalance.HasValue)
+                    {
+                        <div class="req-summary-row">
+                            <span class="req-summary-key">Outstanding balance</span>
+                            <span class="num">@Money(Working.OutstandingBalance.Value)</span>
+                        </div>
+                    }
+                }
+                @if (Working.ResolvedOn.HasValue)
+                {
+                    <div class="req-summary-row">
+                        <span class="req-summary-key">Resolved</span>
+                        <span>@FmtDate(Working.ResolvedOn)</span>
+                    </div>
+                }
+            </div>
+
+            @if (!string.IsNullOrEmpty(Working.Reason))
+            {
+                <div class="req-reason">
+                    <div class="req-reason-label">Reason</div>
+                    <div>@Working.Reason</div>
+                </div>
+            }
+
+            @* Status update controls â€” only for non-final states *@
+            @if (Working.Status != BenefitRequestStatus.Closed && Working.Status != BenefitRequestStatus.Rejected)
+            {
+                <div class="req-actions-section">
+                    <div class="req-actions-label">Update status</div>
+                    <MudStack Row="true" Spacing="2" Wrap="Wrap.Wrap">
+                        @if (Working.Status == BenefitRequestStatus.Pending)
+                        {
+                            <MudButton Variant="Variant.Filled" Color="Color.Success" DisableElevation="true" Size="Size.Small"
+                                       OnClick="@(() => UpdateStatus(BenefitRequestStatus.Approved))">
+                                Approve
+                            </MudButton>
+                            <MudButton Variant="Variant.Outlined" Color="Color.Error" Size="Size.Small"
+                                       OnClick="@(() => UpdateStatus(BenefitRequestStatus.Rejected))">
+                                Reject
+                            </MudButton>
+                        }
+                        @if (Working.Status == BenefitRequestStatus.Approved && Working.Type != BenefitRequestType.Loan)
+                        {
+                            <MudButton Variant="Variant.Filled" Color="Color.Primary" DisableElevation="true" Size="Size.Small"
+                                       OnClick="@(() => UpdateStatus(BenefitRequestStatus.Released))">
+                                Mark as Released
+                            </MudButton>
+                        }
+                        @if (Working.Status == BenefitRequestStatus.Approved && Working.Type == BenefitRequestType.Loan)
+                        {
+                            <MudButton Variant="Variant.Filled" Color="Color.Primary" DisableElevation="true" Size="Size.Small"
+                                       OnClick="@(() => UpdateStatus(BenefitRequestStatus.Repaying))">
+                                Mark as Disbursed (Start Repayment)
+                            </MudButton>
+                        }
+                        @if (Working.Status == BenefitRequestStatus.Repaying)
+                        {
+                            <MudButton Variant="Variant.Outlined" Size="Size.Small"
+                                       OnClick="@(() => UpdateStatus(BenefitRequestStatus.Closed))">
+                                Mark as Fully Paid
+                            </MudButton>
+                        }
+                        @if (Working.Status == BenefitRequestStatus.Released)
+                        {
+                            <MudButton Variant="Variant.Outlined" Size="Size.Small"
+                                       OnClick="@(() => UpdateStatus(BenefitRequestStatus.Closed))">
+                                Close
+                            </MudButton>
+                        }
+                    </MudStack>
+                </div>
+            }
+        }
+        else
+        {
+            @* New request form *@
+            <MudStack Spacing="3">
+                <MudGrid Spacing="2">
+                    <MudItem xs="12" sm="7">
+                        <MudSelect T="string" Label="Employee" @bind-Value="SelectedEmployeeId"
+                                   Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true">
+                            @foreach (var emp in AllEmployees)
+                            {
+                                <MudSelectItem Value="@emp.EmployeeId">@emp.Name (@emp.Dept)</MudSelectItem>
+                            }
+                        </MudSelect>
+                    </MudItem>
+                    <MudItem xs="12" sm="5">
+                        <MudSelect T="BenefitRequestType" Label="Type" @bind-Value="Working.Type"
+                                   Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true">
+                            <MudSelectItem Value="BenefitRequestType.Claim">Claim</MudSelectItem>
+                            <MudSelectItem Value="BenefitRequestType.Reimbursement">Reimbursement</MudSelectItem>
+                            <MudSelectItem Value="BenefitRequestType.Loan">Loan</MudSelectItem>
+                        </MudSelect>
+                    </MudItem>
+                </MudGrid>
+
+                <MudSelect T="string" Label="Against program" @bind-Value="Working.ProgramId"
+                           Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true">
+                    @foreach (var p in EligiblePrograms)
+                    {
+                        <MudSelectItem Value="@p.Id">@p.Name</MudSelectItem>
+                    }
+                </MudSelect>
+
+                <MudGrid Spacing="2">
+                    <MudItem xs="12" sm="@(Working.Type == BenefitRequestType.Loan ? 6 : 12)">
+                        <MudNumericField T="decimal" Label="Amount" @bind-Value="Working.Amount"
+                                         Variant="Variant.Outlined" Margin="Margin.Dense"
+                                         Min="0" Step="500"
+                                         Adornment="Adornment.Start" AdornmentText="â‚±" />
+                    </MudItem>
+                    @if (Working.Type == BenefitRequestType.Loan)
+                    {
+                        <MudItem xs="12" sm="6">
+                            <MudSelect T="int?" Label="Term" @bind-Value="Working.TermMonths"
+                                       Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true">
+                                <MudSelectItem T="int?" Value="3">3 months</MudSelectItem>
+                                <MudSelectItem T="int?" Value="6">6 months</MudSelectItem>
+                                <MudSelectItem T="int?" Value="12">12 months</MudSelectItem>
+                                <MudSelectItem T="int?" Value="18">18 months</MudSelectItem>
+                                <MudSelectItem T="int?" Value="24">24 months</MudSelectItem>
+                            </MudSelect>
+                        </MudItem>
+                    }
+                </MudGrid>
+
+                @if (Working.Type == BenefitRequestType.Loan && Working.Amount > 0 && Working.TermMonths.HasValue && Working.TermMonths > 0)
+                {
+                    var monthly = Math.Round(Working.Amount / Working.TermMonths.Value, 2);
+                    <div class="loan-preview">
+                        <div class="loan-preview-row">
+                            <span>Monthly deduction</span>
+                            <span class="num">@Money(monthly)</span>
+                        </div>
+                        <div class="loan-preview-row">
+                            <span>Total to repay</span>
+                            <span class="num">@Money(Working.Amount)</span>
+                        </div>
+                        <div class="loan-preview-row" style="opacity:.6;font-size:11.5px;border-top:0.5px solid var(--mud-palette-divider);padding-top:6px;margin-top:4px">
+                            <span>Repaid via payroll deduction starting next pay run.</span>
+                            <span></span>
+                        </div>
+                    </div>
+                }
+
+                <MudTextField T="string" Label="Reason / details" @bind-Value="Working.Reason"
+                              Placeholder="@(Working.Type switch
+                                  {
+                                      BenefitRequestType.Claim => "e.g. Outpatient consultation at non-network clinic",
+                                      BenefitRequestType.Loan => "e.g. Family medical emergency",
+                                      _ => "e.g. March home internet bill"
+                                  })"
+                              Variant="Variant.Outlined" Lines="3" />
+            </MudStack>
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">@(IsViewing ? "Close" : "Cancel")</MudButton>
+        @if (!IsViewing)
+        {
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" DisableElevation="true" OnClick="Submit">
+                Submit Request
+            </MudButton>
+        }
+    </DialogActions>
+</MudDialog>
+
+<style>
+    .req-detail-header {
+        display: flex; align-items: center; gap: 12px;
+        margin-bottom: 14px;
+    }
+    .req-summary {
+        border: 0.5px solid var(--mud-palette-divider);
+        border-radius: 8px;
+        overflow: hidden;
+        margin-bottom: 12px;
+    }
+    .req-summary-row {
+        display: flex; justify-content: space-between;
+        padding: 8px 12px;
+        font-size: 13px;
+        border-bottom: 0.5px solid var(--mud-palette-divider);
+    }
+    .req-summary-row:last-child { border-bottom: none; }
+    .req-summary-key { opacity: .55; }
+    .req-summary .num { font-variant-numeric: tabular-nums; }
+
+    .req-reason {
+        padding: 10px 12px;
+        background: var(--mud-palette-background-grey);
+        border-radius: 8px;
+        margin-bottom: 12px;
+    }
+    .req-reason-label {
+        font-size: 10.5px;
+        letter-spacing: .06em;
+        text-transform: uppercase;
+        opacity: .55;
+        margin-bottom: 3px;
+    }
+
+    .req-actions-section {
+        padding-top: 12px;
+        border-top: 0.5px solid var(--mud-palette-divider);
+        margin-top: 12px;
+    }
+    .req-actions-label {
+        font-size: 10.5px;
+        letter-spacing: .06em;
+        text-transform: uppercase;
+        opacity: .55;
+        font-weight: 500;
+        margin-bottom: 8px;
+    }
+
+    .loan-preview {
+        background: var(--ben-blue-light);
+        color: var(--ben-blue-text);
+        border-radius: 8px;
+        padding: 12px;
+    }
+    .loan-preview-row {
+        display: flex; justify-content: space-between;
+        padding: 4px 0; font-size: 13px;
+    }
+    .loan-preview .num { font-variant-numeric: tabular-nums; font-weight: 500; }
+</style>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = default!;
+    [Parameter] public List<EmployeeBenefitsView> AllEmployees { get; set; } = new();
+    [Parameter] public List<BenefitProgram> AllPrograms { get; set; } = new();
+    [Parameter] public BenefitRequest? Existing { get; set; }
+
+    private BenefitRequest Working { get; set; } = new();
+    private string SelectedEmployeeId { get; set; } = "";
+    private BenefitRequestStatus _origStatus;
+
+    private bool IsViewing => Existing != null;
+
+    private List<BenefitProgram> EligiblePrograms
+    {
+        get
+        {
+            // Filter programs by request type. Loans only show "Loan" category programs.
+            return Working.Type switch
+            {
+                BenefitRequestType.Loan => AllPrograms.Where(p => p.IsActive && p.Category == BenefitCategory.Loan).ToList(),
+                _ => AllPrograms.Where(p => p.IsActive
+                                           && p.Category != BenefitCategory.Loan
+                                           && p.Category != BenefitCategory.Leave).ToList()
+            };
+        }
+    }
+
+    protected override void OnInitialized()
+    {
+        if (Existing != null)
+        {
+            Working = Existing;
+            _origStatus = Existing.Status;
+        }
+        else
+        {
+            Working = new BenefitRequest
+            {
+                Type = BenefitRequestType.Claim,
+                Status = BenefitRequestStatus.Pending,
+                Amount = 0m,
+            };
+            if (AllEmployees.Count > 0) SelectedEmployeeId = AllEmployees[0].EmployeeId;
+        }
+    }
+
+    private void UpdateStatus(BenefitRequestStatus newStatus)
+    {
+        Working.Status = newStatus;
+        Working.ResolvedOn = newStatus is BenefitRequestStatus.Pending ? null : DateTime.Now;
+        StateHasChanged();
+    }
+
+    private void Cancel()
+    {
+        // If viewing and we changed status, that's a real edit â€” leave as-is and close OK
+        if (IsViewing && Existing != null && Working.Status != _origStatus)
+        {
+            MudDialog.Close(DialogResult.Ok(true));
+        }
+        else
+        {
+            MudDialog.Cancel();
+        }
+    }
+
+    private void Submit()
+    {
+        // Validation:
+        //   â€¢ Employee must be selected
+        //   â€¢ For Loan and Reimbursement, amount must be > 0
+        //   â€¢ For Claim, amount can be 0 (e.g. counseling session usage tracking)
+        if (string.IsNullOrEmpty(SelectedEmployeeId)) return;
+        if (Working.Type != BenefitRequestType.Claim && Working.Amount <= 0) return;
+
+        // Hydrate employee + program info from the picked IDs
+        var emp = AllEmployees.FirstOrDefault(e => e.EmployeeId == SelectedEmployeeId);
+        if (emp == null) return;
+        Working.EmployeeId = emp.EmployeeId;
+        Working.EmployeeName = emp.Name;
+        Working.EmployeeInit = emp.Init;
+        Working.EmployeeAv = emp.Av;
+
+        var prog = AllPrograms.FirstOrDefault(p => p.Id == Working.ProgramId);
+        if (prog != null) Working.ProgramName = prog.Name;
+
+        // For loans, pre-compute the monthly deduction
+        if (Working.Type == BenefitRequestType.Loan && Working.TermMonths.HasValue && Working.TermMonths > 0)
+        {
+            Working.MonthlyDeduction = Math.Round(Working.Amount / Working.TermMonths.Value, 2);
+        }
+
+        MudDialog.Close(DialogResult.Ok(Working));
+    }
+}

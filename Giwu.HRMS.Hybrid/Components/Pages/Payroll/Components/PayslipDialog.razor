@@ -1,0 +1,396 @@
+﻿@using static Giwu.HRMS.Hybrid.Models.PayrollFormatting
+@inject IDialogService DialogService
+
+<MudDialog>
+    <DialogContent>
+        @* Header *@
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px">
+            <MudAvatar Style="@($"width:48px;height:48px;font-size:14px;{AvatarStyle(Slip.Av)}")">
+                @Slip.Init
+            </MudAvatar>
+            <div style="flex:1;min-width:0">
+                <MudText Typo="Typo.subtitle1" Class="fw-medium">@Slip.Name</MudText>
+                <MudText Typo="Typo.caption" Style="opacity:.55">
+                    @Slip.Role Â· @Slip.Dept
+                </MudText>
+            </div>
+            <span class="@($"pay-badge {StatusBadgeClass(Run.Status)}")">@Run.Status</span>
+        </div>
+
+        <div class="slip-period-banner">
+            <MudIcon Icon="@Icons.Material.Outlined.CalendarMonth" Size="Size.Small" Style="opacity:.6" />
+            <span>@Run.Period Â· @FmtPeriodRange(Run.PeriodStart, Run.PeriodEnd)</span>
+        </div>
+
+        @* Earnings *@
+        <div class="slip-section">
+            <div class="slip-section-header">Earnings</div>
+            <div class="slip-line">
+                <span>Basic Salary</span>
+                <span class="slip-amt">@Money(Slip.BasicSalary)</span>
+            </div>
+            @if (Slip.Allowance > 0)
+            {
+                <div class="slip-line">
+                    <span>Allowance <span class="slip-sub">non-taxable de minimis</span></span>
+                    <span class="slip-amt">@Money(Slip.Allowance)</span>
+                </div>
+            }
+            @if (Slip.Overtime > 0)
+            {
+                <div class="slip-line">
+                    <span>Overtime</span>
+                    <span class="slip-amt">@Money(Slip.Overtime)</span>
+                </div>
+            }
+            @if (Slip.Bonus > 0)
+            {
+                <div class="slip-line">
+                    <span>Bonus</span>
+                    <span class="slip-amt">@Money(Slip.Bonus)</span>
+                </div>
+            }
+            <div class="slip-total slip-total-gross">
+                <span>Gross Pay</span><span class="slip-amt">@Money(Slip.Gross)</span>
+            </div>
+        </div>
+
+        @* Statutory Deductions â€” each row shows its computation basis *@
+        <div class="slip-section">
+            <div class="slip-section-header">
+                Statutory Deductions
+                <MudButton Size="Size.Small" Variant="Variant.Text" Class="slip-section-action"
+                           StartIcon="@Icons.Material.Outlined.MenuBook"
+                           OnClick="OpenReferenceDialog">
+                    View tables
+                </MudButton>
+            </div>
+
+            @{
+                var sssBracket = PhPayrollCalculator.GetSssBracket(Slip.BasicSalary);
+                var taxableIncome = Slip.Gross - (Slip.Sss + Slip.PhilHealth + Slip.PagIbig);
+                var birBracket = PhPayrollCalculator.GetBirBracket(taxableIncome);
+            }
+
+            @* SSS *@
+            <div class="slip-line slip-line-detailed">
+                <div class="slip-line-main">
+                    <div class="slip-line-name">
+                        <span>SSS</span>
+                        <button class="slip-info-btn" title="View SSS reference" @onclick="OpenReferenceDialog">
+                            <MudIcon Icon="@Icons.Material.Outlined.Info"
+                                     Size="Size.Small" />
+                        </button>
+                    </div>
+                    <div class="slip-basis">
+                        Based on MSC @Money(sssBracket.Msc)
+                        @if (sssBracket.MpfEmployee > 0)
+                        {
+                            <span> Â· Reg. @Money(sssBracket.RegularSsEmployee) + MPF @Money(sssBracket.MpfEmployee)</span>
+                        }
+                        else
+                        {
+                            <span> Â· 5% Ã— MSC</span>
+                        }
+                    </div>
+                </div>
+                <span class="slip-amt neg">âˆ’@Money(Slip.Sss)</span>
+            </div>
+
+            @* PhilHealth *@
+            <div class="slip-line slip-line-detailed">
+                <div class="slip-line-main">
+                    <div class="slip-line-name">
+                        <span>PhilHealth</span>
+                        <button class="slip-info-btn" title="View PhilHealth reference" @onclick="OpenReferenceDialog">
+                            <MudIcon Icon="@Icons.Material.Outlined.Info" Size="Size.Small" />
+                        </button>
+                    </div>
+                    <div class="slip-basis">
+                        @{
+                            var phBasis = Math.Clamp(Slip.BasicSalary, 10000m, 100000m);
+                        }
+                        2.5% Ã— @Money(phBasis)
+                        @if (Slip.BasicSalary < 10000m)
+                        {
+                            <span> (floor applied)</span>
+                        }
+                        else if (Slip.BasicSalary > 100000m)
+                        {
+                            <span> (ceiling capped)</span>
+                        }
+                    </div>
+                </div>
+                <span class="slip-amt neg">âˆ’@Money(Slip.PhilHealth)</span>
+            </div>
+
+            @* Pag-IBIG *@
+            <div class="slip-line slip-line-detailed">
+                <div class="slip-line-main">
+                    <div class="slip-line-name">
+                        <span>Pag-IBIG</span>
+                        <button class="slip-info-btn" title="View Pag-IBIG reference" @onclick="OpenReferenceDialog">
+                            <MudIcon Icon="@Icons.Material.Outlined.Info" Size="Size.Small" />
+                        </button>
+                    </div>
+                    <div class="slip-basis">
+                        @{
+                            var pagMfs = Math.Min(Slip.BasicSalary, 10000m);
+                            var pagRate = Slip.BasicSalary <= 1500m ? "1%" : "2%";
+                        }
+                        @pagRate Ã— MFS @Money(pagMfs)
+                        @if (Slip.BasicSalary > 10000m)
+                        {
+                            <span> (MFS capped)</span>
+                        }
+                    </div>
+                </div>
+                <span class="slip-amt neg">âˆ’@Money(Slip.PagIbig)</span>
+            </div>
+
+            @* Withholding Tax *@
+            <div class="slip-line slip-line-detailed">
+                <div class="slip-line-main">
+                    <div class="slip-line-name">
+                        <span>Withholding Tax</span>
+                        <button class="slip-info-btn" title="View BIR reference" @onclick="OpenReferenceDialog">
+                            <MudIcon Icon="@Icons.Material.Outlined.Info" Size="Size.Small" />
+                        </button>
+                    </div>
+                    <div class="slip-basis">
+                        Taxable @Money(taxableIncome) Â· @birBracket.RateDisplay
+                    </div>
+                </div>
+                <span class="slip-amt neg">âˆ’@Money(Slip.WithholdingTax)</span>
+            </div>
+
+            <div class="slip-total slip-total-statutory">
+                <span>Statutory Subtotal</span>
+                <span class="slip-amt neg">âˆ’@Money(Slip.Sss + Slip.PhilHealth + Slip.PagIbig + Slip.WithholdingTax)</span>
+            </div>
+        </div>
+
+        @* Other Deductions (loans, etc.) *@
+        @if (Slip.LoanDeduction > 0 || Slip.OtherDeduction > 0)
+        {
+            <div class="slip-section">
+                <div class="slip-section-header">Other Deductions</div>
+                @if (Slip.LoanDeduction > 0)
+                {
+                    <div class="slip-line">
+                        <span>Loan / SSS Salary Loan</span>
+                        <span class="slip-amt neg">âˆ’@Money(Slip.LoanDeduction)</span>
+                    </div>
+                }
+                @if (Slip.OtherDeduction > 0)
+                {
+                    <div class="slip-line">
+                        <span>Other Deduction</span>
+                        <span class="slip-amt neg">âˆ’@Money(Slip.OtherDeduction)</span>
+                    </div>
+                }
+                <div class="slip-total slip-total-other">
+                    <span>Other Subtotal</span>
+                    <span class="slip-amt neg">âˆ’@Money(Slip.LoanDeduction + Slip.OtherDeduction)</span>
+                </div>
+            </div>
+        }
+
+        @* Total Deductions row *@
+        <div class="slip-grand-deductions">
+            <span>Total Deductions</span>
+            <span class="slip-amt">âˆ’@Money(Slip.TotalDeductions)</span>
+        </div>
+
+        @* Net Pay *@
+        <div class="slip-net">
+            <div class="slip-net-label">Net Pay</div>
+            <div class="slip-net-amt">@Money(Slip.Net)</div>
+        </div>
+
+        @if (!string.IsNullOrEmpty(Slip.Notes))
+        {
+            <div class="slip-notes">
+                <div class="slip-notes-label">Notes</div>
+                <div>@Slip.Notes</div>
+            </div>
+        }
+
+        @if (Slip.IsEdited)
+        {
+            <div class="slip-edited-notice">
+                <span class="pay-edited-dot"></span>
+                <span>This payslip has been manually adjusted.</span>
+            </div>
+        }
+    </DialogContent>
+    <DialogActions>
+        @if (Run.Status == "Released")
+        {
+            <MudButton Variant="Variant.Outlined" Size="Size.Small"
+                       StartIcon="@Icons.Material.Outlined.Email"
+                       OnClick="ResendPayslip">Resend to Employee</MudButton>
+        }
+        <MudButton OnClick="Close">Close</MudButton>
+    </DialogActions>
+</MudDialog>
+
+<style>
+    .slip-period-banner {
+        display: flex; align-items: center; gap: 6px;
+        background: var(--mud-palette-background-grey);
+        border-radius: 6px;
+        padding: 8px 12px;
+        font-size: 12px;
+        opacity: .75;
+        margin-bottom: 16px;
+    }
+    .slip-section {
+        border: 0.5px solid var(--mud-palette-divider);
+        border-radius: 8px;
+        margin-bottom: 12px;
+        overflow: hidden;
+    }
+    .slip-section-header {
+        padding: 8px 12px;
+        background: var(--mud-palette-background-grey);
+        border-bottom: 0.5px solid var(--mud-palette-divider);
+        font-size: 11px;
+        font-weight: 500;
+        letter-spacing: .06em;
+        text-transform: uppercase;
+        opacity: .75;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    .slip-section-action {
+        font-size: 11px !important;
+        text-transform: none !important;
+        letter-spacing: 0 !important;
+        padding: 2px 8px !important;
+        min-height: unset !important;
+    }
+    .slip-line {
+        display: flex; justify-content: space-between; align-items: center;
+        padding: 7px 12px;
+        font-size: 13px;
+        border-bottom: 0.5px solid var(--mud-palette-divider);
+        gap: 10px;
+    }
+    .slip-line:last-child { border-bottom: none; }
+    .slip-line-detailed { padding: 9px 12px; align-items: flex-start; }
+    .slip-line-main { flex: 1; min-width: 0; }
+    .slip-line-name {
+        display: flex; align-items: center; gap: 4px;
+        font-size: 13px;
+        line-height: 1.2;
+    }
+    .slip-info-btn {
+        background: none; border: none; padding: 0; margin: 0;
+        cursor: pointer; opacity: .45;
+        display: inline-flex; align-items: center;
+        color: inherit;
+    }
+    .slip-info-btn:hover { opacity: 1; color: var(--pay-blue); }
+    .slip-basis {
+        font-size: 11px;
+        opacity: .55;
+        margin-top: 2px;
+        font-variant-numeric: tabular-nums;
+    }
+    .slip-sub {
+        font-size: 10.5px;
+        opacity: .55;
+        margin-left: 6px;
+        font-style: italic;
+    }
+    .slip-total {
+        display: flex; justify-content: space-between;
+        padding: 9px 12px;
+        font-size: 13px;
+        font-weight: 500;
+        border-top: 0.5px solid var(--mud-palette-divider);
+    }
+    .slip-total-gross     { background: var(--pay-green-light); color: var(--pay-green-text); }
+    .slip-total-statutory { background: var(--mud-palette-background-grey); }
+    .slip-total-other     { background: var(--mud-palette-background-grey); }
+    .slip-amt { font-variant-numeric: tabular-nums; }
+    .slip-amt.neg { color: var(--pay-red-text); }
+
+    .slip-grand-deductions {
+        display: flex; justify-content: space-between;
+        padding: 10px 12px;
+        background: var(--pay-red-light);
+        color: var(--pay-red-text);
+        border-radius: 8px;
+        font-weight: 500;
+        font-size: 13px;
+        margin-bottom: 8px;
+    }
+    .slip-grand-deductions .slip-amt { font-weight: 600; }
+
+    .slip-net {
+        display: flex; justify-content: space-between; align-items: center;
+        padding: 16px;
+        background: var(--pay-green);
+        color: white;
+        border-radius: 10px;
+    }
+    .slip-net-label { font-size: 13px; opacity: .9; }
+    .slip-net-amt { font-size: 1.5rem; font-weight: 600; font-variant-numeric: tabular-nums; }
+
+    .slip-notes {
+        margin-top: 14px;
+        padding: 10px 12px;
+        background: var(--mud-palette-background-grey);
+        border-radius: 6px;
+    }
+    .slip-notes-label {
+        font-size: 10.5px;
+        letter-spacing: .06em;
+        text-transform: uppercase;
+        opacity: .55;
+        margin-bottom: 3px;
+    }
+
+    .slip-edited-notice {
+        display: flex; align-items: center; gap: 6px;
+        margin-top: 12px;
+        font-size: 11.5px;
+        opacity: .7;
+        padding: 4px 2px;
+    }
+    .pay-edited-dot {
+        width: 7px; height: 7px; border-radius: 50%;
+        background: var(--pay-amber);
+        display: inline-block;
+    }
+</style>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = default!;
+    [Parameter] public Payslip Slip { get; set; } = default!;
+    [Parameter] public PayRun Run { get; set; } = default!;
+
+    [Inject] private ISnackbar Snackbar { get; set; } = default!;
+
+    private void Close() => MudDialog.Close();
+
+    private void ResendPayslip()
+    {
+        Snackbar.Add($"Payslip resent to {Slip.Name}", Severity.Success);
+        MudDialog.Close();
+    }
+
+    private async Task OpenReferenceDialog()
+    {
+        var parameters = new DialogParameters
+        {
+            ["HighlightSalary"] = (decimal?)Slip.BasicSalary,
+            ["HighlightLabel"] = Slip.Name
+        };
+        var options = new DialogOptions { MaxWidth = MaxWidth.Medium, FullWidth = true };
+        await DialogService.ShowAsync<DeductionsReferenceDialog>("PH Statutory Deductions Reference", parameters, options);
+    }
+}

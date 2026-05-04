@@ -1,0 +1,190 @@
+﻿@using static Giwu.HRMS.Hybrid.Models.ReportsFormatting
+
+<MudDialog>
+    <DialogContent>
+        @* Header *@
+        <div class="run-detail-header">
+            <div class="@($"run-detail-icon {CategoryBadgeClass(Run.Category)}")">
+                <MudIcon Icon="@CategoryIcon(Run.Category)" Size="Size.Medium" />
+            </div>
+            <div style="flex:1;min-width:0">
+                <div class="run-detail-title">@Run.DefinitionName</div>
+                @if (Definition != null && !string.IsNullOrEmpty(Definition.RegulatoryReference))
+                {
+                    <div class="run-detail-ref">
+                        <MudIcon Icon="@Icons.Material.Outlined.Gavel" Size="Size.Small" />
+                        @Definition.RegulatoryReference
+                    </div>
+                }
+                else if (Definition != null && !string.IsNullOrEmpty(Definition.ShortDescription))
+                {
+                    <div class="run-detail-desc">@Definition.ShortDescription</div>
+                }
+            </div>
+            <span class="@($"rep-status {StatusBadgeClass(Run.Status)}")">@StatusLabel(Run.Status)</span>
+        </div>
+
+        @* Run summary *@
+        <div class="run-detail-summary">
+            <div class="run-detail-row">
+                <span class="run-detail-key">Run ID</span>
+                <span style="font-family:monospace;font-size:12px">@Run.Id</span>
+            </div>
+            <div class="run-detail-row">
+                <span class="run-detail-key">Queued at</span>
+                <span>@Run.QueuedAt.ToString("MMM d, yyyy h:mm tt")</span>
+            </div>
+            @if (Run.CompletedAt.HasValue)
+            {
+                <div class="run-detail-row">
+                    <span class="run-detail-key">Completed</span>
+                    <span>
+                        @Run.CompletedAt.Value.ToString("h:mm:ss tt")
+                        <span style="opacity:.55;font-size:11.5px"> Â·
+                            @(((int)(Run.CompletedAt.Value - Run.QueuedAt).TotalSeconds))s
+                        </span>
+                    </span>
+                </div>
+            }
+            <div class="run-detail-row">
+                <span class="run-detail-key">Run by</span>
+                <span style="display:inline-flex;align-items:center;gap:6px">
+                    <MudAvatar Style="@AvatarStyle(Run.RanByAv)"
+                               Class="rep-detail-av-sm">@Run.RanByInit</MudAvatar>
+                    <span>@Run.RanBy</span>
+                    @if (!string.IsNullOrEmpty(Run.ScheduleId))
+                    {
+                        <span class="rep-scheduled-chip">scheduled</span>
+                    }
+                </span>
+            </div>
+            @if (Run.PeriodStart.HasValue && Run.PeriodEnd.HasValue)
+            {
+                <div class="run-detail-row">
+                    <span class="run-detail-key">Period covered</span>
+                    <span>
+                        @FmtDateShort(Run.PeriodStart.Value) â€“ @FmtDateShort(Run.PeriodEnd.Value)
+                        <span style="opacity:.55;font-size:11.5px"> Â·
+                            @((Run.PeriodEnd.Value - Run.PeriodStart.Value).Days + 1) days
+                        </span>
+                    </span>
+                </div>
+            }
+            @if (Run.Departments.Count > 0)
+            {
+                <div class="run-detail-row">
+                    <span class="run-detail-key">Departments</span>
+                    <span>@string.Join(", ", Run.Departments)</span>
+                </div>
+            }
+            <div class="run-detail-row">
+                <span class="run-detail-key">Format</span>
+                <span style="display:inline-flex;align-items:center;gap:5px">
+                    <MudIcon Icon="@FormatIcon(Run.Format)" Size="Size.Small" Style="opacity:.7" />
+                    @FormatLabel(Run.Format)
+                </span>
+            </div>
+            @if (Run.Status == ReportRunStatus.Completed)
+            {
+                <div class="run-detail-row">
+                    <span class="run-detail-key">Rows</span>
+                    <span class="num">@Run.RowCount.ToString("N0")</span>
+                </div>
+                <div class="run-detail-row">
+                    <span class="run-detail-key">File size</span>
+                    <span class="num">@FmtFileSize(Run.FileSizeBytes)</span>
+                </div>
+                @if (!string.IsNullOrEmpty(Run.FileName))
+                {
+                    <div class="run-detail-row">
+                        <span class="run-detail-key">File name</span>
+                        <span style="font-family:monospace;font-size:11.5px;word-break:break-all">@Run.FileName</span>
+                    </div>
+                }
+            }
+        </div>
+
+        @if (Run.Status == ReportRunStatus.Failed && !string.IsNullOrEmpty(Run.ErrorMessage))
+        {
+            <MudAlert Severity="Severity.Error" Dense="true" Class="mt-3 run-detail-error">
+                <strong>Run failed:</strong> @Run.ErrorMessage
+            </MudAlert>
+        }
+    </DialogContent>
+    <DialogActions>
+        @if (Run.Status == ReportRunStatus.Completed)
+        {
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" DisableElevation="true"
+                       StartIcon="@Icons.Material.Outlined.Download"
+                       OnClick="Download">Download</MudButton>
+        }
+        <MudButton OnClick="Close">Close</MudButton>
+    </DialogActions>
+</MudDialog>
+
+<style>
+    .run-detail-header {
+        display: flex; align-items: flex-start; gap: 12px;
+        margin-bottom: 16px;
+    }
+    .run-detail-icon {
+        width: 44px; height: 44px;
+        border-radius: 8px;
+        display: flex; align-items: center; justify-content: center;
+        flex-shrink: 0;
+    }
+    .run-detail-title {
+        font-size: 14px; font-weight: 500; line-height: 1.3;
+        margin-bottom: 2px;
+    }
+    .run-detail-desc { font-size: 11.5px; opacity: .65; line-height: 1.5; }
+    .run-detail-ref {
+        display: inline-flex; align-items: center; gap: 4px;
+        margin-top: 4px; font-size: 11px; opacity: .7;
+    }
+
+    .run-detail-summary {
+        border: 0.5px solid var(--mud-palette-divider);
+        border-radius: 8px;
+        overflow: hidden;
+    }
+    .run-detail-row {
+        display: flex; justify-content: space-between; align-items: center;
+        padding: 9px 12px;
+        border-bottom: 0.5px solid var(--mud-palette-divider);
+        font-size: 13px;
+        gap: 10px;
+    }
+    .run-detail-row:last-child { border-bottom: none; }
+    .run-detail-key { opacity: .55; flex-shrink: 0; }
+    .run-detail-summary .num { font-variant-numeric: tabular-nums; font-weight: 500; }
+
+    .rep-detail-av-sm {
+        width: 22px !important; height: 22px !important; font-size: 9px !important;
+        font-weight: 500;
+    }
+
+    .rep-scheduled-chip {
+        font-size: 9px; font-weight: 500; letter-spacing: .04em; text-transform: uppercase;
+        padding: 1px 6px; border-radius: 100px;
+        background: var(--rep-purple-light); color: var(--rep-purple-text);
+    }
+
+    .run-detail-error { font-size: 12px !important; }
+</style>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = default!;
+    [Parameter] public ReportRun Run { get; set; } = default!;
+    [Parameter] public ReportDefinition? Definition { get; set; }
+
+    [Inject] private ISnackbar Snackbar { get; set; } = default!;
+
+    private void Close() => MudDialog.Close();
+
+    private void Download()
+    {
+        Snackbar.Add($"Downloading {Run.FileName} ({FmtFileSize(Run.FileSizeBytes)})", Severity.Info);
+        MudDialog.Close();
+    }
+}

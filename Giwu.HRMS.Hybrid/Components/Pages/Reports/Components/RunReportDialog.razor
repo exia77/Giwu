@@ -1,0 +1,325 @@
+﻿@using static Giwu.HRMS.Hybrid.Models.ReportsFormatting
+
+<MudDialog>
+    <DialogContent>
+        @* Header card showing report info *@
+        <div class="run-header">
+            <div class="@($"run-icon {CategoryBadgeClass(Definition.Category)}")">
+                <MudIcon Icon="@CategoryIcon(Definition.Category)" Size="Size.Medium" />
+            </div>
+            <div style="flex:1;min-width:0">
+                <div class="run-title">
+                    @Definition.Name
+                    @if (Definition.IsCompliance)
+                    {
+                        <span class="rep-compliance-chip">Compliance</span>
+                    }
+                </div>
+                <div class="run-desc">
+                    @(string.IsNullOrEmpty(Definition.LongDescription) ? Definition.ShortDescription : Definition.LongDescription)
+                </div>
+                @if (!string.IsNullOrEmpty(Definition.RegulatoryReference))
+                {
+                    <div class="run-ref">
+                        <MudIcon Icon="@Icons.Material.Outlined.Gavel" Size="Size.Small" />
+                        @Definition.RegulatoryReference
+                    </div>
+                }
+            </div>
+        </div>
+
+        <MudDivider Class="mb-3" />
+
+        <MudStack Spacing="3">
+            @if (Definition.RequiresDateRange)
+            {
+                <div>
+                    <div class="run-section-header">Period</div>
+
+                    <div class="run-presets mb-2">
+                        <MudButton Variant="@(SelectedPreset == "thismonth" ? Variant.Filled : Variant.Outlined)"
+                                   Color="@(SelectedPreset == "thismonth" ? Color.Primary : Color.Default)"
+                                   DisableElevation="true" Size="Size.Small"
+                                   OnClick="@(() => ApplyPreset("thismonth"))">This month</MudButton>
+                        <MudButton Variant="@(SelectedPreset == "lastmonth" ? Variant.Filled : Variant.Outlined)"
+                                   Color="@(SelectedPreset == "lastmonth" ? Color.Primary : Color.Default)"
+                                   DisableElevation="true" Size="Size.Small"
+                                   OnClick="@(() => ApplyPreset("lastmonth"))">Last month</MudButton>
+                        <MudButton Variant="@(SelectedPreset == "thisquarter" ? Variant.Filled : Variant.Outlined)"
+                                   Color="@(SelectedPreset == "thisquarter" ? Color.Primary : Color.Default)"
+                                   DisableElevation="true" Size="Size.Small"
+                                   OnClick="@(() => ApplyPreset("thisquarter"))">This quarter</MudButton>
+                        <MudButton Variant="@(SelectedPreset == "ytd" ? Variant.Filled : Variant.Outlined)"
+                                   Color="@(SelectedPreset == "ytd" ? Color.Primary : Color.Default)"
+                                   DisableElevation="true" Size="Size.Small"
+                                   OnClick="@(() => ApplyPreset("ytd"))">YTD</MudButton>
+                    </div>
+
+                    <MudGrid Spacing="2">
+                        <MudItem xs="6">
+                            <MudDatePicker Label="From" @bind-Date="StartDate"
+                                           Variant="Variant.Outlined" Margin="Margin.Dense" />
+                        </MudItem>
+                        <MudItem xs="6">
+                            <MudDatePicker Label="To" @bind-Date="EndDate"
+                                           Variant="Variant.Outlined" Margin="Margin.Dense" />
+                        </MudItem>
+                    </MudGrid>
+                </div>
+            }
+
+            <MudSelect T="string" Label="Departments (optional)" MultiSelection="true"
+                       SelectedValues="@SelectedDepartments"
+                       SelectedValuesChanged="@(v => SelectedDepartments = new HashSet<string>(v))"
+                       Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true"
+                       HelperText="Leave empty to include all departments">
+                @foreach (var dept in AllDepartments)
+                {
+                    <MudSelectItem Value="@dept">@dept</MudSelectItem>
+                }
+            </MudSelect>
+
+            <div>
+                <div class="run-section-header">Format</div>
+                <div class="run-format-group">
+                    @foreach (var fmt in Definition.SupportedFormats)
+                    {
+                        <button type="button"
+                                class="@($"run-format-btn {(SelectedFormat == fmt ? "active" : "")}")"
+                                @onclick="@(() => SelectedFormat = fmt)">
+                            <MudIcon Icon="@FormatIcon(fmt)" Size="Size.Small" />
+                            <span>@FormatLabel(fmt)</span>
+                        </button>
+                    }
+                </div>
+            </div>
+
+            @if (Definition.Columns.Count > 0)
+            {
+                <div>
+                    <div class="run-section-header">Columns Included</div>
+                    <div class="run-columns">
+                        @foreach (var col in Definition.Columns)
+                        {
+                            <span class="run-col-chip">@col</span>
+                        }
+                    </div>
+                </div>
+            }
+
+            <div class="run-preview">
+                <div class="run-preview-title">Estimated Output</div>
+                <div class="run-preview-row">
+                    <span class="run-preview-key">Format</span>
+                    <span class="run-preview-val">
+                        <MudIcon Icon="@FormatIcon(SelectedFormat)" Size="Size.Small" Style="margin-right:4px" />
+                        @FormatLabel(SelectedFormat)
+                    </span>
+                </div>
+                @if (Definition.RequiresDateRange && StartDate.HasValue && EndDate.HasValue)
+                {
+                    <div class="run-preview-row">
+                        <span class="run-preview-key">Period</span>
+                        <span class="run-preview-val">
+                            @FmtDateShort(StartDate.Value) â€“ @FmtDateShort(EndDate.Value)
+                            (@DayCount days)
+                        </span>
+                    </div>
+                }
+                <div class="run-preview-row">
+                    <span class="run-preview-key">Estimated rows</span>
+                    <span class="run-preview-val num">@EstimatedRows.ToString("N0")</span>
+                </div>
+            </div>
+        </MudStack>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" DisableElevation="true"
+                   StartIcon="@Icons.Material.Outlined.PlayArrow"
+                   OnClick="Submit" Disabled="@(!CanRun)">
+            Run Report
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+<style>
+    .run-header {
+        display: flex; gap: 12px; align-items: flex-start;
+        margin-bottom: 16px;
+    }
+    .run-icon {
+        width: 44px; height: 44px;
+        border-radius: 8px;
+        display: flex; align-items: center; justify-content: center;
+        flex-shrink: 0;
+    }
+    .run-title {
+        font-size: 14px;
+        font-weight: 500;
+        display: flex; flex-wrap: wrap; gap: 6px; align-items: center;
+        margin-bottom: 3px;
+    }
+    .run-desc { font-size: 12px; opacity: .65; line-height: 1.55; }
+    .run-ref {
+        display: inline-flex; align-items: center; gap: 4px;
+        margin-top: 6px; font-size: 11px; opacity: .7;
+    }
+    .run-section-header {
+        font-size: 10.5px; letter-spacing: .06em; text-transform: uppercase;
+        opacity: .55; font-weight: 500; margin-bottom: 8px;
+    }
+    .run-presets { display: flex; flex-wrap: wrap; gap: 6px; }
+
+    .run-format-group { display: flex; gap: 8px; flex-wrap: wrap; }
+    .run-format-btn {
+        display: inline-flex; align-items: center; gap: 6px;
+        padding: 8px 14px;
+        border: 0.5px solid var(--mud-palette-divider);
+        border-radius: 8px;
+        background: var(--mud-palette-background);
+        cursor: pointer;
+        font-size: 12.5px;
+        color: var(--mud-palette-text-primary);
+        transition: all .1s;
+        font-family: inherit;
+    }
+    .run-format-btn:hover { border-color: var(--rep-green); }
+    .run-format-btn.active {
+        background: var(--rep-green-light);
+        color: var(--rep-green-text);
+        border-color: var(--rep-green);
+        font-weight: 500;
+    }
+
+    .run-columns { display: flex; flex-wrap: wrap; gap: 4px; }
+    .run-col-chip {
+        font-size: 10.5px; padding: 2px 8px;
+        border-radius: 100px;
+        background: var(--mud-palette-background-grey);
+        color: var(--mud-palette-text-secondary);
+    }
+
+    .run-preview {
+        background: var(--mud-palette-background-grey);
+        border-radius: 8px;
+        padding: 12px;
+    }
+    .run-preview-title {
+        font-size: 10.5px; letter-spacing: .06em; text-transform: uppercase;
+        opacity: .55; margin-bottom: 8px;
+    }
+    .run-preview-row {
+        display: flex; justify-content: space-between;
+        padding: 4px 0; font-size: 13px;
+    }
+    .run-preview-key { opacity: .6; }
+    .run-preview-val { display: inline-flex; align-items: center; }
+    .run-preview .num { font-variant-numeric: tabular-nums; font-weight: 500; }
+
+    .rep-compliance-chip {
+        font-size: 9px; font-weight: 500; letter-spacing: .04em; text-transform: uppercase;
+        padding: 1px 6px; border-radius: 100px;
+        background: var(--rep-red-light); color: var(--rep-red-text);
+    }
+</style>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = default!;
+    [Parameter] public ReportDefinition Definition { get; set; } = default!;
+
+    private DateTime? StartDate { get; set; }
+    private DateTime? EndDate { get; set; }
+    private string SelectedPreset { get; set; } = "thismonth";
+    private ReportFormat SelectedFormat { get; set; }
+    private HashSet<string> SelectedDepartments { get; set; } = new();
+
+    private static readonly string[] AllDepartments = new[]
+    {
+        "Engineering", "Product", "Design", "Sales", "Marketing",
+        "HR", "Finance", "IT"
+    };
+
+    private int DayCount =>
+        StartDate.HasValue && EndDate.HasValue
+            ? Math.Max(1, (EndDate.Value - StartDate.Value).Days + 1)
+            : 0;
+
+    private int EstimatedRows
+    {
+        get
+        {
+            var baseRows = Definition.Category switch
+            {
+                ReportCategory.Payroll     => 18,
+                ReportCategory.Attendance  => 18 * Math.Max(1, DayCount),
+                ReportCategory.People      => 18,
+                ReportCategory.Recruitment => 47,
+                ReportCategory.Benefits    => 50,
+                ReportCategory.Leave       => 18,
+                ReportCategory.Compliance  => 18,
+                _ => 50
+            };
+            if (SelectedDepartments.Count > 0)
+            {
+                baseRows = (int)(baseRows * (SelectedDepartments.Count / (double)AllDepartments.Length));
+            }
+            return Math.Max(1, baseRows);
+        }
+    }
+
+    private bool CanRun => !Definition.RequiresDateRange ||
+                            (StartDate.HasValue && EndDate.HasValue && EndDate.Value >= StartDate.Value);
+
+    protected override void OnInitialized()
+    {
+        ApplyPreset("thismonth");
+        SelectedFormat = Definition.SupportedFormats.FirstOrDefault();
+    }
+
+    private void ApplyPreset(string preset)
+    {
+        SelectedPreset = preset;
+        var today = DateTime.Today;
+        switch (preset)
+        {
+            case "thismonth":
+                StartDate = new DateTime(today.Year, today.Month, 1);
+                EndDate = StartDate.Value.AddMonths(1).AddDays(-1);
+                break;
+            case "lastmonth":
+                StartDate = new DateTime(today.Year, today.Month, 1).AddMonths(-1);
+                EndDate = StartDate.Value.AddMonths(1).AddDays(-1);
+                break;
+            case "thisquarter":
+                var q = (today.Month - 1) / 3;
+                StartDate = new DateTime(today.Year, q * 3 + 1, 1);
+                EndDate = StartDate.Value.AddMonths(3).AddDays(-1);
+                break;
+            case "ytd":
+                StartDate = new DateTime(today.Year, 1, 1);
+                EndDate = today;
+                break;
+        }
+    }
+
+    private void Cancel() => MudDialog.Cancel();
+
+    private void Submit()
+    {
+        if (!CanRun) return;
+        var run = new ReportRun
+        {
+            DefinitionId = Definition.Id,
+            DefinitionName = Definition.Name,
+            Category = Definition.Category,
+            Format = SelectedFormat,
+            QueuedAt = DateTime.Now,
+            Status = ReportRunStatus.Queued,
+            PeriodStart = Definition.RequiresDateRange ? StartDate : null,
+            PeriodEnd = Definition.RequiresDateRange ? EndDate : null,
+            Departments = SelectedDepartments.ToList(),
+        };
+        MudDialog.Close(DialogResult.Ok(run));
+    }
+}

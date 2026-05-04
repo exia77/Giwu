@@ -1,0 +1,113 @@
+﻿
+<MudDialog>
+    <DialogContent>
+        <div style="margin-bottom:18px">
+            <MudText Typo="Typo.overline" Style="opacity:.55;letter-spacing:.06em">Overall Status Breakdown</MudText>
+            <div class="mt-2">
+                @foreach (var s in StatusOrder)
+                {
+                    var count = Employees.Count(e => e.Status == s);
+                    var pct = Employees.Count == 0 ? 0 : (int)Math.Round(count / (double)Employees.Count * 100);
+                    <div class="analytics-bar-row">
+                        <div class="analytics-bar-lbl">@s</div>
+                        <div class="analytics-bar-bg">
+                            <div class="analytics-bar-fill" style="@($"width:{pct}%;background:{StatusColor(s)}")"></div>
+                        </div>
+                        <div class="analytics-bar-val">@pct%</div>
+                    </div>
+                }
+            </div>
+        </div>
+
+        <MudText Typo="Typo.overline" Style="opacity:.55;letter-spacing:.06em">Attendance by Department</MudText>
+        <div class="mt-2">
+            @foreach (var d in DeptStats.OrderBy(k => k.Key))
+            {
+                var pct = d.Value.Total == 0 ? 0 : (int)Math.Round(d.Value.Present / (double)d.Value.Total * 100);
+                <div class="analytics-bar-row">
+                    <div class="analytics-bar-lbl">@d.Key</div>
+                    <div class="analytics-bar-bg">
+                        <div class="analytics-bar-fill" style="@($"width:{pct}%;background:var(--att-green)")"></div>
+                    </div>
+                    <div class="analytics-bar-val">@pct%</div>
+                </div>
+            }
+        </div>
+
+        <MudGrid Spacing="2" Class="mt-4">
+            <MudItem xs="4">
+                <div class="stat-tile" style="background:var(--att-green-light);color:var(--att-green-text)">
+                    <div class="stat-tile-val">@AttendanceRate%</div>
+                    <div class="stat-tile-lbl">Attendance Rate</div>
+                </div>
+            </MudItem>
+            <MudItem xs="4">
+                <div class="stat-tile" style="background:var(--att-amber-light);color:var(--att-amber-text)">
+                    <div class="stat-tile-val">@LateToday</div>
+                    <div class="stat-tile-lbl">Late Today</div>
+                </div>
+            </MudItem>
+            <MudItem xs="4">
+                <div class="stat-tile" style="background:var(--att-red-light);color:var(--att-red-text)">
+                    <div class="stat-tile-val">@PendingTotal</div>
+                    <div class="stat-tile-lbl">Pending</div>
+                </div>
+            </MudItem>
+        </MudGrid>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Close">Close</MudButton>
+    </DialogActions>
+</MudDialog>
+
+<style>
+    .stat-tile {
+        border-radius: 8px;
+        padding: 12px;
+        text-align: center;
+    }
+    .stat-tile-val { font-size: 20px; font-weight: 500; }
+    .stat-tile-lbl { font-size: 11px; opacity: .75; margin-top: 3px; }
+</style>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = default!;
+    [Parameter] public List<AttendanceEmployee> Employees { get; set; } = new();
+
+    private static readonly string[] StatusOrder = new[] { "Present", "Absent", "Late", "Leave", "WFH" };
+
+    private Dictionary<string, (int Total, int Present)> DeptStats
+    {
+        get
+        {
+            var d = new Dictionary<string, (int, int)>();
+            foreach (var e in Employees)
+            {
+                if (!d.ContainsKey(e.Dept)) d[e.Dept] = (0, 0);
+                var (t, p) = d[e.Dept];
+                t++;
+                if (e.Status == "Present" || e.Status == "WFH") p++;
+                d[e.Dept] = (t, p);
+            }
+            return d;
+        }
+    }
+
+    private int AttendanceRate => Employees.Count == 0 ? 0
+        : (int)Math.Round(Employees.Count(e => e.Status == "Present" || e.Status == "WFH") / (double)Employees.Count * 100);
+
+    private int LateToday => Employees.Count(e => e.Status == "Late");
+    private int PendingTotal => Employees.Count(e => e.Pending);
+
+    private static string StatusColor(string s) => s switch
+    {
+        "Present" => "var(--att-green)",
+        "Absent"  => "var(--att-red)",
+        "Late"    => "var(--att-amber)",
+        "Leave"   => "var(--att-purple)",
+        "WFH"     => "var(--att-blue)",
+        _         => "var(--mud-palette-divider)"
+    };
+
+    private void Close() => MudDialog.Close();
+}

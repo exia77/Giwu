@@ -1,0 +1,232 @@
+﻿@using static Giwu.HRMS.Hybrid.Models.RecruitmentFormatting
+
+<MudDialog>
+    <DialogContent>
+        @* Header: avatar + name + contact *@
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px">
+            <MudAvatar Style="@($"width:48px;height:48px;font-size:14px;{AvatarStyle(Candidate.Av)}")">
+                @Candidate.Init
+            </MudAvatar>
+            <div style="flex:1;min-width:0">
+                <MudText Typo="Typo.subtitle1" Class="fw-medium">@Candidate.Name</MudText>
+                <MudText Typo="Typo.caption" Style="opacity:.55">
+                    @(Job?.Title ?? "â€”") Â· Applied @RelativeTime(Candidate.AppliedOn)
+                </MudText>
+            </div>
+            <span class="@($"rec-badge {StageBadgeClass(Candidate.Stage)}")">@Candidate.Stage</span>
+        </div>
+
+        <MudDivider Class="mb-3" />
+
+        @* Contact info *@
+        <div class="detail-grid mb-3">
+            <div>
+                <div class="detail-key">Email</div>
+                <div class="detail-val">@Candidate.Email</div>
+            </div>
+            <div>
+                <div class="detail-key">Phone</div>
+                <div class="detail-val">@Candidate.Phone</div>
+            </div>
+            <div>
+                <div class="detail-key">Source</div>
+                <div class="detail-val">@Candidate.Source</div>
+            </div>
+            <div>
+                <div class="detail-key">Rating</div>
+                <div class="detail-val">
+                    @for (int i = 1; i <= 5; i++)
+                    {
+                        <span class="@(i <= Candidate.Rating ? "rec-star-filled" : "rec-star-empty")">â˜…</span>
+                    }
+                </div>
+            </div>
+        </div>
+
+        @* Pipeline progress visual *@
+        <MudText Typo="Typo.overline" Style="opacity:.55;letter-spacing:.06em">Pipeline Progress</MudText>
+        <div class="pipeline-strip mt-2 mb-3">
+            @{
+                var currentIdx = Array.IndexOf(PipelineStages, Candidate.Stage);
+                var isRejected = Candidate.Stage == "Rejected";
+            }
+            @for (int i = 0; i < PipelineStages.Length; i++)
+            {
+                var idx = i; // local copy for closure
+                var reached = !isRejected && idx <= currentIdx;
+                var active = !isRejected && idx == currentIdx;
+                <div class="pipeline-step @(reached ? "reached" : "") @(active ? "active" : "")">
+                    <div class="pipeline-dot">@(idx + 1)</div>
+                    <div class="pipeline-label">@PipelineStages[idx]</div>
+                </div>
+                if (i < PipelineStages.Length - 1)
+                {
+                    <div class="pipeline-line @(reached && idx < currentIdx ? "reached" : "")"></div>
+                }
+            }
+        </div>
+
+        @* Scheduled interviews *@
+        @if (Interviews.Count > 0)
+        {
+            <MudText Typo="Typo.overline" Style="opacity:.55;letter-spacing:.06em">Scheduled Interviews</MudText>
+            <div class="mt-2 mb-3">
+                @foreach (var iv in Interviews.Where(i => i.Status == "Scheduled"))
+                {
+                    <div class="iv-row">
+                        <MudIcon Icon="@Icons.Material.Outlined.Event" Size="Size.Small" Style="opacity:.6" />
+                        <div style="flex:1;min-width:0">
+                            <div style="font-size:13px">@iv.Kind Â· @FmtDateTime(iv.ScheduledAt)</div>
+                            <div style="font-size:11px;opacity:.55">
+                                @iv.Interviewer Â· @iv.Location Â· @iv.DurationMinutes min
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+        }
+
+        @* Notes *@
+        @if (!string.IsNullOrEmpty(Candidate.Notes))
+        {
+            <MudText Typo="Typo.overline" Style="opacity:.55;letter-spacing:.06em">Notes</MudText>
+            <div class="notes-box mt-1 mb-3">@Candidate.Notes</div>
+        }
+
+        @* Activity timeline *@
+        <MudText Typo="Typo.overline" Style="opacity:.55;letter-spacing:.06em">Activity</MudText>
+        <div class="timeline mt-2">
+            @if (Candidate.Timeline.Count == 0)
+            {
+                <div style="font-size:12px;opacity:.55;padding:8px 0">No activity yet.</div>
+            }
+            else
+            {
+                @foreach (var ev in Candidate.Timeline.OrderByDescending(t => t.When))
+                {
+                    <div class="timeline-item">
+                        <div class="@($"timeline-dot {StageBadgeClass(ev.Stage)}")"></div>
+                        <div class="timeline-content">
+                            <div style="font-size:13px">
+                                <span class="fw-medium">@ev.Stage</span>
+                                <span style="opacity:.55">â€” @ev.Note</span>
+                            </div>
+                            <div style="font-size:11px;opacity:.55">
+                                @ev.Actor Â· @RelativeTime(ev.When)
+                            </div>
+                        </div>
+                    </div>
+                }
+            }
+        </div>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Close">Close</MudButton>
+    </DialogActions>
+</MudDialog>
+
+<style>
+    .detail-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+    }
+    .detail-key { font-size: 11px; opacity: .55; letter-spacing: .05em; text-transform: uppercase; margin-bottom: 2px; }
+    .detail-val { font-size: 13px; }
+
+    .pipeline-strip {
+        display: flex;
+        align-items: center;
+        gap: 0;
+    }
+    .pipeline-step {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 4px;
+        flex-shrink: 0;
+    }
+    .pipeline-dot {
+        width: 26px; height: 26px;
+        border-radius: 50%;
+        border: 1.5px solid var(--mud-palette-divider);
+        background: var(--mud-palette-background);
+        display: flex; align-items: center; justify-content: center;
+        font-size: 11px; font-weight: 500;
+        opacity: .5;
+    }
+    .pipeline-step.reached .pipeline-dot {
+        background: var(--rec-green);
+        color: white;
+        border-color: var(--rec-green);
+        opacity: 1;
+    }
+    .pipeline-step.active .pipeline-dot {
+        box-shadow: 0 0 0 3px var(--rec-green-light);
+    }
+    .pipeline-label {
+        font-size: 10px;
+        opacity: .6;
+        text-align: center;
+        white-space: nowrap;
+    }
+    .pipeline-step.active .pipeline-label { font-weight: 600; opacity: 1; color: var(--rec-green-text); }
+    .pipeline-line {
+        flex: 1;
+        height: 2px;
+        background: var(--mud-palette-divider);
+        margin: 0 2px;
+        margin-bottom: 18px;
+    }
+    .pipeline-line.reached { background: var(--rec-green); }
+
+    .iv-row {
+        display: flex; align-items: center; gap: 10px;
+        padding: 8px 0;
+        border-bottom: 0.5px solid var(--mud-palette-divider);
+    }
+    .iv-row:last-child { border-bottom: none; }
+
+    .notes-box {
+        background: var(--mud-palette-background-grey);
+        border-radius: 6px;
+        padding: 10px 12px;
+        font-size: 12.5px;
+        line-height: 1.5;
+    }
+
+    .timeline {
+        position: relative;
+        padding-left: 12px;
+    }
+    .timeline-item {
+        display: flex;
+        gap: 10px;
+        padding: 8px 0;
+        position: relative;
+    }
+    .timeline-dot {
+        width: 10px; height: 10px; border-radius: 50%;
+        flex-shrink: 0; margin-top: 5px;
+        background: var(--mud-palette-divider);
+    }
+    .timeline-dot.rec-badge-applied   { background: var(--rec-blue); }
+    .timeline-dot.rec-badge-screening { background: var(--rec-purple); }
+    .timeline-dot.rec-badge-interview { background: var(--rec-amber); }
+    .timeline-dot.rec-badge-offer     { background: var(--rec-green-dark); }
+    .timeline-dot.rec-badge-hired     { background: var(--rec-green); }
+    .timeline-dot.rec-badge-rejected  { background: var(--rec-red); }
+    .timeline-content { flex: 1; min-width: 0; }
+
+    .rec-star-filled { color: var(--rec-amber); }
+    .rec-star-empty  { color: var(--mud-palette-divider); }
+</style>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = default!;
+    [Parameter] public Candidate Candidate { get; set; } = default!;
+    [Parameter] public JobRequisition? Job { get; set; }
+    [Parameter] public List<Interview> Interviews { get; set; } = new();
+
+    private void Close() => MudDialog.Close();
+}

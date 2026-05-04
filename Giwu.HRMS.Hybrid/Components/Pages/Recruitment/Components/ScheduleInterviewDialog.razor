@@ -1,0 +1,98 @@
+﻿
+<MudDialog>
+    <DialogContent>
+        <MudStack Spacing="3">
+            <MudGrid Spacing="2">
+                <MudItem xs="12" sm="7">
+                    <MudDatePicker Label="Date" @bind-Date="ScheduledDate"
+                                   Variant="Variant.Outlined" Margin="Margin.Dense"
+                                   MinDate="DateTime.Today" />
+                </MudItem>
+                <MudItem xs="12" sm="5">
+                    <MudTimePicker Label="Time" @bind-Time="ScheduledTime"
+                                   Variant="Variant.Outlined" Margin="Margin.Dense"
+                                   AmPm="true" />
+                </MudItem>
+            </MudGrid>
+
+            <MudGrid Spacing="2">
+                <MudItem xs="7">
+                    <MudSelect T="string" Label="Interview type" @bind-Value="Kind"
+                               Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true">
+                        <MudSelectItem Value="@("Phone Screen")">Phone Screen</MudSelectItem>
+                        <MudSelectItem Value="@("Technical")">Technical</MudSelectItem>
+                        <MudSelectItem Value="@("Panel")">Panel</MudSelectItem>
+                        <MudSelectItem Value="@("Final")">Final</MudSelectItem>
+                    </MudSelect>
+                </MudItem>
+                <MudItem xs="5">
+                    <MudSelect T="int" Label="Duration" @bind-Value="DurationMinutes"
+                               Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true">
+                        <MudSelectItem Value="30">30 min</MudSelectItem>
+                        <MudSelectItem Value="45">45 min</MudSelectItem>
+                        <MudSelectItem Value="60">60 min</MudSelectItem>
+                        <MudSelectItem Value="90">90 min</MudSelectItem>
+                    </MudSelect>
+                </MudItem>
+            </MudGrid>
+
+            <MudTextField T="string" Label="Interviewer" @bind-Value="InterviewerName"
+                          HelperText="Full name of the interviewer"
+                          Variant="Variant.Outlined" Margin="Margin.Dense" />
+
+            <MudSelect T="string" Label="Location / platform" @bind-Value="Location"
+                       Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true">
+                <MudSelectItem Value="@("Zoom")">Zoom</MudSelectItem>
+                <MudSelectItem Value="@("Google Meet")">Google Meet</MudSelectItem>
+                <MudSelectItem Value="@("Microsoft Teams")">Microsoft Teams</MudSelectItem>
+                <MudSelectItem Value="@("Phone")">Phone</MudSelectItem>
+                <MudSelectItem Value="@("Office - Conf A")">Office - Conf A</MudSelectItem>
+                <MudSelectItem Value="@("Office - Conf B")">Office - Conf B</MudSelectItem>
+            </MudSelect>
+        </MudStack>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" DisableElevation="true" OnClick="Confirm">
+            Schedule
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = default!;
+    [Parameter] public Candidate Candidate { get; set; } = default!;
+
+    private DateTime? ScheduledDate { get; set; } = DateTime.Today.AddDays(1);
+    private TimeSpan? ScheduledTime { get; set; } = new TimeSpan(10, 0, 0);
+    private string Kind { get; set; } = "Technical";
+    private int DurationMinutes { get; set; } = 45;
+    private string InterviewerName { get; set; } = "Jane Dela Cruz";
+    private string Location { get; set; } = "Zoom";
+
+    private void Cancel() => MudDialog.Cancel();
+
+    private void Confirm()
+    {
+        if (!ScheduledDate.HasValue || !ScheduledTime.HasValue) { MudDialog.Cancel(); return; }
+
+        var scheduledAt = ScheduledDate.Value.Date + ScheduledTime.Value;
+        var parts = InterviewerName.Trim().Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        var initials = parts.Length > 0
+            ? string.Concat(parts.Take(2).Select(p => p[0])).ToUpper()
+            : "?";
+
+        var iv = new Interview
+        {
+            ScheduledAt = scheduledAt,
+            Kind = Kind,
+            DurationMinutes = DurationMinutes,
+            Interviewer = InterviewerName,
+            InterviewerInit = initials,
+            InterviewerAv = "primary",
+            Location = Location,
+            Status = "Scheduled"
+        };
+        MudDialog.Close(DialogResult.Ok(iv));
+    }
+}

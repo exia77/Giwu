@@ -1,0 +1,277 @@
+﻿@using static Giwu.HRMS.Hybrid.Models.ReportsFormatting
+
+<MudDialog>
+    <DialogContent>
+        <MudText Typo="Typo.body2" Style="opacity:.7" Class="mb-3">
+            Define a custom report template by picking a category, naming it, and selecting which columns to include.
+        </MudText>
+
+        <MudStack Spacing="3">
+            <MudGrid Spacing="2">
+                <MudItem xs="12" sm="8">
+                    <MudTextField T="string" Label="Report name" @bind-Value="Working.Name"
+                                  Placeholder="e.g. Active Probationary Employees"
+                                  Variant="Variant.Outlined" Margin="Margin.Dense" Required="true" />
+                </MudItem>
+                <MudItem xs="12" sm="4">
+                    <MudSelect T="ReportCategory" Label="Category" @bind-Value="Working.Category"
+                               Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true">
+                        @* Custom reports can be in any category except Compliance (those are agency-mandated) *@
+                        @foreach (var cat in Enum.GetValues<ReportCategory>().Where(c => c != ReportCategory.Compliance))
+                        {
+                            <MudSelectItem Value="@cat">@CategoryLabel(cat)</MudSelectItem>
+                        }
+                    </MudSelect>
+                </MudItem>
+            </MudGrid>
+
+            <MudTextField T="string" Label="Short description" @bind-Value="Working.ShortDescription"
+                          Placeholder="One-line summary shown on the catalog card"
+                          Variant="Variant.Outlined" Margin="Margin.Dense" />
+
+            <MudTextField T="string" Label="Long description (optional)" @bind-Value="Working.LongDescription"
+                          Placeholder="Detailed description shown on the run dialog"
+                          Variant="Variant.Outlined" Lines="2" />
+
+            <div>
+                <div class="dlg-section-header">Columns</div>
+                <MudText Typo="Typo.caption" Style="opacity:.6" Class="mb-2">
+                    Tap any column from the master list to include it. Click an included column to remove.
+                </MudText>
+
+                @if (Working.Columns.Count > 0)
+                {
+                    <div class="custom-cols-included">
+                        @foreach (var col in Working.Columns.ToList())
+                        {
+                            <button type="button" class="custom-col-chip custom-col-chip-active"
+                                    @onclick="@(() => RemoveColumn(col))">
+                                @col
+                                <span style="opacity:.6;margin-left:4px">Ã—</span>
+                            </button>
+                        }
+                    </div>
+                }
+                else
+                {
+                    <div class="custom-cols-empty">No columns selected yet.</div>
+                }
+
+                <div class="custom-cols-section-label">Available for @CategoryLabel(Working.Category)</div>
+                <div class="custom-cols-available">
+                    @foreach (var col in MasterColumnsForCategory(Working.Category))
+                    {
+                        var isSelected = Working.Columns.Contains(col);
+                        if (!isSelected)
+                        {
+                            <button type="button" class="custom-col-chip" @onclick="@(() => AddColumn(col))">
+                                + @col
+                            </button>
+                        }
+                    }
+                </div>
+            </div>
+
+            <div>
+                <div class="dlg-section-header">Options</div>
+                <MudCheckBox T="bool" @bind-Value="Working.RequiresDateRange" Size="Size.Small" Dense="true">
+                    <MudText Typo="Typo.body2">Requires date range when running</MudText>
+                </MudCheckBox>
+                <MudCheckBox T="bool" @bind-Value="Working.RequiresDepartmentFilter" Size="Size.Small" Dense="true">
+                    <MudText Typo="Typo.body2">Allow filtering by department</MudText>
+                </MudCheckBox>
+            </div>
+
+            <div>
+                <div class="dlg-section-header">Supported Formats</div>
+                <div class="custom-format-row">
+                    @foreach (var fmt in Enum.GetValues<ReportFormat>())
+                    {
+                        var isSelected = Working.SupportedFormats.Contains(fmt);
+                        <button type="button"
+                                class="@($"custom-format-btn {(isSelected ? "active" : "")}")"
+                                @onclick="@(() => ToggleFormat(fmt))">
+                            <MudIcon Icon="@FormatIcon(fmt)" Size="Size.Small" />
+                            <span>@FormatLabel(fmt)</span>
+                        </button>
+                    }
+                </div>
+            </div>
+        </MudStack>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" DisableElevation="true"
+                   OnClick="Save" Disabled="@(!CanSave)">
+            Create Report
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+<style>
+    .dlg-section-header {
+        font-size: 10.5px; letter-spacing: .06em; text-transform: uppercase;
+        opacity: .55; font-weight: 500; margin-bottom: 8px;
+    }
+
+    .custom-cols-included {
+        display: flex; flex-wrap: wrap; gap: 5px;
+        padding: 10px;
+        background: var(--mud-palette-background-grey);
+        border-radius: 8px;
+        margin-bottom: 10px;
+    }
+    .custom-cols-empty {
+        padding: 14px;
+        background: var(--mud-palette-background-grey);
+        border-radius: 8px;
+        font-size: 12px;
+        opacity: .55;
+        text-align: center;
+        margin-bottom: 10px;
+    }
+    .custom-cols-section-label {
+        font-size: 10.5px;
+        opacity: .55;
+        margin-bottom: 6px;
+    }
+    .custom-cols-available {
+        display: flex; flex-wrap: wrap; gap: 5px;
+    }
+    .custom-col-chip {
+        font-size: 11.5px;
+        padding: 4px 10px;
+        border-radius: 100px;
+        border: 0.5px solid var(--mud-palette-divider);
+        background: var(--mud-palette-background);
+        color: var(--mud-palette-text-primary);
+        cursor: pointer;
+        font-family: inherit;
+        transition: all .1s;
+    }
+    .custom-col-chip:hover {
+        border-color: var(--rep-green);
+        background: var(--rep-green-light);
+    }
+    .custom-col-chip-active {
+        background: var(--rep-green);
+        color: white;
+        border-color: var(--rep-green);
+        font-weight: 500;
+    }
+    .custom-col-chip-active:hover {
+        background: var(--rep-red);
+        border-color: var(--rep-red);
+    }
+
+    .custom-format-row { display: flex; gap: 8px; flex-wrap: wrap; }
+    .custom-format-btn {
+        display: inline-flex; align-items: center; gap: 6px;
+        padding: 8px 14px;
+        border: 0.5px solid var(--mud-palette-divider);
+        border-radius: 8px;
+        background: var(--mud-palette-background);
+        cursor: pointer;
+        font-size: 12.5px;
+        color: var(--mud-palette-text-primary);
+        transition: all .1s;
+        font-family: inherit;
+    }
+    .custom-format-btn:hover { border-color: var(--rep-green); }
+    .custom-format-btn.active {
+        background: var(--rep-green-light);
+        color: var(--rep-green-text);
+        border-color: var(--rep-green);
+        font-weight: 500;
+    }
+</style>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = default!;
+
+    private ReportDefinition Working { get; set; } = new();
+
+    private bool CanSave =>
+        !string.IsNullOrWhiteSpace(Working.Name)
+        && Working.Columns.Count > 0
+        && Working.SupportedFormats.Count > 0;
+
+    protected override void OnInitialized()
+    {
+        Working = new ReportDefinition
+        {
+            Category = ReportCategory.People,
+            IsCustom = true,
+            RequiresDateRange = false,
+            SupportedFormats = new() { ReportFormat.Csv, ReportFormat.Excel },
+            Columns = new(),
+        };
+    }
+
+    /// <summary>
+    /// Master list of columns available for each category. The user picks a subset
+    /// to include in their custom report.
+    /// </summary>
+    private static List<string> MasterColumnsForCategory(ReportCategory cat) => cat switch
+    {
+        ReportCategory.Payroll => new() {
+            "Employee","Department","Role","Hire Date",
+            "Basic","OT","Bonus","Allowance","Gross",
+            "SSS","PhilHealth","Pag-IBIG","WHT","Loans","Other","Net"
+        },
+        ReportCategory.Attendance => new() {
+            "Date","Employee","Department","Status","Time In","Time Out",
+            "Hours","Late Minutes","Undertime Minutes","OT Hours"
+        },
+        ReportCategory.People => new() {
+            "Employee","Department","Role","Employment Type","Hire Date",
+            "Tenure","Age","Gender","Civil Status","Location","Manager"
+        },
+        ReportCategory.Recruitment => new() {
+            "Job","Candidate","Stage","Source","Applied Date","Interviewed Date",
+            "Offer Date","Hire Date","Days in Pipeline","Recruiter","Status"
+        },
+        ReportCategory.Benefits => new() {
+            "Employee","Program","Provider","Tier","Enrolled Date","Dependents",
+            "Monthly Cost","Employer Share","Employee Share","Status"
+        },
+        ReportCategory.Leave => new() {
+            "Employee","Department","VL","SL","EL","SIL","ML/PL",
+            "Used","Pending","Carryover","Total Available","Last Taken"
+        },
+        _ => new() { "Employee","Department","Value","Date","Status" }
+    };
+
+    private void AddColumn(string col)
+    {
+        if (!Working.Columns.Contains(col))
+            Working.Columns.Add(col);
+    }
+
+    private void RemoveColumn(string col)
+    {
+        Working.Columns.Remove(col);
+    }
+
+    private void ToggleFormat(ReportFormat fmt)
+    {
+        if (Working.SupportedFormats.Contains(fmt))
+        {
+            // Don't allow removing the last format
+            if (Working.SupportedFormats.Count > 1)
+                Working.SupportedFormats.Remove(fmt);
+        }
+        else
+        {
+            Working.SupportedFormats.Add(fmt);
+        }
+    }
+
+    private void Cancel() => MudDialog.Cancel();
+
+    private void Save()
+    {
+        if (!CanSave) return;
+        MudDialog.Close(DialogResult.Ok(Working));
+    }
+}

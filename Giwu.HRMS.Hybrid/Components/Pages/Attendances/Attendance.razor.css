@@ -1,0 +1,8 @@
+/* ────────────────────────────────────────────────────────────
+   Scoped styles for Attendance.razor
+
+   Page-specific styles live in the <style> block inside
+   Attendance.razor (uses MudBlazor CSS variables).
+
+   Utility classes (.fw-medium, .fw-semibold) moved to wwwroot/app.css.
+──────────────────────────────────────────────────────────── */

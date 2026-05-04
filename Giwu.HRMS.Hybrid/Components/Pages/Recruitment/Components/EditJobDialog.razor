@@ -1,0 +1,128 @@
+﻿
+<MudDialog>
+    <DialogContent>
+        <MudStack Spacing="3">
+            <MudTextField T="string" Label="Role title" @bind-Value="Working.Title"
+                          Variant="Variant.Outlined" Margin="Margin.Dense" Required="true" />
+
+            <MudGrid Spacing="2">
+                <MudItem xs="6">
+                    <MudSelect T="string" Label="Department" @bind-Value="Working.Dept"
+                               Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true">
+                        <MudSelectItem Value="@("Engineering")">Engineering</MudSelectItem>
+                        <MudSelectItem Value="@("Product")">Product</MudSelectItem>
+                        <MudSelectItem Value="@("Design")">Design</MudSelectItem>
+                        <MudSelectItem Value="@("Finance")">Finance</MudSelectItem>
+                        <MudSelectItem Value="@("HR")">HR</MudSelectItem>
+                        <MudSelectItem Value="@("Marketing")">Marketing</MudSelectItem>
+                        <MudSelectItem Value="@("Sales")">Sales</MudSelectItem>
+                        <MudSelectItem Value="@("IT")">IT</MudSelectItem>
+                    </MudSelect>
+                </MudItem>
+                <MudItem xs="6">
+                    <MudSelect T="string" Label="Employment type" @bind-Value="Working.EmploymentType"
+                               Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true">
+                        <MudSelectItem Value="@("Full-time")">Full-time</MudSelectItem>
+                        <MudSelectItem Value="@("Part-time")">Part-time</MudSelectItem>
+                        <MudSelectItem Value="@("Contract")">Contract</MudSelectItem>
+                        <MudSelectItem Value="@("Intern")">Intern</MudSelectItem>
+                    </MudSelect>
+                </MudItem>
+            </MudGrid>
+
+            <MudSelect T="string" Label="Location" @bind-Value="Working.Location"
+                       Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true">
+                <MudSelectItem Value="@("Remote")">Remote</MudSelectItem>
+                <MudSelectItem Value="@("Hybrid - BGC")">Hybrid - BGC</MudSelectItem>
+                <MudSelectItem Value="@("Hybrid - Makati")">Hybrid - Makati</MudSelectItem>
+                <MudSelectItem Value="@("On-site - BGC")">On-site - BGC</MudSelectItem>
+                <MudSelectItem Value="@("On-site - Makati")">On-site - Makati</MudSelectItem>
+            </MudSelect>
+
+            <MudGrid Spacing="2">
+                <MudItem xs="4">
+                    <MudNumericField T="int" Label="Openings" @bind-Value="Working.Openings" Min="1"
+                                     Variant="Variant.Outlined" Margin="Margin.Dense" />
+                </MudItem>
+                <MudItem xs="4">
+                    <MudNumericField T="decimal" Label="Salary min" @bind-Value="Working.SalaryMin" Min="0" Step="1000"
+                                     Variant="Variant.Outlined" Margin="Margin.Dense"
+                                     Adornment="Adornment.Start" AdornmentText="â‚±" />
+                </MudItem>
+                <MudItem xs="4">
+                    <MudNumericField T="decimal" Label="Salary max" @bind-Value="Working.SalaryMax" Min="0" Step="1000"
+                                     Variant="Variant.Outlined" Margin="Margin.Dense"
+                                     Adornment="Adornment.Start" AdornmentText="â‚±" />
+                </MudItem>
+            </MudGrid>
+
+            <MudGrid Spacing="2">
+                <MudItem xs="6">
+                    <MudDatePicker Label="Target fill by" @bind-Date="Working.TargetFillBy"
+                                   Variant="Variant.Outlined" Margin="Margin.Dense" />
+                </MudItem>
+                <MudItem xs="6">
+                    <MudSelect T="string" Label="Status" @bind-Value="Working.Status"
+                               Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true">
+                        <MudSelectItem Value="@("Draft")">Draft</MudSelectItem>
+                        <MudSelectItem Value="@("Open")">Open</MudSelectItem>
+                        <MudSelectItem Value="@("On Hold")">On Hold</MudSelectItem>
+                        <MudSelectItem Value="@("Closed")">Closed</MudSelectItem>
+                    </MudSelect>
+                </MudItem>
+            </MudGrid>
+
+            <MudTextField T="string" Label="Description" @bind-Value="Working.Description"
+                          Variant="Variant.Outlined" Lines="3" />
+        </MudStack>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" DisableElevation="true" OnClick="Save">
+            @(IsEditing ? "Save Changes" : "Post Role")
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = default!;
+    [Parameter] public JobRequisition? Existing { get; set; }
+
+    private JobRequisition Working { get; set; } = new();
+    private bool IsEditing => Existing != null;
+
+    protected override void OnInitialized()
+    {
+        if (Existing != null)
+        {
+            Working = Existing;
+        }
+        else
+        {
+            Working = new JobRequisition
+            {
+                Dept = "Engineering",
+                EmploymentType = "Full-time",
+                Location = "Hybrid - BGC",
+                Openings = 1,
+                Status = "Draft",
+                Owner = "JD",
+                OwnerAv = "primary",
+                SalaryMin = 50000,
+                SalaryMax = 80000,
+            };
+        }
+    }
+
+    private void Cancel() => MudDialog.Cancel();
+
+    private void Save()
+    {
+        if (string.IsNullOrWhiteSpace(Working.Title) || string.IsNullOrWhiteSpace(Working.Dept))
+        {
+            MudDialog.Cancel();
+            return;
+        }
+        MudDialog.Close(DialogResult.Ok(Working));
+    }
+}

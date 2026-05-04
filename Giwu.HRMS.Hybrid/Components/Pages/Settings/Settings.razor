@@ -1,0 +1,1236 @@
+﻿@page "/settings"
+@using Giwu.HRMS.Hybrid.Services;
+@using Giwu.HRMS.Hybrid.Components.Pages.Settings.Components
+@using static Giwu.HRMS.Hybrid.Models.SettingsFormatting
+@inject ThemeService Theme
+@inject SettingsService SettingsService
+@inject RoleAuthService Roles
+@inject NavigationManager Navigation
+@inject ISnackbar Snackbar
+@inject IDialogService DialogService
+@inject IJSRuntime JS
+@implements IDisposable
+
+<PageTitle>Settings</PageTitle>
+
+<div class="settings-shell">
+
+    @* â”€â”€ Left section nav â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ *@
+    <aside class="settings-nav">
+        <div class="settings-nav-header">
+            <MudText Typo="Typo.overline" Style="opacity:.5;letter-spacing:.08em">Settings</MudText>
+        </div>
+        @foreach (var sec in VisibleSections)
+        {
+            <button type="button"
+                    class="@($"settings-nav-item {(ActiveSection == sec.Id ? "active" : "")}")"
+                    @onclick="@(() => ActiveSection = sec.Id)">
+                <MudIcon Icon="@sec.Icon" Size="Size.Small" />
+                <span>@sec.Label</span>
+                @if (sec.Id == "branding" && BrandingDirty)
+                {
+                    <span class="settings-dirty-dot" title="Unsaved changes"></span>
+                }
+                @if (sec.Id == "organization" && OrgDirty)
+                {
+                    <span class="settings-dirty-dot" title="Unsaved changes"></span>
+                }
+                @if (sec.Id == "localization" && LocaleDirty)
+                {
+                    <span class="settings-dirty-dot" title="Unsaved changes"></span>
+                }
+            </button>
+        }
+    </aside>
+
+    @* â”€â”€ Right content panel â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ *@
+    <div class="settings-content">
+
+        @if (ActiveSection == "branding")
+        {
+            @* â•â• BRANDING â•â• *@
+            <SettingsSectionHeader
+                Title="Branding"
+                Description="Company name, logo, and theme. Changes here update the sidebar and topbar in real time."
+                Dirty="@BrandingDirty"
+                OnSave="@SaveBranding"
+                OnReset="@RevertBranding" />
+
+            <div class="settings-card">
+                <div class="settings-card-header">
+                    <MudText Typo="Typo.subtitle2" Class="fw-medium">Identity</MudText>
+                </div>
+                <div class="settings-card-body">
+                    <MudGrid Spacing="3">
+                        <MudItem xs="12" md="7">
+                            <MudTextField T="string" Label="Company name" Value="@DraftCompanyName"
+                                          ValueChanged="@(v => { DraftCompanyName = v ?? ""; })"
+                                          HelperText="Shown on the sidebar, the topbar, and on outgoing payslips/reports."
+                                          Variant="Variant.Outlined" Margin="Margin.Dense" />
+                        </MudItem>
+                        <MudItem xs="12" md="5">
+                            <div class="settings-field-label">Logo</div>
+                            <div class="settings-logo-row">
+                                <div class="settings-logo-preview">
+                                    @if (!string.IsNullOrEmpty(DraftLogoDataUrl))
+                                    {
+                                        <img src="@DraftLogoDataUrl" alt="Logo preview" />
+                                    }
+                                    else
+                                    {
+                                        <span class="settings-logo-placeholder">No logo</span>
+                                    }
+                                </div>
+                                <div class="settings-logo-actions">
+                                    <MudButton Variant="Variant.Outlined" Size="Size.Small"
+                                               StartIcon="@Icons.Material.Outlined.Upload"
+                                               OnClick="OpenLogoUploadDialog">Upload</MudButton>
+                                    @if (!string.IsNullOrEmpty(DraftLogoDataUrl))
+                                    {
+                                        <MudButton Variant="Variant.Outlined" Color="Color.Error" Size="Size.Small"
+                                                   StartIcon="@Icons.Material.Outlined.Delete"
+                                                   OnClick="@(() => DraftLogoDataUrl = "")">Remove</MudButton>
+                                    }
+                                </div>
+                            </div>
+                            <div class="settings-helper">PNG or SVG, square aspect, transparent background recommended.</div>
+                        </MudItem>
+                    </MudGrid>
+                </div>
+            </div>
+
+            <div class="settings-card">
+                <div class="settings-card-header">
+                    <MudText Typo="Typo.subtitle2" Class="fw-medium">Theme</MudText>
+                </div>
+                <div class="settings-card-body">
+                    <div class="settings-field-label">Mode</div>
+                    <div class="settings-theme-row">
+                        <button type="button"
+                                class="@($"settings-theme-card {(!DraftIsDark ? "active" : "")}")"
+                                @onclick="@(() => DraftIsDark = false)">
+                            <div class="settings-theme-preview settings-theme-light">
+                                <span class="settings-theme-bar"></span>
+                                <span class="settings-theme-block"></span>
+                                <span class="settings-theme-block-2"></span>
+                            </div>
+                            <div class="settings-theme-card-label">
+                                <MudIcon Icon="@Icons.Material.Outlined.LightMode" Size="Size.Small" />
+                                <span>Light</span>
+                            </div>
+                        </button>
+                        <button type="button"
+                                class="@($"settings-theme-card {(DraftIsDark ? "active" : "")}")"
+                                @onclick="@(() => DraftIsDark = true)">
+                            <div class="settings-theme-preview settings-theme-dark">
+                                <span class="settings-theme-bar"></span>
+                                <span class="settings-theme-block"></span>
+                                <span class="settings-theme-block-2"></span>
+                            </div>
+                            <div class="settings-theme-card-label">
+                                <MudIcon Icon="@Icons.Material.Outlined.DarkMode" Size="Size.Small" />
+                                <span>Dark</span>
+                            </div>
+                        </button>
+                    </div>
+
+                    <div class="settings-field-label" style="margin-top:18px">Accent color</div>
+                    <div class="settings-accent-row">
+                        @foreach (var preset in CommonAccentPresets())
+                        {
+                            <button type="button"
+                                    class="@($"settings-accent-swatch {(DraftAccent == preset ? "active" : "")}")"
+                                    style="@($"background:{preset}")"
+                                    title="@preset"
+                                    @onclick="@(() => DraftAccent = preset)">
+                                @if (DraftAccent == preset)
+                                {
+                                    <MudIcon Icon="@Icons.Material.Filled.Check" Size="Size.Small" Style="color:white" />
+                                }
+                            </button>
+                        }
+                        <MudTextField T="string" Value="@DraftAccent"
+                                      ValueChanged="@(v => { DraftAccent = v ?? ""; })"
+                                      Variant="Variant.Outlined" Margin="Margin.Dense"
+                                      Class="settings-accent-input"
+                                      Placeholder="#1D9E75" />
+                    </div>
+                    <div class="settings-helper">Used for primary buttons, active states, and KPI dots across the app.</div>
+                </div>
+            </div>
+        }
+
+        else if (ActiveSection == "organization")
+        {
+            @* â•â• ORGANIZATION â•â• *@
+            <SettingsSectionHeader
+                Title="Organization"
+                Description="Legal entity details, address, and PH employer registration numbers used on statutory filings."
+                Dirty="@OrgDirty"
+                OnSave="@SaveOrganization"
+                OnReset="@RevertOrganization" />
+
+            <div class="settings-card">
+                <div class="settings-card-header">
+                    <MudText Typo="Typo.subtitle2" Class="fw-medium">Legal Entity</MudText>
+                </div>
+                <div class="settings-card-body">
+                    <MudGrid Spacing="2">
+                        <MudItem xs="12" sm="7">
+                            <MudTextField T="string" Label="Legal name" @bind-Value="DraftOrg.LegalName"
+                                          Variant="Variant.Outlined" Margin="Margin.Dense" />
+                        </MudItem>
+                        <MudItem xs="12" sm="5">
+                            <MudTextField T="string" Label="Trade name (DBA)" @bind-Value="DraftOrg.TradeName"
+                                          Variant="Variant.Outlined" Margin="Margin.Dense" />
+                        </MudItem>
+                        <MudItem xs="12">
+                            <MudTextField T="string" Label="Address" @bind-Value="DraftOrg.Address"
+                                          Variant="Variant.Outlined" Margin="Margin.Dense" />
+                        </MudItem>
+                        <MudItem xs="12" sm="5">
+                            <MudTextField T="string" Label="City" @bind-Value="DraftOrg.City"
+                                          Variant="Variant.Outlined" Margin="Margin.Dense" />
+                        </MudItem>
+                        <MudItem xs="12" sm="5">
+                            <MudTextField T="string" Label="Province / Region" @bind-Value="DraftOrg.Province"
+                                          Variant="Variant.Outlined" Margin="Margin.Dense" />
+                        </MudItem>
+                        <MudItem xs="12" sm="2">
+                            <MudTextField T="string" Label="ZIP" @bind-Value="DraftOrg.PostalCode"
+                                          Variant="Variant.Outlined" Margin="Margin.Dense" />
+                        </MudItem>
+                        <MudItem xs="12" sm="4">
+                            <MudTextField T="string" Label="Phone" @bind-Value="DraftOrg.Phone"
+                                          Variant="Variant.Outlined" Margin="Margin.Dense"
+                                          Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Outlined.Phone" />
+                        </MudItem>
+                        <MudItem xs="12" sm="4">
+                            <MudTextField T="string" Label="Email" @bind-Value="DraftOrg.Email"
+                                          Variant="Variant.Outlined" Margin="Margin.Dense"
+                                          Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Outlined.Email" />
+                        </MudItem>
+                        <MudItem xs="12" sm="4">
+                            <MudTextField T="string" Label="Website" @bind-Value="DraftOrg.Website"
+                                          Variant="Variant.Outlined" Margin="Margin.Dense"
+                                          Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Outlined.Public" />
+                        </MudItem>
+                    </MudGrid>
+                </div>
+            </div>
+
+            <div class="settings-card">
+                <div class="settings-card-header">
+                    <div>
+                        <MudText Typo="Typo.subtitle2" Class="fw-medium">PH Employer Registration</MudText>
+                        <MudText Typo="Typo.caption" Style="opacity:.55">Used on BIR, SSS, PhilHealth, Pag-IBIG, and DOLE filings.</MudText>
+                    </div>
+                </div>
+                <div class="settings-card-body">
+                    <MudGrid Spacing="2">
+                        <MudItem xs="12" sm="6">
+                            <MudTextField T="string" Label="TIN" @bind-Value="DraftOrg.Tin"
+                                          HelperText="Tax Identification Number"
+                                          Variant="Variant.Outlined" Margin="Margin.Dense" />
+                        </MudItem>
+                        <MudItem xs="12" sm="6">
+                            <MudTextField T="string" Label="RDO Code" @bind-Value="DraftOrg.RdoCode"
+                                          HelperText="Revenue District Office"
+                                          Variant="Variant.Outlined" Margin="Margin.Dense" />
+                        </MudItem>
+                        <MudItem xs="12" sm="6">
+                            <MudTextField T="string" Label="SSS Employer No." @bind-Value="DraftOrg.SssEmployerNo"
+                                          Variant="Variant.Outlined" Margin="Margin.Dense" />
+                        </MudItem>
+                        <MudItem xs="12" sm="6">
+                            <MudTextField T="string" Label="PhilHealth Employer No." @bind-Value="DraftOrg.PhilHealthEmployerNo"
+                                          Variant="Variant.Outlined" Margin="Margin.Dense" />
+                        </MudItem>
+                        <MudItem xs="12" sm="6">
+                            <MudTextField T="string" Label="Pag-IBIG Employer No." @bind-Value="DraftOrg.PagibigEmployerNo"
+                                          Variant="Variant.Outlined" Margin="Margin.Dense" />
+                        </MudItem>
+                        <MudItem xs="12" sm="6">
+                            <MudTextField T="string" Label="DOLE Establishment No." @bind-Value="DraftOrg.DoleEstablishmentNo"
+                                          Variant="Variant.Outlined" Margin="Margin.Dense" />
+                        </MudItem>
+                    </MudGrid>
+                </div>
+            </div>
+        }
+
+        else if (ActiveSection == "localization")
+        {
+            @* â•â• LOCALIZATION â•â• *@
+            <SettingsSectionHeader
+                Title="Localization"
+                Description="Timezone, date format, currency, and fiscal year."
+                Dirty="@LocaleDirty"
+                OnSave="@SaveLocalization"
+                OnReset="@RevertLocalization" />
+
+            <div class="settings-card">
+                <div class="settings-card-header">
+                    <MudText Typo="Typo.subtitle2" Class="fw-medium">Regional</MudText>
+                </div>
+                <div class="settings-card-body">
+                    <MudGrid Spacing="2">
+                        <MudItem xs="12" sm="6">
+                            <MudSelect T="string" Label="Timezone" @bind-Value="DraftLocale.Timezone"
+                                       Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true">
+                                @foreach (var tz in CommonTimezones())
+                                {
+                                    <MudSelectItem Value="@tz">@tz</MudSelectItem>
+                                }
+                            </MudSelect>
+                        </MudItem>
+                        <MudItem xs="12" sm="6">
+                            <MudSelect T="DateFormat" Label="Date format" @bind-Value="DraftLocale.DateFormat"
+                                       Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true">
+                                @foreach (var df in Enum.GetValues<DateFormat>())
+                                {
+                                    <MudSelectItem Value="@df">@DateFormatLabel(df)</MudSelectItem>
+                                }
+                            </MudSelect>
+                        </MudItem>
+                        <MudItem xs="12" sm="4">
+                            <MudTextField T="string" Label="Currency code" @bind-Value="DraftLocale.CurrencyCode"
+                                          MaxLength="3"
+                                          Variant="Variant.Outlined" Margin="Margin.Dense" />
+                        </MudItem>
+                        <MudItem xs="12" sm="4">
+                            <MudTextField T="string" Label="Currency symbol" @bind-Value="DraftLocale.CurrencySymbol"
+                                          MaxLength="3"
+                                          Variant="Variant.Outlined" Margin="Margin.Dense" />
+                        </MudItem>
+                        <MudItem xs="12" sm="4">
+                            <MudSelect T="WeekStart" Label="Week starts on" @bind-Value="DraftLocale.WeekStart"
+                                       Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true">
+                                <MudSelectItem Value="@WeekStart.Sunday">Sunday</MudSelectItem>
+                                <MudSelectItem Value="@WeekStart.Monday">Monday</MudSelectItem>
+                            </MudSelect>
+                        </MudItem>
+                        <MudItem xs="12" sm="6">
+                            <MudSelect T="int" Label="Fiscal year starts" @bind-Value="DraftLocale.FiscalYearStartMonth"
+                                       Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true">
+                                @for (int m = 1; m <= 12; m++)
+                                {
+                                    var month = m;
+                                    <MudSelectItem Value="@month">@MonthName(month)</MudSelectItem>
+                                }
+                            </MudSelect>
+                        </MudItem>
+                    </MudGrid>
+                </div>
+            </div>
+        }
+
+        else if (ActiveSection == "payroll")
+        {
+            @* â•â• PAYROLL DEFAULTS â•â• *@
+            <SettingsSectionHeader
+                Title="Payroll Defaults"
+                Description="Default values used when creating new pay runs. Individual runs can override these."
+                Dirty="false"
+                OnSave="@SavePayroll" />
+
+            <div class="settings-card">
+                <div class="settings-card-header">
+                    <MudText Typo="Typo.subtitle2" Class="fw-medium">Pay Schedule</MudText>
+                </div>
+                <div class="settings-card-body">
+                    <MudGrid Spacing="2">
+                        <MudItem xs="12" sm="6">
+                            <MudSelect T="PayFrequency" Label="Pay frequency" @bind-Value="SettingsService.Payroll.PayFrequency"
+                                       Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true">
+                                @foreach (var f in Enum.GetValues<PayFrequency>())
+                                {
+                                    <MudSelectItem Value="@f">@PayFrequencyLabel(f)</MudSelectItem>
+                                }
+                            </MudSelect>
+                        </MudItem>
+                        @if (SettingsService.Payroll.PayFrequency == PayFrequency.SemiMonthly)
+                        {
+                            <MudItem xs="6" sm="3">
+                                <MudNumericField T="int" Label="First cutoff day" @bind-Value="SettingsService.Payroll.FirstCutoffDay"
+                                                 Min="1" Max="28"
+                                                 Variant="Variant.Outlined" Margin="Margin.Dense" />
+                            </MudItem>
+                            <MudItem xs="6" sm="3">
+                                <MudNumericField T="int" Label="Second cutoff day" @bind-Value="SettingsService.Payroll.SecondCutoffDay"
+                                                 Min="1" Max="31"
+                                                 Variant="Variant.Outlined" Margin="Margin.Dense" />
+                            </MudItem>
+                        }
+                    </MudGrid>
+                </div>
+            </div>
+
+            <div class="settings-card">
+                <div class="settings-card-header">
+                    <MudText Typo="Typo.subtitle2" Class="fw-medium">Overtime &amp; Premium Rates</MudText>
+                </div>
+                <div class="settings-card-body">
+                    <MudGrid Spacing="2">
+                        <MudItem xs="6" sm="3">
+                            <MudNumericField T="decimal" Label="Regular OT" @bind-Value="SettingsService.Payroll.RegularOvertimeRate"
+                                             HelperText="Ã— hourly rate" Step="0.05M"
+                                             Variant="Variant.Outlined" Margin="Margin.Dense" />
+                        </MudItem>
+                        <MudItem xs="6" sm="3">
+                            <MudNumericField T="decimal" Label="Rest day OT" @bind-Value="SettingsService.Payroll.RestDayOvertimeRate"
+                                             HelperText="Ã— hourly rate" Step="0.05M"
+                                             Variant="Variant.Outlined" Margin="Margin.Dense" />
+                        </MudItem>
+                        <MudItem xs="6" sm="3">
+                            <MudNumericField T="decimal" Label="Holiday OT" @bind-Value="SettingsService.Payroll.HolidayOvertimeRate"
+                                             HelperText="Ã— hourly rate" Step="0.05M"
+                                             Variant="Variant.Outlined" Margin="Margin.Dense" />
+                        </MudItem>
+                        <MudItem xs="6" sm="3">
+                            <MudNumericField T="decimal" Label="Night diff" @bind-Value="SettingsService.Payroll.NightDifferentialRate"
+                                             HelperText="Ã— hourly rate" Step="0.05M"
+                                             Variant="Variant.Outlined" Margin="Margin.Dense" />
+                        </MudItem>
+                    </MudGrid>
+                </div>
+            </div>
+
+            <div class="settings-card">
+                <div class="settings-card-header">
+                    <MudText Typo="Typo.subtitle2" Class="fw-medium">Computation Behavior</MudText>
+                </div>
+                <div class="settings-card-body">
+                    <MudCheckBox T="bool" @bind-Value="SettingsService.Payroll.IncludeAllowanceIn13thMonth" Dense="true">
+                        <MudText Typo="Typo.body2">Include allowances in 13th month pay basis</MudText>
+                    </MudCheckBox>
+                    <MudCheckBox T="bool" @bind-Value="SettingsService.Payroll.IncludeOtIn13thMonth" Dense="true">
+                        <MudText Typo="Typo.body2">Include overtime in 13th month pay basis</MudText>
+                    </MudCheckBox>
+                    <MudCheckBox T="bool" @bind-Value="SettingsService.Payroll.RoundStatutoryDeductions" Dense="true">
+                        <MudText Typo="Typo.body2">Round statutory deductions to 2 decimal places</MudText>
+                    </MudCheckBox>
+                </div>
+            </div>
+        }
+
+        else if (ActiveSection == "notifications")
+        {
+            @* â•â• NOTIFICATIONS â•â• *@
+            <SettingsSectionHeader
+                Title="Notifications"
+                Description="Choose how you're notified for each type of HR event."
+                Dirty="false"
+                OnSave="@SaveNotifications" />
+
+            <div class="settings-card">
+                <div class="settings-card-header">
+                    <MudText Typo="Typo.subtitle2" Class="fw-medium">Triggers</MudText>
+                </div>
+                <div class="settings-notif-list">
+                    @{
+                        var notifs = new (string Label, string Desc, Func<NotificationChannel> Get, Action<NotificationChannel> Set)[]
+                        {
+                            ("New leave request",
+                             "When an employee files a leave request that needs your approval.",
+                             () => SettingsService.Notifications.NewLeaveRequest,
+                             v => SettingsService.Notifications.NewLeaveRequest = v),
+                            ("Leave approved",
+                             "When a request you filed (or one in your team) is approved.",
+                             () => SettingsService.Notifications.LeaveApproved,
+                             v => SettingsService.Notifications.LeaveApproved = v),
+                            ("Leave rejected",
+                             "When a request you filed is rejected.",
+                             () => SettingsService.Notifications.LeaveRejected,
+                             v => SettingsService.Notifications.LeaveRejected = v),
+                            ("Payroll generated",
+                             "When a new pay run moves to Calculated state.",
+                             () => SettingsService.Notifications.PayrollGenerated,
+                             v => SettingsService.Notifications.PayrollGenerated = v),
+                            ("Payslip released",
+                             "When a payslip is released to an employee.",
+                             () => SettingsService.Notifications.PayslipReleased,
+                             v => SettingsService.Notifications.PayslipReleased = v),
+                            ("Contract expiring",
+                             "Alerts 30 days before a probationary or fixed-term contract ends.",
+                             () => SettingsService.Notifications.ContractExpiring,
+                             v => SettingsService.Notifications.ContractExpiring = v),
+                            ("Birthday reminder",
+                             "Daily roundup of upcoming employee birthdays.",
+                             () => SettingsService.Notifications.BirthdayReminder,
+                             v => SettingsService.Notifications.BirthdayReminder = v),
+                            ("Compliance deadline",
+                             "Alerts before BIR, SSS, PhilHealth, Pag-IBIG, or DOLE filings are due.",
+                             () => SettingsService.Notifications.ComplianceDeadline,
+                             v => SettingsService.Notifications.ComplianceDeadline = v),
+                            ("Benefits renewal",
+                             "When a benefit program is approaching its renewal date.",
+                             () => SettingsService.Notifications.BenefitsRenewal,
+                             v => SettingsService.Notifications.BenefitsRenewal = v),
+                            ("New hire onboarding",
+                             "Alerts on the first day of new hires for HR check-ins.",
+                             () => SettingsService.Notifications.NewHireOnboarding,
+                             v => SettingsService.Notifications.NewHireOnboarding = v),
+                        };
+                    }
+                    @foreach (var n in notifs)
+                    {
+                        var getter = n.Get;
+                        var setter = n.Set;
+                        <div class="settings-notif-row">
+                            <div class="settings-notif-meta">
+                                <div class="settings-notif-label">@n.Label</div>
+                                <div class="settings-notif-desc">@n.Desc</div>
+                            </div>
+                            <MudSelect T="NotificationChannel" Value="@getter()"
+                                       ValueChanged="@((NotificationChannel v) => setter(v))"
+                                       Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true"
+                                       Style="min-width:160px">
+                                @foreach (var c in Enum.GetValues<NotificationChannel>())
+                                {
+                                    <MudSelectItem Value="@c">@NotificationChannelLabel(c)</MudSelectItem>
+                                }
+                            </MudSelect>
+                        </div>
+                    }
+                </div>
+            </div>
+        }
+
+        else if (ActiveSection == "security")
+        {
+            @* â•â• SECURITY â•â• *@
+            <SettingsSectionHeader
+                Title="Security"
+                Description="Password policy, multi-factor authentication, and session controls."
+                Dirty="false"
+                OnSave="@SaveSecurity" />
+
+            <div class="settings-card">
+                <div class="settings-card-header">
+                    <MudText Typo="Typo.subtitle2" Class="fw-medium">Authentication</MudText>
+                </div>
+                <div class="settings-card-body">
+                    <div class="settings-toggle-row">
+                        <div>
+                            <div class="settings-field-label" style="margin-bottom:2px">Multi-factor authentication</div>
+                            <div class="settings-helper" style="margin-top:0">Require a one-time code from an authenticator app at sign-in.</div>
+                        </div>
+                        <MudSwitch T="bool" @bind-Value="SettingsService.Security.RequireMfa" Color="Color.Primary" />
+                    </div>
+                </div>
+            </div>
+
+            <div class="settings-card">
+                <div class="settings-card-header">
+                    <MudText Typo="Typo.subtitle2" Class="fw-medium">Password Policy</MudText>
+                </div>
+                <div class="settings-card-body">
+                    <MudGrid Spacing="2">
+                        <MudItem xs="12" sm="6">
+                            <MudNumericField T="int" Label="Minimum length" @bind-Value="SettingsService.Security.MinPasswordLength"
+                                             Min="6" Max="64"
+                                             Variant="Variant.Outlined" Margin="Margin.Dense" />
+                        </MudItem>
+                        <MudItem xs="12" sm="6">
+                            <MudNumericField T="int" Label="Expires after (days, 0 = never)" @bind-Value="SettingsService.Security.PasswordExpiryDays"
+                                             Min="0" Max="365"
+                                             Variant="Variant.Outlined" Margin="Margin.Dense" />
+                        </MudItem>
+                    </MudGrid>
+                    <div class="settings-checkbox-grid">
+                        <MudCheckBox T="bool" @bind-Value="SettingsService.Security.RequireUppercase" Dense="true">
+                            <MudText Typo="Typo.body2">Uppercase letter</MudText>
+                        </MudCheckBox>
+                        <MudCheckBox T="bool" @bind-Value="SettingsService.Security.RequireLowercase" Dense="true">
+                            <MudText Typo="Typo.body2">Lowercase letter</MudText>
+                        </MudCheckBox>
+                        <MudCheckBox T="bool" @bind-Value="SettingsService.Security.RequireNumber" Dense="true">
+                            <MudText Typo="Typo.body2">Number</MudText>
+                        </MudCheckBox>
+                        <MudCheckBox T="bool" @bind-Value="SettingsService.Security.RequireSpecial" Dense="true">
+                            <MudText Typo="Typo.body2">Special character</MudText>
+                        </MudCheckBox>
+                    </div>
+                </div>
+            </div>
+
+            <div class="settings-card">
+                <div class="settings-card-header">
+                    <MudText Typo="Typo.subtitle2" Class="fw-medium">Session</MudText>
+                </div>
+                <div class="settings-card-body">
+                    <MudGrid Spacing="2">
+                        <MudItem xs="12" sm="6">
+                            <MudSelect T="SessionTimeout" Label="Idle timeout" @bind-Value="SettingsService.Security.SessionTimeout"
+                                       Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true">
+                                @foreach (var t in Enum.GetValues<SessionTimeout>())
+                                {
+                                    <MudSelectItem Value="@t">@SessionTimeoutLabel(t)</MudSelectItem>
+                                }
+                            </MudSelect>
+                        </MudItem>
+                        <MudItem xs="12" sm="6">
+                            <MudNumericField T="int" Label="Max failed login attempts" @bind-Value="SettingsService.Security.MaxFailedLoginAttempts"
+                                             Min="3" Max="10"
+                                             Variant="Variant.Outlined" Margin="Margin.Dense" />
+                        </MudItem>
+                    </MudGrid>
+                </div>
+            </div>
+        }
+
+        else if (ActiveSection == "integrations")
+        {
+            @* â•â• INTEGRATIONS â•â• *@
+            <SettingsSectionHeader
+                Title="Integrations"
+                Description="External services connected to your HR system."
+                Dirty="false" />
+
+            <div class="settings-card">
+                <div class="settings-integrations-list">
+                    @foreach (var integ in SettingsService.Integrations)
+                    {
+                        <div class="settings-integ-row">
+                            <div class="settings-integ-icon">
+                                <MudIcon Icon="@IntegrationIcon(integ.Icon)" Size="Size.Medium" Style="opacity:.7" />
+                            </div>
+                            <div class="settings-integ-meta">
+                                <div class="settings-integ-name">
+                                    <span class="fw-medium">@integ.Name</span>
+                                    <span class="settings-integ-provider">via @integ.Provider</span>
+                                </div>
+                                <div class="settings-integ-desc">@integ.Description</div>
+                                @if (integ.IsConnected && integ.ConnectedOn.HasValue)
+                                {
+                                    <div class="settings-integ-since">
+                                        Connected since @integ.ConnectedOn.Value.ToString("MMM yyyy")
+                                    </div>
+                                }
+                            </div>
+                            <div class="settings-integ-action">
+                                @if (integ.IsConnected)
+                                {
+                                    <span class="settings-integ-status-pill connected">Connected</span>
+                                    <MudButton Variant="Variant.Outlined" Color="Color.Error" Size="Size.Small"
+                                               OnClick="@(() => DisconnectIntegration(integ))">Disconnect</MudButton>
+                                }
+                                else
+                                {
+                                    <MudButton Variant="Variant.Filled" Color="Color.Primary" DisableElevation="true" Size="Size.Small"
+                                               OnClick="@(() => ConnectIntegration(integ))">Connect</MudButton>
+                                }
+                            </div>
+                        </div>
+                    }
+                </div>
+            </div>
+        }
+
+        else if (ActiveSection == "roles" && IsAdmin)
+        {
+            @* â•â• ROLES & PERMISSIONS â•â• *@
+            <SettingsSectionHeader
+                Title="Roles & Permissions"
+                Description="Control which sidebar items each role can see. Only HR Admins can edit this matrix."
+                Dirty="false" />
+
+            <RolesPermissionsSection />
+        }
+
+        else if (ActiveSection == "danger")
+        {
+            @* â•â• DANGER ZONE â•â• *@
+            <SettingsSectionHeader
+                Title="Danger Zone"
+                Description="Irreversible operations. Use with care."
+                Dirty="false" />
+
+            <div class="settings-card settings-card-danger">
+                <div class="settings-card-header settings-card-header-danger">
+                    <div>
+                        <MudText Typo="Typo.subtitle2" Class="fw-medium" Style="color:var(--mud-palette-error-text, #791F1F)">
+                            Reset all settings to defaults
+                        </MudText>
+                        <MudText Typo="Typo.caption" Style="opacity:.7">
+                            Restores Branding, Organization, and Localization to factory defaults.
+                            Does not affect employee data or run history.
+                        </MudText>
+                    </div>
+                    <MudButton Variant="Variant.Filled" Color="Color.Error" DisableElevation="true"
+                               StartIcon="@Icons.Material.Outlined.RestartAlt"
+                               OnClick="OpenResetDialog">Reset Settings</MudButton>
+                </div>
+            </div>
+        }
+    </div>
+</div>
+
+@* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+   STYLES
+â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• *@
+<style>
+    :root {
+        --set-green:        #1D9E75;
+        --set-green-light:  #E1F5EE;
+        --set-green-text:   #085041;
+        --set-red:          #E24B4A;
+        --set-red-light:    #FCEBEB;
+        --set-red-text:     #791F1F;
+        --set-amber:        #BA7517;
+        --set-amber-light:  #FAEEDA;
+        --set-amber-text:   #633806;
+    }
+
+    .settings-shell {
+        display: flex;
+        gap: 24px;
+        align-items: flex-start;
+    }
+
+    /* â”€â”€ Left nav â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+    .settings-nav {
+        width: 220px;
+        flex-shrink: 0;
+        position: sticky;
+        top: 80px;
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+    }
+    .settings-nav-header {
+        padding: 4px 12px 8px;
+    }
+    .settings-nav-item {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 9px 12px;
+        border: none;
+        background: none;
+        border-radius: 8px;
+        cursor: pointer;
+        font-size: 13px;
+        color: var(--mud-palette-text-secondary);
+        text-align: left;
+        font-family: inherit;
+        transition: background .1s, color .1s;
+        position: relative;
+    }
+    .settings-nav-item:hover {
+        background: var(--mud-palette-background-grey);
+        color: var(--mud-palette-text-primary);
+    }
+    .settings-nav-item.active {
+        background: var(--set-green-light);
+        color: var(--set-green-text);
+        font-weight: 500;
+    }
+    .settings-nav-item.active .mud-icon-root { color: var(--set-green-text); }
+    .settings-dirty-dot {
+        width: 7px; height: 7px;
+        border-radius: 50%;
+        background: var(--set-amber);
+        margin-left: auto;
+        flex-shrink: 0;
+    }
+
+    /* â”€â”€ Right content â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+    .settings-content {
+        flex: 1;
+        min-width: 0;
+        max-width: 880px;
+    }
+
+    .settings-card {
+        border: 0.5px solid var(--mud-palette-divider);
+        border-radius: 10px;
+        background: var(--mud-palette-background);
+        margin-bottom: 16px;
+        overflow: hidden;
+    }
+    .settings-card-header {
+        padding: 14px 18px;
+        border-bottom: 0.5px solid var(--mud-palette-divider);
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 12px;
+    }
+    .settings-card-body {
+        padding: 18px;
+    }
+    .settings-card-danger {
+        border-color: var(--set-red);
+    }
+    .settings-card-header-danger {
+        background: var(--set-red-light);
+        border-bottom-color: var(--set-red-light);
+        align-items: center;
+    }
+
+    .fw-medium { font-weight: 500; }
+
+    .settings-field-label {
+        font-size: 11px;
+        letter-spacing: .04em;
+        text-transform: uppercase;
+        opacity: .55;
+        font-weight: 500;
+        margin-bottom: 8px;
+    }
+    .settings-helper {
+        font-size: 11px;
+        opacity: .55;
+        margin-top: 4px;
+    }
+
+    /* â”€â”€ Logo upload â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+    .settings-logo-row {
+        display: flex; gap: 12px; align-items: flex-start;
+    }
+    .settings-logo-preview {
+        width: 64px; height: 64px;
+        border: 0.5px solid var(--mud-palette-divider);
+        border-radius: 8px;
+        display: flex; align-items: center; justify-content: center;
+        background: var(--mud-palette-background-grey);
+        flex-shrink: 0;
+        overflow: hidden;
+    }
+    .settings-logo-preview img {
+        max-width: 100%; max-height: 100%;
+        object-fit: contain;
+    }
+    .settings-logo-placeholder {
+        font-size: 10.5px; opacity: .55;
+    }
+    .settings-logo-actions {
+        display: flex; flex-direction: column; gap: 6px;
+    }
+
+    /* â”€â”€ Theme picker â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+    .settings-theme-row {
+        display: flex; gap: 12px; flex-wrap: wrap;
+    }
+    .settings-theme-card {
+        border: 1.5px solid var(--mud-palette-divider);
+        border-radius: 10px;
+        background: var(--mud-palette-background);
+        padding: 10px;
+        cursor: pointer;
+        font-family: inherit;
+        transition: border-color .1s, box-shadow .1s;
+        display: flex; flex-direction: column; align-items: center; gap: 8px;
+        width: 130px;
+    }
+    .settings-theme-card:hover { border-color: var(--set-green); }
+    .settings-theme-card.active {
+        border-color: var(--set-green);
+        box-shadow: 0 0 0 3px var(--set-green-light);
+    }
+    .settings-theme-preview {
+        width: 100px; height: 64px;
+        border-radius: 6px;
+        position: relative;
+        overflow: hidden;
+        display: flex; flex-direction: column; padding: 6px;
+        gap: 4px;
+    }
+    .settings-theme-light { background: #F8F9FA; border: 0.5px solid #E5E7EB; }
+    .settings-theme-dark  { background: #1F2937; border: 0.5px solid #374151; }
+    .settings-theme-bar {
+        height: 6px; border-radius: 2px;
+        background: var(--set-green);
+    }
+    .settings-theme-block {
+        height: 14px; border-radius: 3px;
+    }
+    .settings-theme-light .settings-theme-block { background: #E5E7EB; }
+    .settings-theme-dark  .settings-theme-block { background: #374151; }
+    .settings-theme-block-2 {
+        height: 18px; border-radius: 3px; width: 65%;
+    }
+    .settings-theme-light .settings-theme-block-2 { background: #F3F4F6; }
+    .settings-theme-dark  .settings-theme-block-2 { background: #4B5563; }
+    .settings-theme-card-label {
+        display: flex; align-items: center; gap: 6px;
+        font-size: 12.5px;
+    }
+
+    /* â”€â”€ Accent picker â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+    .settings-accent-row {
+        display: flex; gap: 6px; align-items: center; flex-wrap: wrap;
+    }
+    .settings-accent-swatch {
+        width: 30px; height: 30px;
+        border-radius: 50%;
+        border: 2px solid transparent;
+        cursor: pointer;
+        font-family: inherit;
+        display: flex; align-items: center; justify-content: center;
+        transition: transform .1s, border-color .1s;
+        padding: 0;
+    }
+    .settings-accent-swatch:hover { transform: scale(1.08); }
+    .settings-accent-swatch.active {
+        border-color: var(--mud-palette-text-primary);
+    }
+    .settings-accent-input {
+        max-width: 130px;
+        margin-left: 6px;
+    }
+
+    /* â”€â”€ Notifications list â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+    .settings-notif-list {
+        display: flex; flex-direction: column;
+    }
+    .settings-notif-row {
+        display: flex; align-items: flex-start; justify-content: space-between;
+        gap: 16px;
+        padding: 14px 18px;
+        border-bottom: 0.5px solid var(--mud-palette-divider);
+    }
+    .settings-notif-row:last-child { border-bottom: none; }
+    .settings-notif-meta { flex: 1; min-width: 0; }
+    .settings-notif-label { font-size: 13px; font-weight: 500; line-height: 1.3; }
+    .settings-notif-desc { font-size: 11.5px; opacity: .6; margin-top: 3px; line-height: 1.5; }
+
+    /* â”€â”€ Toggle row â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+    .settings-toggle-row {
+        display: flex; justify-content: space-between; align-items: center;
+        gap: 16px;
+    }
+
+    /* â”€â”€ Checkbox grid â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+    .settings-checkbox-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 4px 16px;
+        margin-top: 12px;
+    }
+
+    /* â”€â”€ Integrations â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+    .settings-integrations-list {
+        display: flex; flex-direction: column;
+    }
+    .settings-integ-row {
+        display: flex; gap: 14px; align-items: flex-start;
+        padding: 16px 18px;
+        border-bottom: 0.5px solid var(--mud-palette-divider);
+    }
+    .settings-integ-row:last-child { border-bottom: none; }
+    .settings-integ-icon {
+        width: 40px; height: 40px;
+        border-radius: 8px;
+        background: var(--mud-palette-background-grey);
+        display: flex; align-items: center; justify-content: center;
+        flex-shrink: 0;
+    }
+    .settings-integ-meta { flex: 1; min-width: 0; }
+    .settings-integ-name {
+        display: flex; align-items: center; gap: 6px;
+        font-size: 13px;
+    }
+    .settings-integ-provider { font-size: 11px; opacity: .55; }
+    .settings-integ-desc { font-size: 12px; opacity: .7; margin-top: 3px; line-height: 1.5; }
+    .settings-integ-since { font-size: 11px; opacity: .5; margin-top: 4px; }
+    .settings-integ-action {
+        display: flex; flex-direction: column; align-items: flex-end; gap: 6px;
+        flex-shrink: 0;
+    }
+    .settings-integ-status-pill {
+        font-size: 10px; font-weight: 500; letter-spacing: .04em; text-transform: uppercase;
+        padding: 2px 8px; border-radius: 100px;
+    }
+    .settings-integ-status-pill.connected {
+        background: var(--set-green-light);
+        color: var(--set-green-text);
+    }
+
+    @@media (max-width: 800px) {
+        .settings-shell { flex-direction: column; }
+        .settings-nav {
+            width: 100%; position: relative; top: auto;
+            flex-direction: row; overflow-x: auto;
+            border-bottom: 0.5px solid var(--mud-palette-divider);
+            padding-bottom: 8px; margin-bottom: 8px;
+        }
+        .settings-nav-item { white-space: nowrap; }
+        .settings-checkbox-grid { grid-template-columns: 1fr; }
+        .settings-notif-row { flex-direction: column; align-items: stretch; }
+        .settings-integ-row { flex-wrap: wrap; }
+        .settings-integ-action { width: 100%; align-items: stretch; }
+    }
+</style>
+
+@code {
+    // â”€â”€â”€ Sections â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    private record Section(string Id, string Label, string Icon);
+
+    private List<Section> Sections { get; } = new()
+    {
+        new("branding",      "Branding",            MudBlazor.Icons.Material.Outlined.Palette),
+        new("organization",  "Organization",        MudBlazor.Icons.Material.Outlined.Business),
+        new("localization",  "Localization",        MudBlazor.Icons.Material.Outlined.Language),
+        new("payroll",       "Payroll",             MudBlazor.Icons.Material.Outlined.Payments),
+        new("notifications", "Notifications",       MudBlazor.Icons.Material.Outlined.NotificationsNone),
+        new("security",      "Security",            MudBlazor.Icons.Material.Outlined.Lock),
+        new("roles",         "Roles & Permissions", MudBlazor.Icons.Material.Outlined.AdminPanelSettings),
+        new("integrations",  "Integrations",        MudBlazor.Icons.Material.Outlined.Extension),
+        new("danger",        "Danger Zone",         MudBlazor.Icons.Material.Outlined.Warning),
+    };
+
+    /// <summary>HR-Admin-only sections are filtered out for everyone else.</summary>
+    private IEnumerable<Section> VisibleSections =>
+        Sections.Where(s => s.Id != "roles" || IsAdmin);
+
+    private bool IsAdmin => Roles.CurrentUser.Role == UserRole.HrAdmin;
+
+    private string ActiveSection { get; set; } = "branding";
+
+    // â”€â”€â”€ Branding draft state â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    private string DraftCompanyName { get; set; } = "";
+    private string DraftLogoDataUrl { get; set; } = "";
+    private bool DraftIsDark { get; set; }
+    private string DraftAccent { get; set; } = "";
+
+    private bool BrandingDirty =>
+        DraftCompanyName != Theme.CompanyName
+        || DraftLogoDataUrl != (Theme.LogoDataUrl ?? "")
+        || DraftIsDark != Theme.IsDark
+        || DraftAccent != SettingsService.AccentColor;
+
+    // â”€â”€â”€ Organization draft state â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    private OrganizationProfile DraftOrg { get; set; } = new();
+    private bool OrgDirty => !OrgEquals(DraftOrg, SettingsService.Organization);
+
+    // â”€â”€â”€ Localization draft state â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    private LocalizationSettings DraftLocale { get; set; } = new();
+    private bool LocaleDirty => !LocaleEquals(DraftLocale, SettingsService.Localization);
+
+    protected override void OnInitialized()
+    {
+        // Page-level guard: only roles whose permission matrix grants Settings can land here.
+        if (!Roles.CanAccess(NavKeys.Settings))
+        {
+            Navigation.NavigateTo("/", replace: true);
+            return;
+        }
+
+        ResetBrandingDrafts();
+        ResetOrgDrafts();
+        ResetLocaleDrafts();
+        Theme.OnChange += OnThemeChange;
+        SettingsService.OnChange += StateHasChanged;
+        Roles.OnChange += OnRolesChange;
+    }
+
+    private void OnThemeChange()
+    {
+        InvokeAsync(StateHasChanged);
+    }
+
+    private void OnRolesChange()
+    {
+        // If the active section becomes invisible (e.g. admin-only "roles" tab while
+        // previewing as a non-admin), fall back to the first visible section.
+        if (!VisibleSections.Any(s => s.Id == ActiveSection))
+            ActiveSection = VisibleSections.FirstOrDefault()?.Id ?? "branding";
+
+        // If the new role can't access Settings at all, leave the page.
+        if (!Roles.CanAccess(NavKeys.Settings))
+        {
+            Navigation.NavigateTo("/", replace: true);
+            return;
+        }
+
+        InvokeAsync(StateHasChanged);
+    }
+
+    public void Dispose()
+    {
+        Theme.OnChange -= OnThemeChange;
+        SettingsService.OnChange -= StateHasChanged;
+        Roles.OnChange -= OnRolesChange;
+    }
+
+    // â”€â”€â”€ Branding actions â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    private void ResetBrandingDrafts()
+    {
+        DraftCompanyName = Theme.CompanyName;
+        DraftLogoDataUrl = Theme.LogoDataUrl ?? "";
+        DraftIsDark = Theme.IsDark;
+        DraftAccent = SettingsService.AccentColor;
+    }
+
+    private async Task SaveBranding()
+    {
+        Theme.SetCompanyName(DraftCompanyName);
+        Theme.SetLogo(DraftLogoDataUrl);
+        Theme.SetDark(DraftIsDark);
+        SettingsService.AccentColor = DraftAccent;
+        SettingsService.NotifyChanged();
+
+        // Push the dark/light mode change to the document so MudBlazor styles flip
+        try
+        {
+            await JS.InvokeVoidAsync("document.documentElement.setAttribute",
+                "data-theme", DraftIsDark ? "dark" : "light");
+        }
+        catch { /* JS may be unavailable in prerender */ }
+
+        Snackbar.Add("Branding updated", Severity.Success);
+    }
+
+    private void RevertBranding() => ResetBrandingDrafts();
+
+    private async Task OpenLogoUploadDialog()
+    {
+        var options = new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true };
+        var dialog = await DialogService.ShowAsync<LogoUploadDialog>("Upload Logo", new DialogParameters(), options);
+        var result = await dialog.Result;
+        if (result is not null && !result.Canceled && result.Data is string dataUrl)
+        {
+            DraftLogoDataUrl = dataUrl;
+            StateHasChanged();
+        }
+    }
+
+    // â”€â”€â”€ Organization actions â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    private void ResetOrgDrafts() => CopyOrg(SettingsService.Organization, DraftOrg);
+
+    private void SaveOrganization()
+    {
+        CopyOrg(DraftOrg, SettingsService.Organization);
+        SettingsService.NotifyChanged();
+        Snackbar.Add("Organization details saved", Severity.Success);
+    }
+
+    private void RevertOrganization() => ResetOrgDrafts();
+
+    // â”€â”€â”€ Localization actions â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    private void ResetLocaleDrafts() => CopyLocale(SettingsService.Localization, DraftLocale);
+
+    private void SaveLocalization()
+    {
+        CopyLocale(DraftLocale, SettingsService.Localization);
+        SettingsService.NotifyChanged();
+        Snackbar.Add("Localization saved", Severity.Success);
+    }
+
+    private void RevertLocalization() => ResetLocaleDrafts();
+
+    // â”€â”€â”€ Other section save handlers (settings are bound directly) â”€â”€
+    private void SavePayroll()
+    {
+        SettingsService.NotifyChanged();
+        Snackbar.Add("Payroll defaults saved", Severity.Success);
+    }
+
+    private void SaveNotifications()
+    {
+        SettingsService.NotifyChanged();
+        Snackbar.Add("Notification preferences saved", Severity.Success);
+    }
+
+    private void SaveSecurity()
+    {
+        SettingsService.NotifyChanged();
+        Snackbar.Add("Security settings saved", Severity.Success);
+    }
+
+    // â”€â”€â”€ Integration actions â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    private void ConnectIntegration(IntegrationStatus integ)
+    {
+        integ.IsConnected = true;
+        integ.ConnectedOn = DateTime.Now;
+        Snackbar.Add($"Connected to {integ.Provider}", Severity.Success);
+    }
+
+    private void DisconnectIntegration(IntegrationStatus integ)
+    {
+        integ.IsConnected = false;
+        integ.ConnectedOn = null;
+        Snackbar.Add($"Disconnected from {integ.Provider}", Severity.Info);
+    }
+
+    // â”€â”€â”€ Danger zone â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    private async Task OpenResetDialog()
+    {
+        var options = new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true };
+        var dialog = await DialogService.ShowAsync<ResetSettingsDialog>("Reset Settings", new DialogParameters(), options);
+        var result = await dialog.Result;
+        if (result is not null && !result.Canceled)
+        {
+            SettingsService.ResetToDefaults();
+            Theme.SetCompanyName("Giwu HR");
+            Theme.SetLogo("");
+            Theme.SetDark(false);
+            ResetBrandingDrafts();
+            ResetOrgDrafts();
+            ResetLocaleDrafts();
+            Snackbar.Add("All settings reset to defaults", Severity.Warning);
+        }
+    }
+
+    // â”€â”€â”€ Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    /// <summary>Maps the icon-name strings stored on IntegrationStatus to actual MudBlazor SVG path constants.</summary>
+    private static string IntegrationIcon(string name) => name switch
+    {
+        "Fingerprint" => MudBlazor.Icons.Material.Outlined.Fingerprint,
+        "Calculate"   => MudBlazor.Icons.Material.Outlined.Calculate,
+        "Email"       => MudBlazor.Icons.Material.Outlined.Email,
+        "Key"         => MudBlazor.Icons.Material.Outlined.Key,
+        "CloudQueue"  => MudBlazor.Icons.Material.Outlined.CloudQueue,
+        "Forum"       => MudBlazor.Icons.Material.Outlined.Forum,
+        _             => MudBlazor.Icons.Material.Outlined.Extension
+    };
+
+    private static void CopyOrg(OrganizationProfile from, OrganizationProfile to)
+    {
+        to.LegalName = from.LegalName;
+        to.TradeName = from.TradeName;
+        to.Address = from.Address;
+        to.City = from.City;
+        to.Province = from.Province;
+        to.PostalCode = from.PostalCode;
+        to.Phone = from.Phone;
+        to.Email = from.Email;
+        to.Website = from.Website;
+        to.Tin = from.Tin;
+        to.RdoCode = from.RdoCode;
+        to.SssEmployerNo = from.SssEmployerNo;
+        to.PhilHealthEmployerNo = from.PhilHealthEmployerNo;
+        to.PagibigEmployerNo = from.PagibigEmployerNo;
+        to.DoleEstablishmentNo = from.DoleEstablishmentNo;
+    }
+
+    private static bool OrgEquals(OrganizationProfile a, OrganizationProfile b)
+    {
+        return a.LegalName == b.LegalName && a.TradeName == b.TradeName
+            && a.Address == b.Address && a.City == b.City && a.Province == b.Province
+            && a.PostalCode == b.PostalCode && a.Phone == b.Phone && a.Email == b.Email
+            && a.Website == b.Website && a.Tin == b.Tin && a.RdoCode == b.RdoCode
+            && a.SssEmployerNo == b.SssEmployerNo && a.PhilHealthEmployerNo == b.PhilHealthEmployerNo
+            && a.PagibigEmployerNo == b.PagibigEmployerNo && a.DoleEstablishmentNo == b.DoleEstablishmentNo;
+    }
+
+    private static void CopyLocale(LocalizationSettings from, LocalizationSettings to)
+    {
+        to.Timezone = from.Timezone;
+        to.DateFormat = from.DateFormat;
+        to.CurrencyCode = from.CurrencyCode;
+        to.CurrencySymbol = from.CurrencySymbol;
+        to.WeekStart = from.WeekStart;
+        to.FiscalYearStartMonth = from.FiscalYearStartMonth;
+    }
+
+    private static bool LocaleEquals(LocalizationSettings a, LocalizationSettings b)
+    {
+        return a.Timezone == b.Timezone && a.DateFormat == b.DateFormat
+            && a.CurrencyCode == b.CurrencyCode && a.CurrencySymbol == b.CurrencySymbol
+            && a.WeekStart == b.WeekStart && a.FiscalYearStartMonth == b.FiscalYearStartMonth;
+    }
+}

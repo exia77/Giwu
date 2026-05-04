@@ -1,0 +1,116 @@
+﻿
+<MudDialog>
+    <DialogContent>
+        <MudStack Spacing="3">
+            <MudGrid Spacing="2">
+                <MudItem xs="12" sm="8">
+                    <MudTextField T="string" Label="Full name" @bind-Value="Working.Name"
+                                  Variant="Variant.Outlined" Margin="Margin.Dense" Required="true" />
+                </MudItem>
+                <MudItem xs="12" sm="4">
+                    <MudTextField T="string" Label="Initials" @bind-Value="Working.Init" MaxLength="3"
+                                  Variant="Variant.Outlined" Margin="Margin.Dense"
+                                  HelperText="e.g. MR" />
+                </MudItem>
+            </MudGrid>
+
+            <MudGrid Spacing="2">
+                <MudItem xs="12" sm="7">
+                    <MudTextField T="string" Label="Email" @bind-Value="Working.Email"
+                                  InputType="InputType.Email"
+                                  Variant="Variant.Outlined" Margin="Margin.Dense" />
+                </MudItem>
+                <MudItem xs="12" sm="5">
+                    <MudTextField T="string" Label="Phone" @bind-Value="Working.Phone"
+                                  Variant="Variant.Outlined" Margin="Margin.Dense" />
+                </MudItem>
+            </MudGrid>
+
+            <MudSelect T="string" Label="Applying for" @bind-Value="Working.JobId"
+                       Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true">
+                @foreach (var j in Jobs.Where(j => j.Status == "Open" || j.Id == Working.JobId))
+                {
+                    <MudSelectItem Value="@j.Id">@j.Title â€” @j.Dept</MudSelectItem>
+                }
+            </MudSelect>
+
+            <MudGrid Spacing="2">
+                <MudItem xs="6">
+                    <MudSelect T="string" Label="Source" @bind-Value="Working.Source"
+                               Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true">
+                        <MudSelectItem Value="@("LinkedIn")">LinkedIn</MudSelectItem>
+                        <MudSelectItem Value="@("Referral")">Referral</MudSelectItem>
+                        <MudSelectItem Value="@("Job Board")">Job Board</MudSelectItem>
+                        <MudSelectItem Value="@("Website")">Website</MudSelectItem>
+                    </MudSelect>
+                </MudItem>
+                <MudItem xs="6">
+                    <MudSelect T="int" Label="Rating" @bind-Value="Working.Rating"
+                               Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true">
+                        <MudSelectItem Value="0">Unrated</MudSelectItem>
+                        <MudSelectItem Value="1">1 â˜…</MudSelectItem>
+                        <MudSelectItem Value="2">2 â˜…</MudSelectItem>
+                        <MudSelectItem Value="3">3 â˜…</MudSelectItem>
+                        <MudSelectItem Value="4">4 â˜…</MudSelectItem>
+                        <MudSelectItem Value="5">5 â˜…</MudSelectItem>
+                    </MudSelect>
+                </MudItem>
+            </MudGrid>
+
+            <MudTextField T="string" Label="Notes" @bind-Value="Working.Notes"
+                          Variant="Variant.Outlined" Lines="3" />
+        </MudStack>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" DisableElevation="true" OnClick="Save">
+            @(IsEditing ? "Save Changes" : "Add Candidate")
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = default!;
+    [Parameter] public List<JobRequisition> Jobs { get; set; } = new();
+    [Parameter] public Candidate? Existing { get; set; }
+
+    private Candidate Working { get; set; } = new();
+    private bool IsEditing => Existing != null;
+
+    private static readonly string[] AvatarTokens = { "green", "blue", "amber", "red", "purple", "primary" };
+
+    protected override void OnInitialized()
+    {
+        if (Existing != null)
+        {
+            // Edit mode: bind directly to the existing record
+            Working = Existing;
+        }
+        else
+        {
+            // Add mode: stage a fresh record, pick defaults
+            Working = new Candidate
+            {
+                Av = AvatarTokens[new Random().Next(AvatarTokens.Length)],
+                Source = "LinkedIn",
+                JobId = Jobs.FirstOrDefault(j => j.Status == "Open")?.Id ?? "",
+            };
+        }
+    }
+
+    private void Cancel() => MudDialog.Cancel();
+
+    private void Save()
+    {
+        if (string.IsNullOrWhiteSpace(Working.Name)) { MudDialog.Cancel(); return; }
+
+        // Auto-compute initials if blank
+        if (string.IsNullOrWhiteSpace(Working.Init))
+        {
+            var parts = Working.Name.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+            Working.Init = string.Concat(parts.Take(2).Select(p => p[0])).ToUpper();
+        }
+
+        MudDialog.Close(DialogResult.Ok(Working));
+    }
+}

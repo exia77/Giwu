@@ -1,0 +1,34 @@
+<MudDatePicker Label="@Label"
+               Date="@Value"
+               DateChanged="@ValueChanged"
+               Placeholder="@Placeholder"
+               HelperText="@HelperText"
+               Required="@Required"
+               RequiredError="@RequiredError"
+               Disabled="@Disabled"
+               ReadOnly="@ReadOnly"
+               Variant="Variant.Outlined"
+               DateFormat="@DateFormat"
+               MinDate="@MinDate"
+               MaxDate="@MaxDate"
+               Editable="true"
+               For="@For"
+               Class="@Class" />
+
+@code {
+    [Parameter] public string? Label { get; set; }
+    [Parameter] public DateTime? Value { get; set; }
+    [Parameter] public EventCallback<DateTime?> ValueChanged { get; set; }
+    [Parameter] public string? Placeholder { get; set; }
+    [Parameter] public string? HelperText { get; set; }
+    [Parameter] public bool Required { get; set; }
+    [Parameter] public string RequiredError { get; set; } = "Date is required.";
+    [Parameter] public bool Disabled { get; set; }
+    [Parameter] public bool ReadOnly { get; set; }
+    [Parameter] public string DateFormat { get; set; } = "MM/dd/yyyy";
+    [Parameter] public DateTime? MinDate { get; set; }
+    [Parameter] public DateTime? MaxDate { get; set; }
+    [Parameter] public Expression<Func<DateTime?>>? For { get; set; }
+    [Parameter] public string? Class { get; set; }
+    [Parameter(CaptureUnmatchedValues = true)] public Dictionary<string, object>? AdditionalAttributes { get; set; }
+}

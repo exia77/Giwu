@@ -1,0 +1,101 @@
+@* ── Delete Employee Confirmation Dialog ── *@
+<MudDialog>
+    <TitleContent>
+        <div style="display:flex;align-items:center;gap:10px">
+            <div style="width:36px;height:36px;background:#FCEBEB;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0">
+                <svg width="16" height="16" fill="none" viewBox="0 0 16 16">
+                    <path d="M2 4h12M5 4V2.5a.5.5 0 0 1 .5-.5h5a.5.5 0 0 1 .5.5V4M6 7v5M10 7v5M3 4l.8 9.5a.5.5 0 0 0 .5.5h7.4a.5.5 0 0 0 .5-.5L13 4"
+                          stroke="#C62828" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+            </div>
+            <div>
+                <MudText Typo="Typo.subtitle1" Style="font-weight:600;line-height:1.2;color:#C62828">
+                    Remove Employee
+                </MudText>
+                <MudText Typo="Typo.caption" Style="opacity:.55">This action cannot be undone</MudText>
+            </div>
+        </div>
+    </TitleContent>
+
+    <DialogContent>
+
+        @* Employee preview card *@
+        <div style="display:flex;align-items:center;gap:12px;padding:14px 16px;border:1px solid var(--mud-palette-divider);border-radius:10px;margin-bottom:16px;background:var(--mud-palette-background-grey)">
+            <MudAvatar Style="@($"background:{Employee.AvatarBg};color:{Employee.AvatarFg};width:40px;height:40px;font-size:.85rem;font-weight:700")">
+                @Employee.Initials
+            </MudAvatar>
+            <div style="flex:1;min-width:0">
+                <MudText Typo="Typo.body2" Style="font-weight:600;line-height:1.2">@Employee.Name</MudText>
+                <MudText Typo="Typo.caption" Style="opacity:.55">@Employee.Role · @Employee.Dept</MudText>
+                <MudText Typo="Typo.caption" Style="opacity:.45">@Employee.Email</MudText>
+            </div>
+            <MudChip T="string" Size="Size.Small" Color="@Employee.ChipColor"
+                     Variant="Variant.Filled" Style="height:22px;font-size:.68rem">
+                @Employee.Status
+            </MudChip>
+        </div>
+
+        @* Warning message *@
+        <div style="display:flex;gap:10px;padding:12px 14px;background:#FFF5F5;border:1px solid #FECACA;border-radius:8px;margin-bottom:8px">
+            <svg width="16" height="16" fill="none" viewBox="0 0 16 16" style="flex-shrink:0;margin-top:1px">
+                <path d="M8 1.5L1 14h14L8 1.5z" stroke="#C62828" stroke-width="1.3" stroke-linejoin="round"/>
+                <line x1="8" y1="6.5" x2="8" y2="10" stroke="#C62828" stroke-width="1.3" stroke-linecap="round"/>
+                <circle cx="8" cy="12" r=".6" fill="#C62828"/>
+            </svg>
+            <MudText Typo="Typo.caption" Style="color:#C62828;line-height:1.5">
+                Removing <strong>@Employee.Name</strong> will permanently delete their profile,
+                employment history, leave records, and all associated data. This cannot be reversed.
+            </MudText>
+        </div>
+
+        @* Confirmation checkbox *@
+        <MudCheckBox @bind-Value="_confirmed"
+                     Dense="true"
+                     Style="margin-top:4px">
+            <MudText Typo="Typo.caption">
+                I understand this will permanently remove this employee
+            </MudText>
+        </MudCheckBox>
+
+    </DialogContent>
+
+    <DialogActions>
+        <MudButton Variant="Variant.Text"
+                   Style="text-transform:none"
+                   OnClick="Cancel">
+            Cancel
+        </MudButton>
+        <MudButton Variant="Variant.Filled"
+                   Color="Color.Error"
+                   Style="text-transform:none;border-radius:8px"
+                   StartIcon="@Icons.Material.Outlined.Delete"
+                   OnClick="Confirm"
+                   Disabled="!_confirmed">
+            Remove Employee
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] IMudDialogInstance MudDialog { get; set; } = default!;
+
+    [Parameter] public DeleteTarget Employee { get; set; } = default!;
+
+    bool _confirmed;
+
+    public class DeleteTarget
+    {
+        public string Initials  { get; set; } = "";
+        public string AvatarBg  { get; set; } = "";
+        public string AvatarFg  { get; set; } = "";
+        public string Name      { get; set; } = "";
+        public string Role      { get; set; } = "";
+        public string Dept      { get; set; } = "";
+        public string Status    { get; set; } = "";
+        public Color  ChipColor { get; set; }
+        public string Email     { get; set; } = "";
+    }
+
+    void Confirm() => MudDialog.Close(DialogResult.Ok(true));
+    void Cancel()  => MudDialog.Cancel();
+}

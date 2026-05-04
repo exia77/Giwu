@@ -1,0 +1,329 @@
+﻿
+@inherits LayoutComponentBase
+@inject NavigationManager Navigation
+@inject ThemeService Theme
+@inject AuthService Auth
+@inject RoleAuthService RoleAuth
+@inject IJSRuntime JS
+@implements IDisposable
+
+
+<MudLayout>
+
+  @* â”€â”€ Sidebar drawer â”€â”€ *@
+  <MudDrawer Open="true" Variant="DrawerVariant.Persistent" Elevation="0"
+             Style="border-right:1px solid var(--mud-palette-divider)">
+
+    <MudDrawerHeader Style="padding:16px 20px;border-bottom:1px solid var(--mud-palette-divider)">
+      <div style="display:flex;align-items:center;gap:10px">
+        <div class="brand-icon @(!string.IsNullOrEmpty(Theme.LogoDataUrl) ? "has-logo" : "")">
+          @if (!string.IsNullOrEmpty(Theme.LogoDataUrl))
+          {
+            <img src="@Theme.LogoDataUrl" class="brand-logo-sm" alt="logo" />
+          }
+          else
+          {
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+              <circle cx="8" cy="8" r="3" fill="white"/>
+              <line x1="8" y1="1" x2="8" y2="4" stroke="white" stroke-width="1.5"/>
+              <line x1="8" y1="12" x2="8" y2="15" stroke="white" stroke-width="1.5"/>
+              <line x1="1" y1="8" x2="4" y2="8" stroke="white" stroke-width="1.5"/>
+              <line x1="12" y1="8" x2="15" y2="8" stroke="white" stroke-width="1.5"/>
+              <line x1="3" y1="3" x2="5.2" y2="5.2" stroke="white" stroke-width="1.2"/>
+              <line x1="10.8" y1="10.8" x2="13" y2="13" stroke="white" stroke-width="1.2"/>
+              <line x1="13" y1="3" x2="10.8" y2="5.2" stroke="white" stroke-width="1.2"/>
+              <line x1="5.2" y1="10.8" x2="3" y2="13" stroke="white" stroke-width="1.2"/>
+            </svg>
+          }
+        </div>
+        <MudText Typo="Typo.subtitle1" Class="fw-bold" Style="line-height:1">@Theme.CompanyName</MudText>
+      </div>
+    </MudDrawerHeader>
+
+    <MudNavMenu>
+      @* â”€â”€ MAIN â”€â”€ *@
+      @if (RoleAuth.CanSee(NavKeys.Dashboard))
+      {
+        <MudText Typo="Typo.overline" Class="px-4 pt-3 pb-1"
+                 Style="opacity:.5;font-size:.65rem;letter-spacing:.08em">Main</MudText>
+
+        <MudNavLink Href="/" Match="NavLinkMatch.All"
+                    Icon="@Icons.Material.Outlined.GridView">Dashboard</MudNavLink>
+      }
+
+      @* â”€â”€ PEOPLE â”€â”€ shown if the user can see ANY people-related page *@
+      @{
+          var canSeePeopleSection = RoleAuth.CanSee(NavKeys.Employees)
+                                  || RoleAuth.CanSee(NavKeys.Departments)
+                                  || RoleAuth.CanSee(NavKeys.Attendance)
+                                  || RoleAuth.CanSee(NavKeys.Recruitment);
+      }
+      @if (canSeePeopleSection)
+      {
+        <MudText Typo="Typo.overline" Class="px-4 pt-3 pb-1"
+                 Style="opacity:.5;font-size:.65rem;letter-spacing:.08em">People</MudText>
+
+        @if (RoleAuth.CanSee(NavKeys.Employees))
+        {
+          <MudNavLink Href="/employees" Match="NavLinkMatch.Prefix"
+                      Icon="@Icons.Material.Outlined.Person">Employees</MudNavLink>
+        }
+        @if (RoleAuth.CanSee(NavKeys.Departments))
+        {
+          <MudNavLink Href="/departments" Match="NavLinkMatch.Prefix"
+                      Icon="@Icons.Material.Outlined.Groups">Departments</MudNavLink>
+        }
+        @if (RoleAuth.CanSee(NavKeys.Attendance))
+        {
+          <MudNavLink Href="/attendance" Match="NavLinkMatch.Prefix"
+                      Icon="@Icons.Material.Outlined.CalendarMonth">
+            <div style="display:flex;align-items:center;justify-content:space-between;width:100%">
+              Attendance
+              <MudChip T="string" Size="Size.Small" Color="Color.Error"
+                       Variant="Variant.Filled" Style="height:18px;font-size:.65rem;min-width:unset;padding:0 6px">3</MudChip>
+            </div>
+          </MudNavLink>
+        }
+        @if (RoleAuth.CanSee(NavKeys.Recruitment))
+        {
+          <MudNavLink Href="/recruitment" Match="NavLinkMatch.Prefix"
+                      Icon="@Icons.Material.Outlined.WorkOutline">Recruitment</MudNavLink>
+        }
+      }
+
+      @* â”€â”€ PAYROLL â”€â”€ *@
+      @{
+          var canSeePayrollSection = RoleAuth.CanSee(NavKeys.Payroll)
+                                   || RoleAuth.CanSee(NavKeys.Benefits);
+      }
+      @if (canSeePayrollSection)
+      {
+        <MudText Typo="Typo.overline" Class="px-4 pt-3 pb-1"
+                 Style="opacity:.5;font-size:.65rem;letter-spacing:.08em">Payroll</MudText>
+
+        @if (RoleAuth.CanSee(NavKeys.Payroll))
+        {
+          <MudNavLink Href="/payroll" Match="NavLinkMatch.Prefix"
+                      Icon="@Icons.Material.Outlined.CreditCard">Payroll</MudNavLink>
+        }
+        @if (RoleAuth.CanSee(NavKeys.Benefits))
+        {
+          <MudNavLink Href="/benefits" Match="NavLinkMatch.Prefix"
+                      Icon="@Icons.Material.Outlined.VolunteerActivism">Benefits</MudNavLink>
+        }
+      }
+
+      @* â”€â”€ MORE â”€â”€ *@
+      @{
+          var canSeeMoreSection = RoleAuth.CanSee(NavKeys.Leave)
+                                || RoleAuth.CanSee(NavKeys.Reports)
+                                || RoleAuth.CanSee(NavKeys.Settings);
+      }
+      @if (canSeeMoreSection)
+      {
+        <MudText Typo="Typo.overline" Class="px-4 pt-3 pb-1"
+                 Style="opacity:.5;font-size:.65rem;letter-spacing:.08em">More</MudText>
+
+        @if (RoleAuth.CanSee(NavKeys.Leave))
+        {
+          <MudNavLink Href="/leave" Match="NavLinkMatch.Prefix"
+                      Icon="@Icons.Material.Outlined.Schedule">
+            <div style="display:flex;align-items:center;justify-content:space-between;width:100%">
+              Leave &amp; Time Off
+              <MudChip T="string" Size="Size.Small" Color="Color.Error"
+                       Variant="Variant.Filled" Style="height:18px;font-size:.65rem;min-width:unset;padding:0 6px">5</MudChip>
+            </div>
+          </MudNavLink>
+        }
+        @if (RoleAuth.CanSee(NavKeys.Reports))
+        {
+          <MudNavLink Href="/reports" Match="NavLinkMatch.Prefix"
+                      Icon="@Icons.Material.Outlined.Description">Reports</MudNavLink>
+        }
+        @if (RoleAuth.CanSee(NavKeys.Settings))
+        {
+          <MudNavLink Href="/settings" Match="NavLinkMatch.Prefix"
+                      Icon="@Icons.Material.Outlined.Settings">Settings</MudNavLink>
+        }
+      }
+    </MudNavMenu>
+
+    <MudSpacer />
+
+    @* â”€â”€ Footer with the current user's identity (driven by RoleAuth) â”€â”€ *@
+    <div style="padding:14px 16px;border-top:1px solid var(--mud-palette-divider);
+                display:flex;align-items:center;gap:10px">
+      <MudAvatar Style="@($"width:30px;height:30px;font-size:.72rem;{AvatarStyleFor(RoleAuth.CurrentUser.AvatarColor)}")">
+        @RoleAuth.CurrentUser.Initials
+      </MudAvatar>
+      <div style="flex:1;min-width:0">
+        <MudText Typo="Typo.body2" Class="fw-semibold" Style="line-height:1.2">
+          @RoleAuth.CurrentUser.Name
+        </MudText>
+        <MudText Typo="Typo.caption" Style="opacity:.55">
+          @RoleAuthService.RoleLabel(RoleAuth.CurrentUser.Role)
+        </MudText>
+      </div>
+    </div>
+
+  </MudDrawer>
+
+  @* â”€â”€ Top app bar â”€â”€ *@
+  <MudAppBar Elevation="0"
+             Style="border-bottom:1px solid var(--mud-palette-divider);background:var(--mud-palette-background)">
+    <div style="flex:1">
+      <MudText Typo="Typo.h6" Class="fw-semibold" Style="line-height:1.1">@TopbarTitle</MudText>
+      <MudText Typo="Typo.caption" Style="opacity:.55">@Today.ToString("dddd, MMMM d, yyyy")</MudText>
+    </div>
+    <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Style="font-size:.7rem">
+      Q2 Â· Week @WeekNumber
+    </MudChip>
+
+    @* â”€â”€ Demo role-switcher â”€â”€ lets the user preview the app from different roles *@
+    <MudMenu Dense="true" PopoverClass="role-switcher-pop">
+      <ActivatorContent>
+        <MudButton Variant="Variant.Outlined" Size="Size.Small"
+                   StartIcon="@Icons.Material.Outlined.SwitchAccount"
+                   EndIcon="@Icons.Material.Outlined.KeyboardArrowDown"
+                   Style="text-transform:none;font-weight:400">
+          <span style="display:flex;align-items:center;gap:6px">
+            <span class="@($"role-pill {RoleAuthService.RoleBadgeClass(RoleAuth.CurrentUser.Role)}")">
+              @RoleAuthService.RoleLabel(RoleAuth.CurrentUser.Role)
+            </span>
+          </span>
+        </MudButton>
+      </ActivatorContent>
+      <ChildContent>
+        <div class="role-switcher-header">
+          <MudText Typo="Typo.overline" Style="opacity:.55;letter-spacing:.06em">View as</MudText>
+          <MudText Typo="Typo.caption" Style="opacity:.55;font-size:11px;line-height:1.4">
+            Switch perspectives to verify nav-menu visibility per role.
+          </MudText>
+        </div>
+        @foreach (var u in RoleAuth.AvailableUsers)
+        {
+          var isActive = u.Id == RoleAuth.CurrentUser.Id;
+          <button type="button"
+                  class="@($"role-switcher-row {(isActive ? "active" : "")}")"
+                  @onclick="@(() => SwitchUser(u.Id))">
+            <MudAvatar Style="@($"width:30px;height:30px;font-size:11px;{AvatarStyleFor(u.AvatarColor)}")">@u.Initials</MudAvatar>
+            <div class="role-switcher-meta">
+              <div class="role-switcher-name">@u.Name</div>
+              <div class="role-switcher-role">
+                <span class="@($"role-pill role-pill-sm {RoleAuthService.RoleBadgeClass(u.Role)}")">
+                  @RoleAuthService.RoleLabel(u.Role)
+                </span>
+              </div>
+            </div>
+            @if (isActive)
+            {
+              <MudIcon Icon="@Icons.Material.Filled.Check" Size="Size.Small" Color="Color.Success" />
+            }
+          </button>
+        }
+        <div class="role-switcher-footer">
+          Edit role permissions in <a href="/settings">Settings â†’ Roles &amp; Permissions</a>
+        </div>
+      </ChildContent>
+    </MudMenu>
+
+    <GiwuThemeToggle ButtonClass="theme-toggle-inline" />
+    <MudIconButton Icon="@Icons.Material.Outlined.Notifications" Size="Size.Small" />
+    <MudAvatar Style="@($"width:30px;height:30px;font-size:.72rem;cursor:pointer;margin-left:4px;{AvatarStyleFor(RoleAuth.CurrentUser.AvatarColor)}")">
+      @RoleAuth.CurrentUser.Initials
+    </MudAvatar>
+  </MudAppBar>
+
+  @* â”€â”€ Page content â”€â”€ *@
+  <MudMainContent>
+    <div style="padding:24px">
+      @Body
+    </div>
+  </MudMainContent>
+
+  <div class="watermark-wrap">
+    <GiwuWatermark />
+  </div>
+</MudLayout>
+
+
+@code {
+    private string RelPath => Navigation.ToBaseRelativePath(Navigation.Uri);
+
+    private string TopbarTitle => RelPath.StartsWith("settings", StringComparison.OrdinalIgnoreCase)
+        ? "Settings"
+        : $"Good {Greeting}, {FirstName(RoleAuth.CurrentUser.Name)}";
+
+    private string Greeting => DateTime.Now.Hour < 12 ? "morning"
+        : DateTime.Now.Hour < 17 ? "afternoon" : "evening";
+
+    private DateTime Today => DateTime.Now;
+    private int WeekNumber => System.Globalization.ISOWeek.GetWeekOfYear(DateTime.Now);
+
+    private static string FirstName(string fullName) =>
+        fullName.Split(' ', StringSplitOptions.RemoveEmptyEntries).FirstOrDefault() ?? "there";
+
+    /// <summary>Maps the avatar color hint to inline style. Mirrors the helpers
+    /// on the per-page Models files so the topbar/sidebar avatars match the rest
+    /// of the app's color language.</summary>
+    private static string AvatarStyleFor(string av) => av switch
+    {
+        "green"   => "background:#E1F5EE;color:#085041",
+        "blue"    => "background:#E6F1FB;color:#0C447C",
+        "amber"   => "background:#FAEEDA;color:#633806",
+        "red"     => "background:#FCEBEB;color:#791F1F",
+        "purple"  => "background:#EEEDFE;color:#3C3489",
+        "primary" => "background:#E1F5EE;color:#085041",
+        _ => ""
+    };
+
+    private void SwitchUser(string userId)
+    {
+        RoleAuth.SetCurrentUser(userId);
+
+        // If the new role can't access the page they're currently on, bounce them home.
+        // This keeps the demo from leaving someone stranded on a Settings page they
+        // shouldn't see after switching to Employee.
+        var currentRoute = "/" + RelPath.TrimEnd('/');
+        var keyForCurrent = NavKeyForRoute(currentRoute);
+        if (keyForCurrent != null && !RoleAuth.CanSee(keyForCurrent))
+        {
+            Navigation.NavigateTo("/", replace: true);
+        }
+    }
+
+    private static string? NavKeyForRoute(string route)
+    {
+        // Match the route against the known nav keys. Returns null for paths that
+        // aren't gated (e.g. /login, /profile).
+        if (route == "" || route == "/") return NavKeys.Dashboard;
+        foreach (var key in NavKeys.All)
+        {
+            var navRoute = NavKeys.Route(key);
+            if (navRoute != "/" && route.StartsWith(navRoute, StringComparison.OrdinalIgnoreCase))
+                return key;
+        }
+        return null;
+    }
+
+    protected override void OnInitialized()
+    {
+        if (!Auth.IsLoggedIn)
+            Navigation.NavigateTo("/login");
+        Theme.OnChange += StateHasChanged;
+        RoleAuth.OnChange += StateHasChanged;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+            await JS.InvokeVoidAsync("document.documentElement.setAttribute",
+                "data-theme", Theme.IsDark ? "dark" : "light");
+    }
+
+    public void Dispose()
+    {
+        Theme.OnChange -= StateHasChanged;
+        RoleAuth.OnChange -= StateHasChanged;
+    }
+}

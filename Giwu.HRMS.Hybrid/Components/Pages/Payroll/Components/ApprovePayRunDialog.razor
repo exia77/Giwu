@@ -1,0 +1,91 @@
+﻿@using static Giwu.HRMS.Hybrid.Models.PayrollFormatting
+
+<MudDialog>
+    <DialogContent>
+        <MudAlert Severity="Severity.Warning" Dense="true" Class="mb-3">
+            Once approved, the pay run is locked and ready for release. You can still reopen it if adjustments are needed before release.
+        </MudAlert>
+
+        <div class="approve-summary">
+            <div class="approve-row">
+                <span class="approve-key">Period</span>
+                <span>@Run.Period Â· @FmtPeriodRange(Run.PeriodStart, Run.PeriodEnd)</span>
+            </div>
+            <div class="approve-row">
+                <span class="approve-key">Employees</span>
+                <span>@Run.Slips.Count</span>
+            </div>
+            <div class="approve-row">
+                <span class="approve-key">Total Gross</span>
+                <span class="num">@Money(Run.Slips.Sum(s => s.Gross))</span>
+            </div>
+            <div class="approve-row">
+                <span class="approve-key">Total Deductions</span>
+                <span class="num neg">âˆ’@Money(Run.Slips.Sum(s => s.TotalDeductions))</span>
+            </div>
+            <div class="approve-row approve-net">
+                <span class="approve-key">Total Net Payable</span>
+                <span class="num">@Money(Run.Slips.Sum(s => s.Net))</span>
+            </div>
+        </div>
+
+        <MudTextField T="string" Label="Approver name" @bind-Value="ApproverName"
+                      HelperText="Your full name will be recorded with the approval"
+                      Variant="Variant.Outlined" Margin="Margin.Dense" Class="mt-3" />
+
+        <MudCheckBox T="bool" @bind-Value="Attested" Size="Size.Small" Dense="true" Class="mt-2">
+            <MudText Typo="Typo.caption">
+                I confirm that I have reviewed all line items and approve this pay run for release.
+            </MudText>
+        </MudCheckBox>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" DisableElevation="true"
+                   OnClick="Confirm" Disabled="@(!CanConfirm)">
+            Approve Pay Run
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+<style>
+    .approve-summary {
+        border: 0.5px solid var(--mud-palette-divider);
+        border-radius: 8px;
+        overflow: hidden;
+    }
+    .approve-row {
+        display: flex;
+        justify-content: space-between;
+        padding: 9px 12px;
+        font-size: 13px;
+        border-bottom: 0.5px solid var(--mud-palette-divider);
+    }
+    .approve-row:last-child { border-bottom: none; }
+    .approve-key { opacity: .6; }
+    .approve-net {
+        background: var(--pay-green-light);
+        color: var(--pay-green-text);
+        font-weight: 600;
+    }
+    .num { font-variant-numeric: tabular-nums; }
+    .neg { color: var(--pay-red-text); }
+</style>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = default!;
+    [Parameter] public PayRun Run { get; set; } = default!;
+
+    private string ApproverName { get; set; } = "Jane Dela Cruz";
+    private bool Attested { get; set; } = false;
+
+    private bool CanConfirm => !string.IsNullOrWhiteSpace(ApproverName) && Attested;
+
+    private void Cancel() => MudDialog.Cancel();
+
+    private void Confirm()
+    {
+        if (!CanConfirm) return;
+        MudDialog.Close(DialogResult.Ok<string>(ApproverName));
+    }
+}

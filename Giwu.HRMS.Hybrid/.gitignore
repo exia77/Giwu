@@ -1,0 +1,50 @@
+# ── Build output ──────────────────────────────────────────────────────────
+bin/
+obj/
+out/
+publish/
+AppPackages/
+BundleArtifacts/
+*.binlog
+
+# ── IDE / OS ──────────────────────────────────────────────────────────────
+.vs/
+.vscode/
+.idea/
+*.user
+*.suo
+*.cache
+*.log
+*.swp
+.DS_Store
+Thumbs.db
+
+# ── .NET / NuGet ──────────────────────────────────────────────────────────
+*.nupkg
+*.snupkg
+project.lock.json
+project.assets.json
+TestResults/
+
+# ── Secrets / signing — NEVER commit ──────────────────────────────────────
+*.pfx
+*.p12
+*.snk
+*.cer
+appsettings.Development.json
+appsettings.*.local.json
+secrets.json
+.env
+.env.*
+
+# ── MAUI / Android / iOS artefacts ────────────────────────────────────────
+*.apk
+*.aab
+*.ipa
+*.app
+*.dSYM/
+*.xcarchive/
+
+# ── Misc ──────────────────────────────────────────────────────────────────
+node_modules/
+*.tmp

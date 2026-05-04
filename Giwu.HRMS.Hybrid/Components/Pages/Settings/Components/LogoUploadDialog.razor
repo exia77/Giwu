@@ -1,0 +1,198 @@
+@using Microsoft.AspNetCore.Components.Forms
+
+<MudDialog>
+    <DialogContent>
+        <MudText Typo="Typo.body2" Style="opacity:.7" Class="mb-3">
+            Upload a logo for your sidebar and reports. PNG, SVG, or JPG, ideally square with a transparent background. Maximum 2 MB.
+        </MudText>
+
+        <div class="logo-upload-area">
+            @if (string.IsNullOrEmpty(PreviewDataUrl))
+            {
+                <MudFileUpload T="IBrowserFile" FilesChanged="OnFileChanged" Accept=".png,.jpg,.jpeg,.svg"
+                               MaximumFileCount="1">
+                    <ActivatorContent>
+                        <div class="logo-drop-zone">
+                            <MudIcon Icon="@Icons.Material.Outlined.CloudUpload" Size="Size.Large" Style="opacity:.5" />
+                            <MudText Typo="Typo.body2" Class="mt-2">Click to choose a file</MudText>
+                            <MudText Typo="Typo.caption" Style="opacity:.55" Class="mt-1">PNG · JPG · SVG · max 2 MB</MudText>
+                        </div>
+                    </ActivatorContent>
+                </MudFileUpload>
+            }
+            else
+            {
+                <div class="logo-preview-card">
+                    <div class="logo-preview-frame">
+                        <img src="@PreviewDataUrl" alt="Logo preview" />
+                    </div>
+                    <div class="logo-preview-meta">
+                        <MudText Typo="Typo.body2" Class="fw-medium">@FileName</MudText>
+                        <MudText Typo="Typo.caption" Style="opacity:.55">@FmtFileSize(FileSize)</MudText>
+                    </div>
+                    <MudIconButton Icon="@Icons.Material.Outlined.Delete" Color="Color.Error" Size="Size.Small"
+                                   OnClick="@(() => { PreviewDataUrl = ""; FileName = ""; FileSize = 0; })" />
+                </div>
+
+                <div class="logo-preview-context">
+                    <div class="logo-preview-label">Preview in sidebar</div>
+                    <div class="logo-sidebar-mock">
+                        <div class="logo-sidebar-icon">
+                            <img src="@PreviewDataUrl" alt="" />
+                        </div>
+                        <span class="logo-sidebar-name">Your Company</span>
+                    </div>
+                </div>
+            }
+        </div>
+
+        @if (!string.IsNullOrEmpty(ErrorMessage))
+        {
+            <MudAlert Severity="Severity.Error" Dense="true" Class="mt-3" Style="font-size:12px">
+                @ErrorMessage
+            </MudAlert>
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" DisableElevation="true"
+                   Disabled="@string.IsNullOrEmpty(PreviewDataUrl)"
+                   OnClick="Confirm">Use this Logo</MudButton>
+    </DialogActions>
+</MudDialog>
+
+<style>
+    .logo-upload-area { min-height: 160px; }
+
+    .logo-drop-zone {
+        border: 1.5px dashed var(--mud-palette-divider);
+        border-radius: 10px;
+        padding: 40px 16px;
+        display: flex; flex-direction: column; align-items: center; justify-content: center;
+        text-align: center;
+        cursor: pointer;
+        transition: border-color .15s, background .15s;
+        min-height: 160px;
+    }
+    .logo-drop-zone:hover {
+        border-color: var(--set-green, #1D9E75);
+        background: var(--mud-palette-background-grey);
+    }
+
+    .logo-preview-card {
+        display: flex; align-items: center; gap: 12px;
+        padding: 12px;
+        border: 0.5px solid var(--mud-palette-divider);
+        border-radius: 10px;
+        background: var(--mud-palette-background-grey);
+    }
+    .logo-preview-frame {
+        width: 64px; height: 64px;
+        background: var(--mud-palette-background);
+        border: 0.5px solid var(--mud-palette-divider);
+        border-radius: 8px;
+        display: flex; align-items: center; justify-content: center;
+        overflow: hidden;
+        flex-shrink: 0;
+    }
+    .logo-preview-frame img {
+        max-width: 100%; max-height: 100%;
+        object-fit: contain;
+    }
+    .logo-preview-meta { flex: 1; min-width: 0; }
+
+    .logo-preview-context {
+        margin-top: 16px;
+        padding-top: 16px;
+        border-top: 0.5px solid var(--mud-palette-divider);
+    }
+    .logo-preview-label {
+        font-size: 10.5px;
+        letter-spacing: .06em;
+        text-transform: uppercase;
+        opacity: .55;
+        font-weight: 500;
+        margin-bottom: 8px;
+    }
+    .logo-sidebar-mock {
+        display: flex; align-items: center; gap: 10px;
+        padding: 14px 16px;
+        background: var(--mud-palette-background);
+        border: 0.5px solid var(--mud-palette-divider);
+        border-radius: 8px;
+    }
+    .logo-sidebar-icon {
+        width: 30px; height: 30px;
+        border-radius: 6px;
+        overflow: hidden;
+        background: var(--mud-palette-background-grey);
+        display: flex; align-items: center; justify-content: center;
+        flex-shrink: 0;
+    }
+    .logo-sidebar-icon img {
+        width: 100%; height: 100%; object-fit: contain;
+    }
+    .logo-sidebar-name { font-size: 14px; font-weight: 600; }
+
+    .fw-medium { font-weight: 500; }
+</style>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = default!;
+
+    private string PreviewDataUrl { get; set; } = "";
+    private string FileName { get; set; } = "";
+    private long FileSize { get; set; }
+    private string ErrorMessage { get; set; } = "";
+
+    private const long MaxFileSize = 2 * 1024 * 1024; // 2 MB
+
+    private async Task OnFileChanged(IBrowserFile? file)
+    {
+        ErrorMessage = "";
+        if (file == null) return;
+
+        if (file.Size > MaxFileSize)
+        {
+            ErrorMessage = $"File is too large ({FmtFileSize(file.Size)}). Maximum 2 MB.";
+            return;
+        }
+
+        var allowedTypes = new[] { "image/png", "image/jpeg", "image/jpg", "image/svg+xml" };
+        if (!allowedTypes.Contains(file.ContentType))
+        {
+            ErrorMessage = "Unsupported file type. Use PNG, JPG, or SVG.";
+            return;
+        }
+
+        try
+        {
+            using var stream = file.OpenReadStream(MaxFileSize);
+            using var ms = new MemoryStream();
+            await stream.CopyToAsync(ms);
+            var base64 = Convert.ToBase64String(ms.ToArray());
+            PreviewDataUrl = $"data:{file.ContentType};base64,{base64}";
+            FileName = file.Name;
+            FileSize = file.Size;
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = $"Failed to read file: {ex.Message}";
+        }
+    }
+
+    private static string FmtFileSize(long bytes)
+    {
+        if (bytes < 1024) return $"{bytes} B";
+        if (bytes < 1024 * 1024) return $"{bytes / 1024.0:F1} KB";
+        return $"{bytes / (1024.0 * 1024):F2} MB";
+    }
+
+    private void Cancel() => MudDialog.Cancel();
+
+    private void Confirm()
+    {
+        if (string.IsNullOrEmpty(PreviewDataUrl)) return;
+        MudDialog.Close(DialogResult.Ok(PreviewDataUrl));
+    }
+}

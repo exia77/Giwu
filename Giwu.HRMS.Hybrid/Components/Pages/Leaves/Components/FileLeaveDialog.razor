@@ -1,0 +1,282 @@
+﻿@using static Giwu.HRMS.Hybrid.Components.Pages.Leaves.LeaveFormatting
+
+<MudDialog>
+    <DialogContent>
+        <MudStack Spacing="3">
+            <MudSelect T="string" Label="Employee" @bind-Value="SelectedEmployeeId"
+                       Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true">
+                @foreach (var emp in AllEmployees)
+                {
+                    <MudSelectItem Value="@emp.EmployeeId">@emp.Name (@emp.Dept)</MudSelectItem>
+                }
+            </MudSelect>
+
+            <MudSelect T="string" Label="Leave type" @bind-Value="SelectedLeaveTypeId"
+                       Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true">
+                @foreach (var lt in AvailableLeaveTypes)
+                {
+                    <MudSelectItem Value="@lt.Id">
+                        @lt.Name
+                        @if (lt.IsMandated)
+                        {
+                            <span> Â·</span>
+                            <span style="opacity:.55;font-size:11.5px"> @lt.LegalReference</span>
+                        }
+                    </MudSelectItem>
+                }
+            </MudSelect>
+
+            <MudGrid Spacing="2">
+                <MudItem xs="6">
+                    <MudDatePicker Label="Start date" @bind-Date="StartDate"
+                                   MinDate="DateTime.Today.AddYears(-1)"
+                                   Variant="Variant.Outlined" Margin="Margin.Dense" />
+                </MudItem>
+                <MudItem xs="6">
+                    <MudDatePicker Label="End date" @bind-Date="EndDate"
+                                   MinDate="StartDate ?? DateTime.Today"
+                                   Variant="Variant.Outlined" Margin="Margin.Dense" />
+                </MudItem>
+            </MudGrid>
+
+            @if (StartDate.HasValue && EndDate.HasValue && StartDate.Value.Date == EndDate.Value.Date)
+            {
+                <MudGrid Spacing="2" Class="ml-1">
+                    <MudItem xs="6">
+                        <MudCheckBox T="bool" @bind-Value="IsHalfDay" Size="Size.Small" Dense="true">
+                            <MudText Typo="Typo.body2">Half day only</MudText>
+                        </MudCheckBox>
+                    </MudItem>
+                    @if (IsHalfDay)
+                    {
+                        <MudItem xs="6">
+                            <MudSelect T="string" Label="Session" @bind-Value="HalfDaySession" Dense="true"
+                                       Variant="Variant.Outlined" Margin="Margin.Dense">
+                                <MudSelectItem Value="@("AM")">AM (morning)</MudSelectItem>
+                                <MudSelectItem Value="@("PM")">PM (afternoon)</MudSelectItem>
+                            </MudSelect>
+                        </MudItem>
+                    }
+                </MudGrid>
+            }
+
+            <MudTextField T="string" Label="Reason / details" @bind-Value="Reason"
+                          Placeholder="e.g. Family vacation in Baguio"
+                          Variant="Variant.Outlined" Lines="3" />
+
+            @if (SelectedLeaveType?.RequiresMedCert == true && DaysRequested > SelectedLeaveType.RequiresMedCertAfterDays)
+            {
+                <MudAlert Severity="Severity.Info" Dense="true" Class="med-cert-alert">
+                    <MudIcon Icon="@Icons.Material.Outlined.MedicalServices" Size="Size.Small" Style="margin-right:4px" />
+                    Medical certificate required for absences over @SelectedLeaveType.RequiresMedCertAfterDays days.
+                </MudAlert>
+            }
+
+            @* Live preview *@
+            @if (StartDate.HasValue && EndDate.HasValue && SelectedLeaveType != null)
+            {
+                <div class="file-preview">
+                    <div class="file-preview-title">Request Summary</div>
+                    <div class="file-preview-row">
+                        <span class="file-preview-key">Period</span>
+                        <span>@FmtDateRange(StartDate.Value, EndDate.Value)</span>
+                    </div>
+                    <div class="file-preview-row">
+                        <span class="file-preview-key">Working days</span>
+                        <span class="num">@FmtDays(DaysRequested)</span>
+                    </div>
+
+                    @if (CurrentBalance != null)
+                    {
+                        var available = CurrentBalance.Available;
+                        var afterRequest = available - DaysRequested;
+                        var insufficientBalance = afterRequest < 0;
+
+                        <div class="file-preview-row">
+                            <span class="file-preview-key">Current balance</span>
+                            <span class="num">@available.ToString("F1") days</span>
+                        </div>
+                        <div class="file-preview-row file-preview-row-result">
+                            <span class="file-preview-key">After this request</span>
+                            <span class="num @(insufficientBalance ? "text-danger" : "")">
+                                @afterRequest.ToString("F1") days
+                            </span>
+                        </div>
+                        @if (insufficientBalance)
+                        {
+                            <div class="file-preview-warning">
+                                <MudIcon Icon="@Icons.Material.Outlined.Warning" Size="Size.Small" />
+                                <span>Insufficient balance â€” request exceeds available days.</span>
+                            </div>
+                        }
+                    }
+                    else if (SelectedLeaveType?.AccrualMode == LeaveAccrualMode.PerEvent)
+                    {
+                        <div class="file-preview-row" style="opacity:.7;font-size:11.5px">
+                            <span>This leave type is granted per qualifying event. Eligibility determined at approval time.</span>
+                            <span></span>
+                        </div>
+                    }
+                    else if (SelectedLeaveType?.AccrualMode == LeaveAccrualMode.Yearly)
+                    {
+                        <div class="file-preview-row file-preview-row-result">
+                            <span class="file-preview-key">Annual entitlement</span>
+                            <span class="num">@SelectedLeaveType.AnnualEntitlementDays days/yr</span>
+                        </div>
+                    }
+                </div>
+            }
+        </MudStack>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" DisableElevation="true"
+                   OnClick="Submit" Disabled="@(!CanSubmit)">
+            File Request
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+<style>
+    .med-cert-alert { font-size: 12px !important; padding: 6px 10px !important; }
+
+    .file-preview {
+        background: var(--mud-palette-background-grey);
+        border-radius: 8px;
+        padding: 12px;
+    }
+    .file-preview-title {
+        font-size: 10.5px;
+        letter-spacing: .06em;
+        text-transform: uppercase;
+        opacity: .55;
+        margin-bottom: 8px;
+    }
+    .file-preview-row {
+        display: flex;
+        justify-content: space-between;
+        padding: 4px 0;
+        font-size: 13px;
+    }
+    .file-preview-row-result {
+        border-top: 0.5px solid var(--mud-palette-divider);
+        padding-top: 8px;
+        margin-top: 4px;
+        font-weight: 500;
+    }
+    .file-preview-key { opacity: .6; }
+    .file-preview .num { font-variant-numeric: tabular-nums; }
+    .file-preview .text-danger { color: var(--leave-red-text); }
+
+    .file-preview-warning {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        margin-top: 8px;
+        padding: 8px 10px;
+        background: var(--leave-red-light);
+        color: var(--leave-red-text);
+        border-radius: 6px;
+        font-size: 12px;
+    }
+</style>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = default!;
+    [Parameter] public List<EmployeeLeaveView> AllEmployees { get; set; } = new();
+    [Parameter] public List<LeaveType> AllLeaveTypes { get; set; } = new();
+
+    private string SelectedEmployeeId { get; set; } = "";
+    private string SelectedLeaveTypeId { get; set; } = "";
+    private DateTime? StartDate { get; set; }
+    private DateTime? EndDate { get; set; }
+    private bool IsHalfDay { get; set; } = false;
+    private string HalfDaySession { get; set; } = "AM";
+    private string Reason { get; set; } = "";
+
+    private EmployeeLeaveView? SelectedEmployee =>
+        AllEmployees.FirstOrDefault(e => e.EmployeeId == SelectedEmployeeId);
+
+    private LeaveType? SelectedLeaveType =>
+        AllLeaveTypes.FirstOrDefault(l => l.Id == SelectedLeaveTypeId);
+
+    /// <summary>
+    /// Filters leave types based on employee gender â€” Maternity/Magna/VAWC only show for female,
+    /// Paternity only for male. This matches PH-mandated eligibility.
+    /// </summary>
+    private List<LeaveType> AvailableLeaveTypes
+    {
+        get
+        {
+            if (SelectedEmployee == null) return AllLeaveTypes;
+            return AllLeaveTypes.Where(lt =>
+            {
+                return lt.Category switch
+                {
+                    LeaveCategory.Maternity => SelectedEmployee.Gender == "F",
+                    LeaveCategory.Magna     => SelectedEmployee.Gender == "F",
+                    LeaveCategory.Vawc      => SelectedEmployee.Gender == "F",
+                    LeaveCategory.Paternity => SelectedEmployee.Gender == "M",
+                    LeaveCategory.Sil       => SelectedEmployee.HireDate <= DateTime.Today.AddYears(-1),
+                    _ => true
+                };
+            }).ToList();
+        }
+    }
+
+    private LeaveBalance? CurrentBalance =>
+        SelectedEmployee?.Balances.FirstOrDefault(b => b.LeaveTypeId == SelectedLeaveTypeId);
+
+    private decimal DaysRequested
+    {
+        get
+        {
+            if (!StartDate.HasValue || !EndDate.HasValue) return 0m;
+            return WorkingDays(StartDate.Value, EndDate.Value, IsHalfDay && StartDate.Value.Date == EndDate.Value.Date);
+        }
+    }
+
+    private bool CanSubmit =>
+        !string.IsNullOrEmpty(SelectedEmployeeId)
+        && !string.IsNullOrEmpty(SelectedLeaveTypeId)
+        && StartDate.HasValue
+        && EndDate.HasValue
+        && EndDate.Value >= StartDate.Value
+        && DaysRequested > 0;
+
+    protected override void OnInitialized()
+    {
+        if (AllEmployees.Count > 0) SelectedEmployeeId = AllEmployees[0].EmployeeId;
+        StartDate = DateTime.Today.AddDays(7);
+        EndDate = DateTime.Today.AddDays(7);
+    }
+
+    private void Cancel() => MudDialog.Cancel();
+
+    private void Submit()
+    {
+        if (!CanSubmit) return;
+        var emp = SelectedEmployee!;
+        var lt = SelectedLeaveType!;
+        var req = new LeaveRequest
+        {
+            EmployeeId = emp.EmployeeId,
+            EmployeeName = emp.Name,
+            EmployeeInit = emp.Init,
+            EmployeeAv = emp.Av,
+            Dept = emp.Dept,
+            LeaveTypeId = lt.Id,
+            LeaveTypeName = lt.Name,
+            LeaveTypeCode = lt.Code,
+            LeaveCategory = lt.Category,
+            StartDate = StartDate!.Value,
+            EndDate = EndDate!.Value,
+            IsHalfDay = IsHalfDay && StartDate.Value.Date == EndDate.Value.Date,
+            HalfDaySession = IsHalfDay ? HalfDaySession : "",
+            DaysRequested = DaysRequested,
+            Reason = Reason,
+            Status = LeaveRequestStatus.Pending,
+        };
+        MudDialog.Close(DialogResult.Ok(req));
+    }
+}

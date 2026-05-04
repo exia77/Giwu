@@ -1,0 +1,433 @@
+﻿@using static Giwu.HRMS.Hybrid.Models.PayrollFormatting
+
+<MudDialog>
+    <DialogContent>
+        @if (HighlightSalary.HasValue)
+        {
+            <MudAlert Severity="Severity.Info" Dense="true" Class="mb-3">
+                <div style="display:flex;align-items:center;gap:8px">
+                    <MudIcon Icon="@Icons.Material.Outlined.Person" Size="Size.Small" />
+                    <span>
+                        @if (!string.IsNullOrEmpty(HighlightLabel))
+                        {
+                            <span><strong>@HighlightLabel</strong> Â· </span>
+                        }
+                        Showing brackets that apply to a basic salary of <strong>@Money(HighlightSalary.Value)</strong>.
+                    </span>
+                </div>
+            </MudAlert>
+        }
+
+        <MudTabs Elevation="0" Rounded="false" ApplyEffectsToContainer="false"
+                 PanelClass="ref-tab-panel" TabPanelClass="ref-tab-item">
+
+            @* â•â• SSS TAB â•â• *@
+            <MudTabPanel Text="SSS" Icon="@Icons.Material.Outlined.AccountBalance">
+                <div class="ref-section">
+                    <div class="ref-section-title">SSS Contribution Schedule</div>
+                    <div class="ref-section-meta">
+                        Effective Jan 2025 Â· SSS Circular 2024-006 Â· Total rate 15% of MSC (employee 5% / employer 10%)
+                    </div>
+                    <div class="ref-rules">
+                        <div class="ref-rule">
+                            <span class="ref-rule-key">Min MSC</span><span>â‚±5,000</span>
+                        </div>
+                        <div class="ref-rule">
+                            <span class="ref-rule-key">Max MSC</span><span>â‚±35,000</span>
+                        </div>
+                        <div class="ref-rule">
+                            <span class="ref-rule-key">Max employee share</span><span>â‚±1,750/mo</span>
+                        </div>
+                        <div class="ref-rule">
+                            <span class="ref-rule-key">MPF (Pension Booster)</span><span>Applies to MSC excess over â‚±20,000</span>
+                        </div>
+                    </div>
+
+                    <div class="ref-table-scroll">
+                        <table class="ref-table">
+                            <thead>
+                                <tr>
+                                    <th>Compensation Range</th>
+                                    <th class="num">MSC</th>
+                                    <th class="num">Reg. SS â€” EE</th>
+                                    <th class="num">MPF â€” EE</th>
+                                    <th class="num">EE Total</th>
+                                    <th class="num">EC (ER)</th>
+                                    <th class="num">ER Total</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @{
+                                    var sssActive = HighlightSalary.HasValue ? PhPayrollCalculator.GetSssBracket(HighlightSalary.Value) : null;
+                                }
+                                @foreach (var b in PhPayrollCalculator.SssBrackets)
+                                {
+                                    var isActive = sssActive != null && sssActive.Msc == b.Msc;
+                                    <tr class="@(isActive ? "ref-row-active" : "")">
+                                        <td>@MoneyRange(b.RangeFrom, b.RangeTo)</td>
+                                        <td class="num">@Money(b.Msc)</td>
+                                        <td class="num">@Money(b.RegularSsEmployee)</td>
+                                        <td class="num">@(b.MpfEmployee > 0 ? Money(b.MpfEmployee) : "â€”")</td>
+                                        <td class="num bold">@Money(b.TotalEmployee)</td>
+                                        <td class="num">@Money(b.Ec)</td>
+                                        <td class="num">@Money(b.TotalEmployer)</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="ref-footnote">
+                        <strong>Notes:</strong> Reg. SS = Regular Social Security (5% EE / 10% ER, applied to MSC up to â‚±20,000).
+                        MPF = Mandatory Provident Fund / WISP Plus (same 5% EE / 10% ER split on the MSC portion above â‚±20,000, credited to the member's pension booster account).
+                        EC = Employees' Compensation, paid by employer only (â‚±10 if MSC â‰¤ â‚±14,500, otherwise â‚±30).
+                    </div>
+                </div>
+            </MudTabPanel>
+
+            @* â•â• PHILHEALTH TAB â•â• *@
+            <MudTabPanel Text="PhilHealth" Icon="@Icons.Material.Outlined.HealthAndSafety">
+                <div class="ref-section">
+                    <div class="ref-section-title">PhilHealth Premium Schedule</div>
+                    <div class="ref-section-meta">
+                        Effective 2024+ Â· PhilHealth Circular 2019-0009 (UHC Act) Â· Premium rate 5% of monthly basic salary
+                    </div>
+                    <div class="ref-rules">
+                        <div class="ref-rule">
+                            <span class="ref-rule-key">Salary floor</span><span>â‚±10,000</span>
+                        </div>
+                        <div class="ref-rule">
+                            <span class="ref-rule-key">Salary ceiling</span><span>â‚±100,000</span>
+                        </div>
+                        <div class="ref-rule">
+                            <span class="ref-rule-key">Split</span><span>50% employee / 50% employer</span>
+                        </div>
+                        <div class="ref-rule">
+                            <span class="ref-rule-key">Employee share range</span><span>â‚±250 â€“ â‚±2,500</span>
+                        </div>
+                    </div>
+
+                    <div class="ref-table-scroll">
+                        <table class="ref-table">
+                            <thead>
+                                <tr>
+                                    <th>Monthly Basic Salary</th>
+                                    <th>Premium Rate</th>
+                                    <th class="num">Total Premium</th>
+                                    <th class="num">Employee Share</th>
+                                    <th class="num">Employer Share</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @{
+                                    var phActiveIdx = HighlightSalary.HasValue ? PhPayrollCalculator.GetPhilHealthBracketIndex(HighlightSalary.Value) : -1;
+                                }
+                                @for (int i = 0; i < PhPayrollCalculator.PhilHealthBrackets.Length; i++)
+                                {
+                                    var idx = i;
+                                    var b = PhPayrollCalculator.PhilHealthBrackets[idx];
+                                    var isActive = idx == phActiveIdx;
+
+                                    // Middle band: render the actual computed amounts when a salary is provided
+                                    decimal totalPrem, eeShare, erShare;
+                                    if (idx == 1 && HighlightSalary.HasValue && HighlightSalary.Value > 10000m && HighlightSalary.Value < 100000m)
+                                    {
+                                        var s = HighlightSalary.Value;
+                                        totalPrem = Math.Round(s * 0.05m, 2);
+                                        eeShare = Math.Round(s * 0.025m, 2);
+                                        erShare = totalPrem - eeShare;
+                                    }
+                                    else
+                                    {
+                                        totalPrem = b.MonthlyPremium;
+                                        eeShare = b.EmployeeShare;
+                                        erShare = b.EmployerShare;
+                                    }
+
+                                    <tr class="@(isActive ? "ref-row-active" : "")">
+                                        <td>@(idx == 1 ? "â‚±10,000.01 â€“ â‚±99,999.99" : MoneyRange(b.RangeFrom, b.RangeTo))</td>
+                                        <td>@b.RateDisplay</td>
+                                        <td class="num">@(totalPrem > 0 ? Money(totalPrem) : "5% of basic")</td>
+                                        <td class="num bold">@(eeShare > 0 ? Money(eeShare) : "2.5% of basic")</td>
+                                        <td class="num">@(erShare > 0 ? Money(erShare) : "2.5% of basic")</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="ref-footnote">
+                        <strong>How it's computed:</strong> Total premium = monthly basic salary Ã— 5%, with the salary clamped between â‚±10,000 and â‚±100,000.
+                        Employee and employer each pay half. Allowances, overtime, and bonuses are <em>not</em> included in the basis â€” only the fixed monthly basic salary.
+                    </div>
+                </div>
+            </MudTabPanel>
+
+            @* â•â• PAG-IBIG TAB â•â• *@
+            <MudTabPanel Text="Pag-IBIG" Icon="@Icons.Material.Outlined.Home">
+                <div class="ref-section">
+                    <div class="ref-section-title">Pag-IBIG (HDMF) Contribution Schedule</div>
+                    <div class="ref-section-meta">
+                        Effective Feb 2024+ Â· HDMF Circular 460 Â· Maximum Fund Salary (MFS) capped at â‚±10,000
+                    </div>
+                    <div class="ref-rules">
+                        <div class="ref-rule">
+                            <span class="ref-rule-key">MFS cap</span><span>â‚±10,000</span>
+                        </div>
+                        <div class="ref-rule">
+                            <span class="ref-rule-key">Max contribution</span><span>â‚±200 each (employee + employer)</span>
+                        </div>
+                        <div class="ref-rule">
+                            <span class="ref-rule-key">Two-tier rate</span><span>1% / 2% based on MFS</span>
+                        </div>
+                    </div>
+
+                    <div class="ref-table-scroll">
+                        <table class="ref-table">
+                            <thead>
+                                <tr>
+                                    <th>Monthly Fund Salary (MFS)</th>
+                                    <th>Employee Rate</th>
+                                    <th>Employer Rate</th>
+                                    <th>Employee Share</th>
+                                    <th>Employer Share</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @{
+                                    var pagActiveIdx = HighlightSalary.HasValue ? PhPayrollCalculator.GetPagIbigBracketIndex(HighlightSalary.Value) : -1;
+                                }
+                                @for (int i = 0; i < PhPayrollCalculator.PagIbigBrackets.Length; i++)
+                                {
+                                    var idx = i;
+                                    var b = PhPayrollCalculator.PagIbigBrackets[idx];
+                                    var isActive = idx == pagActiveIdx;
+                                    <tr class="@(isActive ? "ref-row-active" : "")">
+                                        <td>@MoneyRange(b.RangeFrom, b.RangeTo)</td>
+                                        <td>@b.EmployeeRateDisplay</td>
+                                        <td>@b.EmployerRateDisplay</td>
+                                        <td class="bold">@b.EmployeeAmountDisplay</td>
+                                        <td>@b.EmployerAmountDisplay</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="ref-footnote">
+                        <strong>How it's computed:</strong> The Monthly Fund Salary (MFS) used as the basis is capped at â‚±10,000 â€” even if the employee earns more, only the first â‚±10,000 is used.
+                        For MFS at or below â‚±1,500, the employee pays 1% and the employer pays 2%. Above that threshold, both pay 2% of the MFS.
+                        The maximum employee contribution is therefore â‚±200 per month.
+                    </div>
+                </div>
+            </MudTabPanel>
+
+            @* â•â• BIR TAB â•â• *@
+            <MudTabPanel Text="BIR (WHT)" Icon="@Icons.Material.Outlined.AccountBalanceWallet">
+                <div class="ref-section">
+                    <div class="ref-section-title">BIR Withholding Tax on Compensation</div>
+                    <div class="ref-section-meta">
+                        TRAIN Law (RA 10963) Â· Revised schedule effective Jan 1, 2023 onward
+                    </div>
+                    <div class="ref-rules">
+                        <div class="ref-rule">
+                            <span class="ref-rule-key">Tax-exempt</span><span>â‰¤ â‚±250,000 annual / â‰¤ â‚±20,833 monthly</span>
+                        </div>
+                        <div class="ref-rule">
+                            <span class="ref-rule-key">Top rate</span><span>35% (above â‚±8M annual / â‚±666,667 monthly)</span>
+                        </div>
+                        <div class="ref-rule">
+                            <span class="ref-rule-key">Taxable income</span><span>Gross âˆ’ (SSS + PhilHealth + Pag-IBIG)</span>
+                        </div>
+                    </div>
+
+                    <div class="ref-table-scroll">
+                        <table class="ref-table">
+                            <thead>
+                                <tr>
+                                    <th>Annual Taxable Income</th>
+                                    <th>Monthly Equivalent</th>
+                                    <th>Rate</th>
+                                    <th>Formula</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @{
+                                    BirBracket? birActive = null;
+                                    if (HighlightSalary.HasValue)
+                                    {
+                                        // Approximate the taxable: gross âˆ’ all statutory employee shares
+                                        var s = HighlightSalary.Value;
+                                        var sss = PhPayrollCalculator.CalculateSss(s);
+                                        var ph  = PhPayrollCalculator.CalculatePhilHealth(s);
+                                        var pi  = PhPayrollCalculator.CalculatePagIbig(s);
+                                        var taxable = s - (sss + ph + pi);
+                                        birActive = PhPayrollCalculator.GetBirBracket(taxable);
+                                    }
+                                }
+                                @foreach (var b in PhPayrollCalculator.BirBrackets)
+                                {
+                                    var isActive = birActive != null && birActive.MonthlyFrom == b.MonthlyFrom;
+                                    <tr class="@(isActive ? "ref-row-active" : "")">
+                                        <td>
+                                            @if (b.AnnualTo == decimal.MaxValue)
+                                            {
+                                                <span>Over â‚±8,000,000</span>
+                                            }
+                                            else if (b.AnnualFrom == 0m)
+                                            {
+                                                <span>Up to â‚±250,000</span>
+                                            }
+                                            else
+                                            {
+                                                <span>â‚±@($"{b.AnnualFrom:N0}") â€“ â‚±@($"{b.AnnualTo:N0}")</span>
+                                            }
+                                        </td>
+                                        <td>
+                                            @if (b.MonthlyTo == decimal.MaxValue)
+                                            {
+                                                <span>Over â‚±666,667</span>
+                                            }
+                                            else if (b.MonthlyFrom == 0m)
+                                            {
+                                                <span>Up to â‚±20,833</span>
+                                            }
+                                            else
+                                            {
+                                                <span>â‚±@($"{b.MonthlyFrom:N0}") â€“ â‚±@($"{b.MonthlyTo:N0}")</span>
+                                            }
+                                        </td>
+                                        <td>@b.RateDisplay</td>
+                                        <td class="formula">@b.FormulaDisplay</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="ref-footnote">
+                        <strong>Notes:</strong> The withholding tax brackets above are based on <em>monthly</em> taxable compensation income.
+                        Compute taxable income by subtracting the employee's mandatory contributions (SSS, PhilHealth, Pag-IBIG) from gross compensation.
+                        De minimis benefits, the first â‚±90,000 of 13th-month pay and other benefits, and minimum-wage compensation are <em>not</em> taxable and should be excluded before applying the table.
+                        Annual reconciliation (BIR Form 2316) at year-end may produce a refund or additional tax.
+                    </div>
+                </div>
+            </MudTabPanel>
+        </MudTabs>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Close">Close</MudButton>
+    </DialogActions>
+</MudDialog>
+
+<style>
+    .ref-section {
+        padding: 4px 0 0 0;
+    }
+    .ref-section-title {
+        font-size: 14px;
+        font-weight: 500;
+        margin-bottom: 2px;
+    }
+    .ref-section-meta {
+        font-size: 11.5px;
+        opacity: .6;
+        margin-bottom: 14px;
+    }
+    .ref-rules {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 6px 16px;
+        padding: 12px;
+        background: var(--mud-palette-background-grey);
+        border-radius: 8px;
+        margin-bottom: 14px;
+    }
+    .ref-rule {
+        display: flex;
+        justify-content: space-between;
+        font-size: 12px;
+        gap: 8px;
+    }
+    .ref-rule-key { opacity: .6; }
+
+    .ref-table-scroll {
+        max-height: 340px;
+        overflow: auto;
+        border: 0.5px solid var(--mud-palette-divider);
+        border-radius: 8px;
+    }
+    .ref-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 12px;
+    }
+    .ref-table thead th {
+        position: sticky; top: 0; z-index: 2;
+        background: var(--mud-palette-background-grey);
+        text-align: left;
+        font-size: 10.5px;
+        font-weight: 500;
+        letter-spacing: .055em;
+        text-transform: uppercase;
+        opacity: .65;
+        padding: 8px 10px;
+        border-bottom: 0.5px solid var(--mud-palette-divider);
+        white-space: nowrap;
+    }
+    .ref-table th.num, .ref-table td.num { text-align: right; font-variant-numeric: tabular-nums; }
+    .ref-table tbody td {
+        padding: 7px 10px;
+        border-bottom: 0.5px solid var(--mud-palette-divider);
+        white-space: nowrap;
+    }
+    .ref-table tbody tr:last-child td { border-bottom: none; }
+    .ref-table tbody tr:hover td { background: var(--mud-palette-background-grey); }
+    .ref-table .bold { font-weight: 600; }
+    .ref-table .formula { font-size: 11.5px; opacity: .85; white-space: normal; }
+
+    .ref-row-active td {
+        background: var(--pay-green-light) !important;
+        color: var(--pay-green-text);
+        font-weight: 500;
+    }
+    .ref-row-active td:first-child {
+        position: relative;
+    }
+    .ref-row-active td:first-child::before {
+        content: '';
+        position: absolute; left: 0; top: 0; bottom: 0;
+        width: 3px;
+        background: var(--pay-green);
+    }
+
+    .ref-footnote {
+        margin-top: 12px;
+        padding: 10px 12px;
+        background: var(--pay-blue-light);
+        color: var(--pay-blue-text);
+        border-radius: 6px;
+        font-size: 11.5px;
+        line-height: 1.55;
+    }
+    .ref-footnote em { font-style: italic; }
+
+    .ref-tab-panel { padding: 16px 4px 4px !important; }
+    .ref-tab-item { min-width: unset !important; text-transform: none !important; font-size: 13px !important; }
+
+    @@media (max-width: 600px) {
+        .ref-rules { grid-template-columns: 1fr; }
+    }
+</style>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = default!;
+
+    /// <summary>If provided, the relevant bracket on each tab gets highlighted.</summary>
+    [Parameter] public decimal? HighlightSalary { get; set; }
+
+    /// <summary>Optional: name shown in the highlight banner (e.g. employee name).</summary>
+    [Parameter] public string HighlightLabel { get; set; } = "";
+
+    private void Close() => MudDialog.Close();
+}

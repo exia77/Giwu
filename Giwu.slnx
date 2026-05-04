@@ -1,0 +1,12 @@
+<Solution>
+  <Folder Name="/Backend/">
+    <Project Path="Giwu.Api/src/Giwu.Api/Giwu.Api.csproj" />
+    <Project Path="Giwu.Api/src/Giwu.Application/Giwu.Application.csproj" />
+    <Project Path="Giwu.Api/src/Giwu.Contracts/Giwu.Contracts.csproj" />
+    <Project Path="Giwu.Api/src/Giwu.Domain/Giwu.Domain.csproj" />
+    <Project Path="Giwu.Api/src/Giwu.Infrastructure/Giwu.Infrastructure.csproj" />
+  </Folder>
+  <Folder Name="/Client/">
+    <Project Path="Giwu.HRMS.Hybrid/Giwu.HRMS.Hybrid.csproj" />
+  </Folder>
+</Solution>

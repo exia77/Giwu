@@ -1,0 +1,1189 @@
+﻿@using Pages.Benefits.Components
+@using static Giwu.HRMS.Hybrid.Models.BenefitsFormatting
+@using Giwu.Contracts.Benefits
+@using Giwu.HRMS.Hybrid.Services.Benefits
+@using Giwu.HRMS.Hybrid.Services.Employees
+@using DomainBen = Giwu.Domain.Benefits
+
+@page "/benefits"
+
+@inject ISnackbar Snackbar
+@inject IDialogService DialogService
+@inject IBenefitsApi BenefitsApi
+@inject IEmployeesApi EmployeesApi
+
+
+
+<RoleGuard NavKey="@NavKeys.Payroll" />
+
+<PageTitle>Benefits</PageTitle>
+
+
+@* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+   KPI STRIP
+â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• *@
+<MudGrid Spacing="3" Class="mb-4">
+    <MudItem xs="12" sm="6" md="3">
+        <MudPaper Class="ben-kpi" Elevation="0">
+            <div class="kpi-label">Active Programs</div>
+            <div class="kpi-value">@ActiveProgramCount</div>
+            <div class="kpi-sub">
+                <span class="kpi-dot" style="background:var(--ben-green)"></span>
+                <span>across @CategoryCount categories</span>
+            </div>
+        </MudPaper>
+    </MudItem>
+    <MudItem xs="12" sm="6" md="3">
+        <MudPaper Class="ben-kpi" Elevation="0">
+            <div class="kpi-label">Total Enrollments</div>
+            <div class="kpi-value">@ActiveEnrollmentCount</div>
+            <div class="kpi-sub">
+                <span class="kpi-dot" style="background:var(--ben-blue)"></span>
+                <span>@CoveredEmployeeCount of @TotalEmployees covered</span>
+            </div>
+        </MudPaper>
+    </MudItem>
+    <MudItem xs="12" sm="6" md="3">
+        <MudPaper Class="ben-kpi" Elevation="0">
+            <div class="kpi-label">Monthly Cost</div>
+            <div class="kpi-value">@MoneyCompact(MonthlyEmployerCost)</div>
+            <div class="kpi-sub">
+                <span class="kpi-dot" style="background:var(--ben-amber)"></span>
+                <span>employer share</span>
+            </div>
+        </MudPaper>
+    </MudItem>
+    <MudItem xs="12" sm="6" md="3">
+        <MudPaper Class="ben-kpi" Elevation="0">
+            <div class="kpi-label">Pending Requests</div>
+            <div class="kpi-value">@PendingRequestCount</div>
+            <div class="kpi-sub">
+                <span class="kpi-dot" style="background:var(--ben-purple)"></span>
+                <span>claims &amp; loans</span>
+            </div>
+        </MudPaper>
+    </MudItem>
+</MudGrid>
+
+@* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+   MIDDLE ROW: ENROLLMENT BY CATEGORY + RENEWALS/REQUESTS
+â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• *@
+<MudGrid Spacing="3" Class="mb-4">
+    @* â”€â”€ Coverage by category â”€â”€ *@
+    <MudItem xs="12" md="7">
+        <MudPaper Class="ben-card" Elevation="0">
+            <div class="ben-card-header">
+                <div>
+                    <MudText Typo="Typo.subtitle2" Class="fw-medium">Coverage by Category</MudText>
+                    <MudText Typo="Typo.caption" Style="opacity:.55">% of workforce enrolled</MudText>
+                </div>
+            </div>
+            <div class="coverage-wrap">
+                @{
+                    var categoriesInUse = Programs
+                        .Where(p => p.IsActive)
+                        .Select(p => p.Category)
+                        .Distinct()
+                        .OrderBy(c => CategoryLabel(c))
+                        .ToList();
+                }
+                @if (categoriesInUse.Count == 0)
+                {
+                    <div class="ben-empty">
+                        <div class="ben-empty-icon">â€”</div>
+                        <MudText Typo="Typo.body2">No programs configured yet.</MudText>
+                    </div>
+                }
+                else
+                {
+                    @foreach (var cat in categoriesInUse)
+                    {
+                        var enrolledCount = Enrollments
+                            .Where(e => e.Status == "Active")
+                            .Where(e => Programs.Any(p => p.Id == e.ProgramId && p.Category == cat))
+                            .Select(e => e.EmployeeId)
+                            .Distinct()
+                            .Count();
+                        var pct = TotalEmployees == 0 ? 0 : (int)Math.Round(enrolledCount / (double)TotalEmployees * 100);
+                        <div class="cov-row">
+                            <div class="cov-label">
+                                <MudIcon Icon="@CategoryIcon(cat)" Size="Size.Small" Style="opacity:.65" />
+                                <span>@CategoryLabel(cat)</span>
+                            </div>
+                            <div class="cov-track">
+                                <div class="cov-fill" style="@($"width:{pct}%;background:{CategoryFillColor(cat)}")"></div>
+                            </div>
+                            <div class="cov-count">@enrolledCount<span class="cov-pct"> Â· @pct%</span></div>
+                        </div>
+                    }
+                }
+            </div>
+        </MudPaper>
+    </MudItem>
+
+    @* â”€â”€ Activity feed: pending requests + renewals â”€â”€ *@
+    <MudItem xs="12" md="5">
+        <MudPaper Class="ben-card" Elevation="0">
+            <div class="ben-card-header">
+                <MudText Typo="Typo.subtitle2" Class="fw-medium">Needs Attention</MudText>
+                <MudChip T="string" Size="Size.Small" Color="Color.Error" Variant="Variant.Filled"
+                         Style="height:20px;font-size:.7rem">
+                    @(PendingRequestCount + UpcomingRenewalCount)
+                </MudChip>
+            </div>
+            @{
+                var pending = Requests.Where(r => r.Status == BenefitRequestStatus.Pending)
+                    .OrderByDescending(r => r.RequestedOn).Take(3).ToList();
+                var upcoming = Programs.Where(p => p.IsActive && p.RenewalDate.HasValue
+                                                && p.RenewalDate.Value <= DateTime.Now.AddDays(60)
+                                                && p.RenewalDate.Value > DateTime.Now)
+                    .OrderBy(p => p.RenewalDate).Take(3).ToList();
+            }
+            @if (pending.Count == 0 && upcoming.Count == 0)
+            {
+                <div class="ben-empty">
+                    <div class="ben-empty-icon">âœ“</div>
+                    <MudText Typo="Typo.body2">All caught up.</MudText>
+                </div>
+            }
+            else
+            {
+                @foreach (var req in pending)
+                {
+                    <div class="activity-item" @onclick="@(() => OpenRequestDialog(req.Id))">
+                        <MudAvatar Style="@AvatarStyle(req.EmployeeAv)" Class="ben-av-sm">@req.EmployeeInit</MudAvatar>
+                        <div class="activity-meta">
+                            <MudText Typo="Typo.body2" Class="fw-medium">
+                                @RequestTypeLabel(req.Type) â€” @Money(req.Amount)
+                            </MudText>
+                            <MudText Typo="Typo.caption" Style="opacity:.55">
+                                @req.EmployeeName Â· @req.ProgramName Â· @RelativeTime(req.RequestedOn)
+                            </MudText>
+                        </div>
+                        <span class="@($"ben-badge {RequestStatusBadgeClass(req.Status)}")">Pending</span>
+                    </div>
+                }
+                @foreach (var prog in upcoming)
+                {
+                    var daysLeft = (prog.RenewalDate!.Value - DateTime.Now).Days;
+                    <div class="activity-item activity-item-renewal">
+                        <MudAvatar Style="background:var(--ben-amber-light);color:var(--ben-amber-text)" Class="ben-av-sm">
+                            <MudIcon Icon="@Icons.Material.Outlined.Autorenew" Size="Size.Small" />
+                        </MudAvatar>
+                        <div class="activity-meta">
+                            <MudText Typo="Typo.body2" Class="fw-medium">@prog.Name renewal</MudText>
+                            <MudText Typo="Typo.caption" Style="opacity:.55">
+                                @prog.Provider Â· due @FmtDate(prog.RenewalDate)
+                            </MudText>
+                        </div>
+                        <span class="ben-badge ben-badge-pending">@daysLeft d</span>
+                    </div>
+                }
+            }
+        </MudPaper>
+    </MudItem>
+</MudGrid>
+
+@* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+   MAIN TABS
+â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• *@
+<MudPaper Class="ben-card" Elevation="0">
+    <MudTabs Elevation="0" Rounded="false" ApplyEffectsToContainer="true"
+             PanelClass="ben-tab-panel" TabPanelClass="ben-tab-item"
+             @bind-ActivePanelIndex="ActiveTab">
+
+        @* â•â• PROGRAMS TAB â•â• *@
+        <MudTabPanel Text="@($"Programs ({ActiveProgramCount})")"
+                     Icon="@Icons.Material.Outlined.CardGiftcard">
+            <div class="ben-card-header">
+                <div>
+                    <MudText Typo="Typo.subtitle2" Class="fw-medium">Benefit Programs</MudText>
+                    <MudText Typo="Typo.caption" Style="opacity:.55">
+                        @FilteredPrograms.Count() of @Programs.Count programs
+                    </MudText>
+                </div>
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" Size="Size.Small"
+                           StartIcon="@Icons.Material.Outlined.Add" DisableElevation="true"
+                           OnClick="OpenCreateProgramDialog">Add Program</MudButton>
+            </div>
+
+            <div class="filter-row">
+                <MudChipSet T="string" @bind-SelectedValue="ProgramCategoryFilter" CheckMark="false" Mandatory="true">
+                    <MudChip T="string" Value="@("All")" Size="Size.Small">All</MudChip>
+                    @foreach (var cat in Enum.GetValues<BenefitCategory>())
+                    {
+                        <MudChip T="string" Value="@CategoryLabel(cat)" Size="Size.Small">@CategoryLabel(cat)</MudChip>
+                    }
+                </MudChipSet>
+                <MudSpacer />
+                <MudTextField @bind-Value="ProgramSearch" Placeholder="Search name, providerâ€¦"
+                              Variant="Variant.Outlined" Margin="Margin.Dense" Class="ben-search"
+                              Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Outlined.Search"
+                              DebounceInterval="200" Immediate="true" />
+            </div>
+
+            <MudTable T="BenefitProgram" Items="@FilteredPrograms" Dense="true" Hover="true"
+                      Elevation="0" Breakpoint="Breakpoint.Sm"
+                      @bind-RowsPerPage="ProgramPageSize" @bind-Page="ProgramPage"
+                      Class="ben-mud-table">
+                <HeaderContent>
+                    <MudTh><MudTableSortLabel T="BenefitProgram" SortBy="@(p => p.Name)">Program</MudTableSortLabel></MudTh>
+                    <MudTh>Provider</MudTh>
+                    <MudTh>Category</MudTh>
+                    <MudTh>Enrolled</MudTh>
+                    <MudTh Style="text-align:right">Cost / Employee</MudTh>
+                    <MudTh>Renewal</MudTh>
+                    <MudTh>Status</MudTh>
+                    <MudTh Style="text-align:right">Actions</MudTh>
+                </HeaderContent>
+                <RowTemplate>
+                    <MudTd DataLabel="Program">
+                        <div style="display:flex;align-items:center;gap:9px">
+                            <div class="ben-prog-icon @(CategoryBadgeClass(context.Category))">
+                                <MudIcon Icon="@CategoryIcon(context.Category)" Size="Size.Small" />
+                            </div>
+                            <div>
+                                <div style="display:flex;align-items:center;gap:6px">
+                                    <MudText Typo="Typo.body2" Class="fw-medium" Style="line-height:1.2">@context.Name</MudText>
+                                    @if (context.IsMandatory)
+                                    {
+                                        <span class="ben-mandatory-chip">Mandatory</span>
+                                    }
+                                </div>
+                                @if (context.Tiers.Count > 0)
+                                {
+                                    <MudText Typo="Typo.caption" Style="opacity:.55">@context.Tiers.Count tiers</MudText>
+                                }
+                            </div>
+                        </div>
+                    </MudTd>
+                    <MudTd DataLabel="Provider" Style="opacity:.8">@context.Provider</MudTd>
+                    <MudTd DataLabel="Category">
+                        <span class="@($"ben-badge {CategoryBadgeClass(context.Category)}")">@CategoryLabel(context.Category)</span>
+                    </MudTd>
+                    <MudTd DataLabel="Enrolled" Style="font-size:13px">
+                        @{
+                            var enrolled = Enrollments.Count(e => e.ProgramId == context.Id && e.Status == "Active");
+                        }
+                        @enrolled / @TotalEmployees
+                    </MudTd>
+                    <MudTd DataLabel="Cost / Employee" Style="text-align:right;font-variant-numeric:tabular-nums">
+                        @Money(context.MonthlyCostPerEmployee)
+                    </MudTd>
+                    <MudTd DataLabel="Renewal" Style="opacity:.7;font-size:12px">
+                        @FmtDate(context.RenewalDate)
+                    </MudTd>
+                    <MudTd DataLabel="Status">
+                        @if (context.IsActive)
+                        {
+                            <span class="ben-badge ben-badge-released">Active</span>
+                        }
+                        else
+                        {
+                            <span class="ben-badge ben-badge-closed">Inactive</span>
+                        }
+                    </MudTd>
+                    <MudTd DataLabel="Actions" Style="text-align:right">
+                        <MudStack Row="true" Spacing="1" Justify="Justify.FlexEnd">
+                            <MudIconButton Icon="@Icons.Material.Outlined.Visibility" Size="Size.Small"
+                                           Title="View"
+                                           OnClick="@(() => OpenProgramDetailDialog(context.Id))" />
+                            <MudIconButton Icon="@Icons.Material.Outlined.Edit" Size="Size.Small"
+                                           Title="Edit"
+                                           OnClick="@(() => OpenEditProgramDialog(context.Id))" />
+                        </MudStack>
+                    </MudTd>
+                </RowTemplate>
+                <NoRecordsContent>
+                    <div class="ben-empty">
+                        <div class="ben-empty-icon">âŠ˜</div>
+                        <MudText Typo="Typo.body2">No programs match your filter.</MudText>
+                    </div>
+                </NoRecordsContent>
+                <PagerContent>
+                    <MudTablePager PageSizeOptions="new int[] { 10, 25, 50 }" />
+                </PagerContent>
+            </MudTable>
+        </MudTabPanel>
+
+        @* â•â• ENROLLMENTS TAB â•â• *@
+        <MudTabPanel Text="@($"Enrollments ({CoveredEmployeeCount})")"
+                     Icon="@Icons.Material.Outlined.PeopleOutline">
+            <div class="ben-card-header">
+                <div>
+                    <MudText Typo="Typo.subtitle2" Class="fw-medium">Employee Enrollments</MudText>
+                    <MudText Typo="Typo.caption" Style="opacity:.55">
+                        @CoveredEmployeeCount of @TotalEmployees enrolled in at least one program
+                    </MudText>
+                </div>
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" Size="Size.Small"
+                           StartIcon="@Icons.Material.Outlined.GroupAdd" DisableElevation="true"
+                           OnClick="OpenBulkEnrollDialog">Bulk Enroll</MudButton>
+            </div>
+
+            <div class="filter-row">
+                <MudChipSet T="string" @bind-SelectedValue="EnrollmentCoverageFilter" CheckMark="false" Mandatory="true">
+                    <MudChip T="string" Value="@("All")" Size="Size.Small">All</MudChip>
+                    <MudChip T="string" Value="@("Fully covered")" Size="Size.Small">Fully covered</MudChip>
+                    <MudChip T="string" Value="@("Partial")" Size="Size.Small">Partial</MudChip>
+                    <MudChip T="string" Value="@("Missing health")" Size="Size.Small">Missing health</MudChip>
+                </MudChipSet>
+                <MudSpacer />
+                <MudTextField @bind-Value="EnrollmentSearch" Placeholder="Search employee, deptâ€¦"
+                              Variant="Variant.Outlined" Margin="Margin.Dense" Class="ben-search"
+                              Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Outlined.Search"
+                              DebounceInterval="200" Immediate="true" />
+            </div>
+
+            <MudTable T="EmployeeBenefitsView" Items="@FilteredEmployeeViews" Dense="true" Hover="true"
+                      Elevation="0" Breakpoint="Breakpoint.Sm"
+                      @bind-RowsPerPage="EnrollmentPageSize" @bind-Page="EnrollmentPage"
+                      Class="ben-mud-table">
+                <HeaderContent>
+                    <MudTh><MudTableSortLabel T="EmployeeBenefitsView" SortBy="@(e => e.Name)">Employee</MudTableSortLabel></MudTh>
+                    <MudTh>Department</MudTh>
+                    <MudTh>Programs</MudTh>
+                    <MudTh>Dependents</MudTh>
+                    <MudTh Style="text-align:right">Monthly Contribution</MudTh>
+                    <MudTh Style="text-align:right">Actions</MudTh>
+                </HeaderContent>
+                <RowTemplate>
+                    <MudTd DataLabel="Employee">
+                        <div style="display:flex;align-items:center;gap:9px">
+                            <MudAvatar Style="@AvatarStyle(context.Av)" Class="ben-av-sm">@context.Init</MudAvatar>
+                            <div>
+                                <MudText Typo="Typo.body2" Class="fw-medium" Style="line-height:1.2">@context.Name</MudText>
+                                <MudText Typo="Typo.caption" Style="opacity:.55">@context.Role</MudText>
+                            </div>
+                        </div>
+                    </MudTd>
+                    <MudTd DataLabel="Department" Style="opacity:.75">@context.Dept</MudTd>
+                    <MudTd DataLabel="Programs">
+                        @{
+                            var active = context.Enrollments.Where(e => e.Status == "Active").ToList();
+                        }
+                        <div class="prog-chips">
+                            @foreach (var enr in active.Take(3))
+                            {
+                                var p = Programs.FirstOrDefault(p => p.Id == enr.ProgramId);
+                                if (p != null)
+                                {
+                                    <span class="@($"prog-chip {CategoryBadgeClass(p.Category)}")"
+                                          title="@p.Name">
+                                        @ShortName(p.Name)
+                                    </span>
+                                }
+                            }
+                            @if (active.Count > 3)
+                            {
+                                <span class="prog-chip prog-chip-more">+@(active.Count - 3)</span>
+                            }
+                            @if (active.Count == 0)
+                            {
+                                <span style="font-size:11.5px;opacity:.45">none</span>
+                            }
+                        </div>
+                    </MudTd>
+                    <MudTd DataLabel="Dependents" Style="font-size:13px">
+                        @if (context.Dependents.Count == 0)
+                        {
+                            <span style="opacity:.45">â€”</span>
+                        }
+                        else
+                        {
+                            @context.Dependents.Count
+                        }
+                    </MudTd>
+                    <MudTd DataLabel="Monthly Contribution"
+                           Style="text-align:right;font-variant-numeric:tabular-nums">
+                        @Money(context.Enrollments.Where(e => e.Status == "Active").Sum(e => e.MonthlyContribution))
+                    </MudTd>
+                    <MudTd DataLabel="Actions" Style="text-align:right">
+                        <MudStack Row="true" Spacing="1" Justify="Justify.FlexEnd">
+                            <MudButton Size="Size.Small" Variant="Variant.Outlined"
+                                       OnClick="@(() => OpenEmployeeBenefitsDialog(context.EmployeeId))">
+                                Manage
+                            </MudButton>
+                        </MudStack>
+                    </MudTd>
+                </RowTemplate>
+                <NoRecordsContent>
+                    <div class="ben-empty">
+                        <div class="ben-empty-icon">âŠ˜</div>
+                        <MudText Typo="Typo.body2">No employees match your filter.</MudText>
+                    </div>
+                </NoRecordsContent>
+                <PagerContent>
+                    <MudTablePager PageSizeOptions="new int[] { 10, 25, 50 }" />
+                </PagerContent>
+            </MudTable>
+        </MudTabPanel>
+
+        @* â•â• CLAIMS & LOANS TAB â•â• *@
+        <MudTabPanel Text="@($"Claims & Loans ({Requests.Count(r => r.Status != BenefitRequestStatus.Closed && r.Status != BenefitRequestStatus.Rejected)})")"
+                     Icon="@Icons.Material.Outlined.RequestPage">
+            <div class="ben-card-header">
+                <div>
+                    <MudText Typo="Typo.subtitle2" Class="fw-medium">Claims &amp; Loan Activity</MudText>
+                    <MudText Typo="Typo.caption" Style="opacity:.55">
+                        @FilteredRequests.Count() of @Requests.Count records
+                    </MudText>
+                </div>
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" Size="Size.Small"
+                           StartIcon="@Icons.Material.Outlined.Add" DisableElevation="true"
+                           OnClick="OpenFileRequestDialog">File New</MudButton>
+            </div>
+
+            <div class="filter-row">
+                <MudChipSet T="string" @bind-SelectedValue="RequestStatusFilter" CheckMark="false" Mandatory="true">
+                    <MudChip T="string" Value="@("All")" Size="Size.Small">All</MudChip>
+                    <MudChip T="string" Value="@("Pending")" Size="Size.Small">Pending</MudChip>
+                    <MudChip T="string" Value="@("Approved")" Size="Size.Small">Approved</MudChip>
+                    <MudChip T="string" Value="@("Released")" Size="Size.Small">Released</MudChip>
+                    <MudChip T="string" Value="@("Repaying")" Size="Size.Small">Repaying</MudChip>
+                    <MudChip T="string" Value="@("Closed")" Size="Size.Small">Closed</MudChip>
+                </MudChipSet>
+                <MudSpacer />
+                <MudTextField @bind-Value="RequestSearch" Placeholder="Search employee, programâ€¦"
+                              Variant="Variant.Outlined" Margin="Margin.Dense" Class="ben-search"
+                              Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Outlined.Search"
+                              DebounceInterval="200" Immediate="true" />
+            </div>
+
+            <MudTable T="BenefitRequest" Items="@FilteredRequests" Dense="true" Hover="true"
+                      Elevation="0" Breakpoint="Breakpoint.Sm"
+                      @bind-RowsPerPage="RequestPageSize" @bind-Page="RequestPage"
+                      Class="ben-mud-table">
+                <HeaderContent>
+                    <MudTh><MudTableSortLabel T="BenefitRequest" SortBy="@(r => r.RequestedOn)">Requested</MudTableSortLabel></MudTh>
+                    <MudTh>Employee</MudTh>
+                    <MudTh>Type</MudTh>
+                    <MudTh>Program</MudTh>
+                    <MudTh Style="text-align:right">Amount</MudTh>
+                    <MudTh>Balance</MudTh>
+                    <MudTh>Status</MudTh>
+                    <MudTh Style="text-align:right">Actions</MudTh>
+                </HeaderContent>
+                <RowTemplate>
+                    <MudTd DataLabel="Requested" Style="opacity:.7;font-size:12px">
+                        @FmtDate(context.RequestedOn)
+                    </MudTd>
+                    <MudTd DataLabel="Employee">
+                        <div style="display:flex;align-items:center;gap:9px">
+                            <MudAvatar Style="@AvatarStyle(context.EmployeeAv)" Class="ben-av-sm">@context.EmployeeInit</MudAvatar>
+                            <MudText Typo="Typo.body2" Class="fw-medium" Style="line-height:1.2">@context.EmployeeName</MudText>
+                        </div>
+                    </MudTd>
+                    <MudTd DataLabel="Type" Style="font-size:12.5px">@RequestTypeLabel(context.Type)</MudTd>
+                    <MudTd DataLabel="Program" Style="opacity:.8;font-size:12.5px">@context.ProgramName</MudTd>
+                    <MudTd DataLabel="Amount" Style="text-align:right;font-variant-numeric:tabular-nums">@Money(context.Amount)</MudTd>
+                    <MudTd DataLabel="Balance"
+                           Style="font-size:12px;font-variant-numeric:tabular-nums">
+                        @if (context.Type == BenefitRequestType.Loan && context.OutstandingBalance.HasValue)
+                        {
+                            @Money(context.OutstandingBalance.Value)
+                        }
+                        else
+                        {
+                            <span style="opacity:.4">â€”</span>
+                        }
+                    </MudTd>
+                    <MudTd DataLabel="Status">
+                        <span class="@($"ben-badge {RequestStatusBadgeClass(context.Status)}")">
+                            @RequestStatusLabel(context.Status)
+                        </span>
+                    </MudTd>
+                    <MudTd DataLabel="Actions" Style="text-align:right">
+                        <MudStack Row="true" Spacing="1" Justify="Justify.FlexEnd">
+                            @if (context.Status == BenefitRequestStatus.Pending)
+                            {
+                                <MudButton Size="Size.Small" Variant="Variant.Filled" Color="Color.Success"
+                                           DisableElevation="true" Style="min-width:unset"
+                                           OnClick="@(() => ApproveRequest(context.Id))">Approve</MudButton>
+                                <MudButton Size="Size.Small" Variant="Variant.Outlined" Color="Color.Error"
+                                           Style="min-width:unset"
+                                           OnClick="@(() => RejectRequest(context.Id))">Reject</MudButton>
+                            }
+                            <MudIconButton Icon="@Icons.Material.Outlined.Visibility" Size="Size.Small"
+                                           OnClick="@(() => OpenRequestDialog(context.Id))" />
+                        </MudStack>
+                    </MudTd>
+                </RowTemplate>
+                <NoRecordsContent>
+                    <div class="ben-empty">
+                        <div class="ben-empty-icon">âŠ˜</div>
+                        <MudText Typo="Typo.body2">No requests match your filter.</MudText>
+                    </div>
+                </NoRecordsContent>
+                <PagerContent>
+                    <MudTablePager PageSizeOptions="new int[] { 10, 25, 50 }" />
+                </PagerContent>
+            </MudTable>
+        </MudTabPanel>
+    </MudTabs>
+</MudPaper>
+
+@* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+   STYLES
+â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• *@
+<style>
+    :root {
+        --ben-green:        #1D9E75;
+        --ben-green-light:  #E1F5EE;
+        --ben-green-dark:   #0F6E56;
+        --ben-green-text:   #085041;
+        --ben-red:          #E24B4A;
+        --ben-red-light:    #FCEBEB;
+        --ben-red-text:     #791F1F;
+        --ben-amber:        #BA7517;
+        --ben-amber-light:  #FAEEDA;
+        --ben-amber-text:   #633806;
+        --ben-purple:       #534AB7;
+        --ben-purple-light: #EEEDFE;
+        --ben-purple-text:  #3C3489;
+        --ben-blue:         #185FA5;
+        --ben-blue-light:   #E6F1FB;
+        --ben-blue-text:    #0C447C;
+        --ben-pink:         #B8336A;
+        --ben-pink-light:   #FBE8EE;
+        --ben-pink-text:    #631838;
+        --ben-teal:         #0E7C7B;
+        --ben-teal-light:   #DAF1F0;
+        --ben-teal-text:    #084040;
+    }
+
+    /* â”€â”€ KPI â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+    .ben-kpi {
+        padding: 16px;
+        border: 0.5px solid var(--mud-palette-divider);
+        border-radius: 10px;
+        background: var(--mud-palette-background);
+    }
+    .kpi-label { font-size: 10.5px; letter-spacing: .07em; text-transform: uppercase; opacity: .55; margin-bottom: 6px; font-weight: 500; }
+    .kpi-value { font-size: 1.9rem; font-weight: 500; line-height: 1; margin-bottom: 5px; font-variant-numeric: tabular-nums; }
+    .kpi-sub   { font-size: 11.5px; opacity: .6; display: flex; align-items: center; gap: 5px; }
+    .kpi-dot   { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; display: inline-block; }
+
+    /* â”€â”€ Card shell â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+    .ben-card {
+        border: 0.5px solid var(--mud-palette-divider);
+        border-radius: 10px;
+        overflow: hidden;
+        background: var(--mud-palette-background);
+    }
+    .ben-card-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 12px 16px;
+        border-bottom: 0.5px solid var(--mud-palette-divider);
+        gap: 8px;
+    }
+    .fw-medium { font-weight: 500; }
+
+    /* â”€â”€ Avatars â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+    .ben-av-sm {
+        width: 30px !important;
+        height: 30px !important;
+        font-size: 11px !important;
+        font-weight: 500;
+    }
+
+    /* â”€â”€ Badges (category + status) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+    .ben-badge {
+        display: inline-block;
+        font-size: 11px;
+        padding: 2px 9px;
+        border-radius: 100px;
+        font-weight: 500;
+        white-space: nowrap;
+    }
+    .ben-badge-health      { background: var(--ben-pink-light);   color: var(--ben-pink-text); }
+    .ben-badge-insurance   { background: var(--ben-blue-light);   color: var(--ben-blue-text); }
+    .ben-badge-allowance   { background: var(--ben-amber-light);  color: var(--ben-amber-text); }
+    .ben-badge-retirement  { background: var(--ben-purple-light); color: var(--ben-purple-text); }
+    .ben-badge-loan        { background: var(--ben-teal-light);   color: var(--ben-teal-text); }
+    .ben-badge-wellness    { background: var(--ben-green-light);  color: var(--ben-green-text); }
+    .ben-badge-education   { background: var(--ben-purple-light); color: var(--ben-purple-text); }
+    .ben-badge-leave       { background: var(--ben-blue-light);   color: var(--ben-blue-text); }
+    .ben-badge-other       { background: var(--mud-palette-background-grey); color: var(--mud-palette-text-secondary); }
+
+    .ben-badge-pending     { background: var(--ben-amber-light); color: var(--ben-amber-text); }
+    .ben-badge-approved    { background: var(--ben-blue-light);  color: var(--ben-blue-text); }
+    .ben-badge-released    { background: var(--ben-green-light); color: var(--ben-green-text); }
+    .ben-badge-rejected    { background: var(--ben-red-light);   color: var(--ben-red-text); }
+    .ben-badge-repaying    { background: var(--ben-purple-light); color: var(--ben-purple-text); }
+    .ben-badge-closed      { background: var(--mud-palette-background-grey); color: var(--mud-palette-text-secondary); }
+
+    /* â”€â”€ Mandatory chip on program rows â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+    .ben-mandatory-chip {
+        font-size: 9px;
+        font-weight: 500;
+        letter-spacing: .04em;
+        text-transform: uppercase;
+        padding: 1px 6px;
+        border-radius: 100px;
+        background: var(--ben-amber-light);
+        color: var(--ben-amber-text);
+    }
+
+    /* â”€â”€ Program category icon (square) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+    .ben-prog-icon {
+        width: 30px; height: 30px;
+        border-radius: 6px;
+        display: flex; align-items: center; justify-content: center;
+        flex-shrink: 0;
+    }
+
+    /* â”€â”€ Coverage chart â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+    .coverage-wrap { padding: 16px; }
+    .cov-row {
+        display: flex; align-items: center; gap: 12px;
+        margin-bottom: 10px;
+    }
+    .cov-row:last-child { margin-bottom: 0; }
+    .cov-label {
+        width: 130px; flex-shrink: 0;
+        display: flex; align-items: center; gap: 8px;
+        font-size: 12.5px;
+    }
+    .cov-track {
+        flex: 1; height: 18px;
+        background: var(--mud-palette-background-grey);
+        border-radius: 4px;
+        overflow: hidden;
+    }
+    .cov-fill {
+        height: 100%; border-radius: 4px;
+        transition: width .3s; min-width: 4px;
+    }
+    .cov-count {
+        width: 76px; text-align: right;
+        font-size: 13px; font-weight: 500;
+        font-variant-numeric: tabular-nums;
+    }
+    .cov-pct { font-weight: 400; opacity: .55; font-size: 11.5px; }
+
+    /* â”€â”€ Activity feed â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+    .activity-item {
+        display: flex; align-items: center; gap: 12px;
+        padding: 10px 16px;
+        border-bottom: 0.5px solid var(--mud-palette-divider);
+        cursor: pointer; transition: background .1s;
+    }
+    .activity-item:last-child { border-bottom: none; }
+    .activity-item:hover { background: var(--mud-palette-background-grey); }
+    .activity-item-renewal { cursor: default; }
+    .activity-item-renewal:hover { background: transparent; }
+    .activity-meta { flex: 1; min-width: 0; }
+
+    /* â”€â”€ Filter row â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+    .filter-row {
+        display: flex; flex-wrap: wrap; align-items: center; gap: 8px;
+        padding: 10px 14px;
+        border-bottom: 0.5px solid var(--mud-palette-divider);
+    }
+    .ben-search { max-width: 260px; }
+
+    /* â”€â”€ Program chips on enrollment table â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+    .prog-chips { display: flex; flex-wrap: wrap; gap: 4px; }
+    .prog-chip {
+        font-size: 10.5px;
+        padding: 1px 7px;
+        border-radius: 100px;
+        font-weight: 500;
+        white-space: nowrap;
+    }
+    .prog-chip-more {
+        background: var(--mud-palette-background-grey);
+        color: var(--mud-palette-text-secondary);
+    }
+
+    /* â”€â”€ Empty state â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+    .ben-empty { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 40px 16px; opacity: .55; gap: 8px; }
+    .ben-empty-icon { font-size: 28px; }
+
+    /* â”€â”€ Tabs â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+    .ben-tab-panel { padding: 0 !important; }
+    .ben-tab-item  { min-width: unset !important; text-transform: none !important; font-size: 13px !important; }
+
+    /* â”€â”€ MudTable overrides â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+    .ben-mud-table .mud-table-container { border-radius: 0; }
+    .ben-mud-table th { font-size: 10.5px !important; font-weight: 500 !important; letter-spacing: .055em !important; text-transform: uppercase !important; opacity: .65; }
+    .ben-mud-table td { font-size: 13px !important; vertical-align: middle; }
+
+    @@media (max-width: 600px) {
+        .ben-search { max-width: 100%; width: 100%; }
+        .cov-label { width: 100px; }
+    }
+</style>
+
+@code {
+    // â”€â”€â”€ State â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    private int ActiveTab { get; set; } = 0;
+
+    // Programs tab state
+    private string ProgramCategoryFilter { get; set; } = "All";
+    private string ProgramSearch { get; set; } = "";
+    private int ProgramPage { get; set; } = 0;
+    private int ProgramPageSize { get; set; } = 10;
+
+    // Enrollments tab state
+    private string EnrollmentCoverageFilter { get; set; } = "All";
+    private string EnrollmentSearch { get; set; } = "";
+    private int EnrollmentPage { get; set; } = 0;
+    private int EnrollmentPageSize { get; set; } = 10;
+
+    // Requests tab state
+    private string RequestStatusFilter { get; set; } = "All";
+    private string RequestSearch { get; set; } = "";
+    private int RequestPage { get; set; } = 0;
+    private int RequestPageSize { get; set; } = 10;
+
+    // â”€â”€â”€ Derived â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    private int ActiveProgramCount => Programs.Count(p => p.IsActive);
+    private int CategoryCount => Programs.Where(p => p.IsActive).Select(p => p.Category).Distinct().Count();
+    private int TotalEmployees => EmployeeViews.Count;
+    private int CoveredEmployeeCount =>
+        Enrollments.Where(e => e.Status == "Active").Select(e => e.EmployeeId).Distinct().Count();
+    private int ActiveEnrollmentCount => Enrollments.Count(e => e.Status == "Active");
+    private decimal MonthlyEmployerCost => Enrollments
+        .Where(e => e.Status == "Active")
+        .Sum(e => {
+            var p = Programs.FirstOrDefault(p => p.Id == e.ProgramId);
+            if (p == null) return 0m;
+            return p.MonthlyCostPerEmployee - e.MonthlyContribution;
+        });
+    private int PendingRequestCount => Requests.Count(r => r.Status == BenefitRequestStatus.Pending);
+    private int UpcomingRenewalCount => Programs.Count(p =>
+        p.IsActive && p.RenewalDate.HasValue
+        && p.RenewalDate.Value <= DateTime.Now.AddDays(60)
+        && p.RenewalDate.Value > DateTime.Now);
+
+    private IEnumerable<BenefitProgram> FilteredPrograms
+    {
+        get
+        {
+            var q = (ProgramSearch ?? "").Trim().ToLower();
+            return Programs.Where(p =>
+                (ProgramCategoryFilter == "All" || CategoryLabel(p.Category) == ProgramCategoryFilter) &&
+                (string.IsNullOrEmpty(q)
+                    || p.Name.ToLower().Contains(q)
+                    || p.Provider.ToLower().Contains(q))
+            );
+        }
+    }
+
+    private IEnumerable<EmployeeBenefitsView> FilteredEmployeeViews
+    {
+        get
+        {
+            var q = (EnrollmentSearch ?? "").Trim().ToLower();
+            return EmployeeViews.Where(emp =>
+            {
+                if (!string.IsNullOrEmpty(q)
+                    && !emp.Name.ToLower().Contains(q)
+                    && !emp.Dept.ToLower().Contains(q)
+                    && !emp.Role.ToLower().Contains(q))
+                {
+                    return false;
+                }
+
+                var active = emp.Enrollments.Where(e => e.Status == "Active").ToList();
+                var hasHealth = active.Any(e =>
+                    Programs.Any(p => p.Id == e.ProgramId
+                                   && (p.Category == BenefitCategory.Health
+                                       || p.Category == BenefitCategory.Insurance)));
+
+                return EnrollmentCoverageFilter switch
+                {
+                    "Fully covered"   => active.Count >= 4,
+                    "Partial"         => active.Count > 0 && active.Count < 4,
+                    "Missing health"  => !hasHealth,
+                    _ => true
+                };
+            });
+        }
+    }
+
+    private IEnumerable<BenefitRequest> FilteredRequests
+    {
+        get
+        {
+            var q = (RequestSearch ?? "").Trim().ToLower();
+            return Requests.Where(r =>
+                (RequestStatusFilter == "All"
+                    || RequestStatusLabel(r.Status) == RequestStatusFilter) &&
+                (string.IsNullOrEmpty(q)
+                    || r.EmployeeName.ToLower().Contains(q)
+                    || r.ProgramName.ToLower().Contains(q))
+            ).OrderByDescending(r => r.RequestedOn);
+        }
+    }
+
+    // â”€â”€â”€ Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    private string CategoryFillColor(BenefitCategory c) => c switch
+    {
+        BenefitCategory.Health     => "var(--ben-pink)",
+        BenefitCategory.Insurance  => "var(--ben-blue)",
+        BenefitCategory.Allowance  => "var(--ben-amber)",
+        BenefitCategory.Retirement => "var(--ben-purple)",
+        BenefitCategory.Loan       => "var(--ben-teal)",
+        BenefitCategory.Wellness   => "var(--ben-green)",
+        BenefitCategory.Education  => "var(--ben-purple)",
+        BenefitCategory.Leave      => "var(--ben-blue)",
+        _ => "var(--mud-palette-divider)"
+    };
+
+    private string ShortName(string fullName)
+    {
+        // Trim long program names so the chips fit. e.g. "Maxicare HMO Gold (50% dep)" â†’ "HMO Gold"
+        if (fullName.Length <= 14) return fullName;
+        // Try to strip common prefixes like provider names
+        var trimmed = fullName.Replace("Maxicare ", "").Replace("Sun Life ", "").Replace("In-house ", "");
+        return trimmed.Length <= 14 ? trimmed : trimmed[..14] + "â€¦";
+    }
+
+    // â”€â”€â”€ Actions â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    private async Task OpenCreateProgramDialog()
+    {
+        var options = new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true };
+        var dialog = await DialogService.ShowAsync<EditProgramDialog>("Add Benefit Program", new DialogParameters(), options);
+        var result = await dialog.Result;
+        if (result is not null && !result.Canceled && result.Data is BenefitProgram p)
+        {
+            p.EffectiveDate = p.EffectiveDate == default ? DateTime.Today : p.EffectiveDate;
+            var apiResult = await BenefitsApi.CreateProgramAsync(new CreateBenefitProgramRequest(
+                Name: p.Name, Provider: p.Provider,
+                Category: (DomainBen.BenefitCategory)(int)p.Category,
+                Description: p.Description, IsMandatory: p.IsMandatory,
+                Eligibility: p.Eligibility,
+                EffectiveDate: DateOnly.FromDateTime(p.EffectiveDate),
+                RenewalDate: p.RenewalDate.HasValue ? DateOnly.FromDateTime(p.RenewalDate.Value) : null,
+                MonthlyCostPerEmployee: p.MonthlyCostPerEmployee,
+                EmployerShare: p.EmployerShare, EmployeeShare: p.EmployeeShare,
+                ShareIsPercent: p.ShareIsPercent));
+            if (apiResult.Success)
+            {
+                Snackbar.Add($"Added program: {p.Name}", Severity.Success);
+                await ReloadAsync();
+            }
+            else
+            {
+                Snackbar.Add(apiResult.ErrorMessage ?? "Failed to create program.", Severity.Error);
+            }
+        }
+    }
+
+    private async Task OpenEditProgramDialog(string id)
+    {
+        var prog = Programs.FirstOrDefault(p => p.Id == id);
+        if (prog == null) return;
+        if (!Guid.TryParse(prog.Id, out var guid)) { Snackbar.Add("Invalid program id", Severity.Error); return; }
+
+        var parameters = new DialogParameters { ["Existing"] = prog };
+        var options = new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true };
+        var dialog = await DialogService.ShowAsync<EditProgramDialog>($"Edit — {prog.Name}", parameters, options);
+        var result = await dialog.Result;
+        if (result is not null && !result.Canceled)
+        {
+            var apiResult = await BenefitsApi.UpdateProgramAsync(guid, new UpdateBenefitProgramRequest(
+                Name: prog.Name, Provider: prog.Provider,
+                Category: (DomainBen.BenefitCategory)(int)prog.Category,
+                Description: prog.Description, IsActive: prog.IsActive, IsMandatory: prog.IsMandatory,
+                Eligibility: prog.Eligibility,
+                EffectiveDate: DateOnly.FromDateTime(prog.EffectiveDate),
+                RenewalDate: prog.RenewalDate.HasValue ? DateOnly.FromDateTime(prog.RenewalDate.Value) : null,
+                MonthlyCostPerEmployee: prog.MonthlyCostPerEmployee,
+                EmployerShare: prog.EmployerShare, EmployeeShare: prog.EmployeeShare,
+                ShareIsPercent: prog.ShareIsPercent));
+            if (apiResult.Success)
+            {
+                Snackbar.Add($"Updated: {prog.Name}", Severity.Success);
+                await ReloadAsync();
+            }
+            else
+            {
+                Snackbar.Add(apiResult.ErrorMessage ?? "Failed to update program.", Severity.Error);
+            }
+        }
+    }
+
+    private async Task OpenProgramDetailDialog(string id)
+    {
+        var prog = Programs.FirstOrDefault(p => p.Id == id);
+        if (prog == null) return;
+        var enrolledCount = Enrollments.Count(e => e.ProgramId == id && e.Status == "Active");
+        var parameters = new DialogParameters
+        {
+            ["Program"] = prog,
+            ["EnrolledCount"] = enrolledCount,
+            ["TotalEmployees"] = TotalEmployees,
+        };
+        var options = new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true };
+        await DialogService.ShowAsync<ProgramDetailDialog>(prog.Name, parameters, options);
+    }
+
+    private async Task OpenEmployeeBenefitsDialog(string employeeId)
+    {
+        var view = EmployeeViews.FirstOrDefault(e => e.EmployeeId == employeeId);
+        if (view == null) return;
+        // Always sync the embedded enrollments/requests/dependents to current global state
+        view.Enrollments = Enrollments.Where(e => e.EmployeeId == employeeId).ToList();
+        view.Requests = Requests.Where(r => r.EmployeeId == employeeId).ToList();
+        view.Dependents = Dependents.Where(d => d.EmployeeId == employeeId).ToList();
+
+        var parameters = new DialogParameters
+        {
+            ["View"] = view,
+            ["AllPrograms"] = Programs,
+            ["OnEnroll"] = EventCallback.Factory.Create<BenefitEnrollment>(this, e =>
+            {
+                Enrollments.Add(e);
+                StateHasChanged();
+            }),
+            ["OnUnenroll"] = EventCallback.Factory.Create<string>(this, enrollmentId =>
+            {
+                var enr = Enrollments.FirstOrDefault(e => e.Id == enrollmentId);
+                if (enr != null) { enr.Status = "Terminated"; enr.EndDate = DateTime.Now; }
+                StateHasChanged();
+            }),
+            ["OnAddDependent"] = EventCallback.Factory.Create<Dependent>(this, d =>
+            {
+                Dependents.Add(d);
+                StateHasChanged();
+            }),
+            ["OnRemoveDependent"] = EventCallback.Factory.Create<string>(this, depId =>
+            {
+                Dependents.RemoveAll(d => d.Id == depId);
+                StateHasChanged();
+            })
+        };
+        var options = new DialogOptions { MaxWidth = MaxWidth.Medium, FullWidth = true };
+        await DialogService.ShowAsync<EmployeeBenefitsDialog>($"{view.Name} â€” Benefits", parameters, options);
+    }
+
+    private async Task OpenBulkEnrollDialog()
+    {
+        Snackbar.Add("Bulk enrollment workflow not wired in this demo â€” open an individual employee to enroll.",
+            Severity.Info);
+        await Task.CompletedTask;
+    }
+
+    private async Task OpenFileRequestDialog()
+    {
+        var parameters = new DialogParameters
+        {
+            ["AllEmployees"] = EmployeeViews,
+            ["AllPrograms"] = Programs,
+        };
+        var options = new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true };
+        var dialog = await DialogService.ShowAsync<ClaimLoanDialog>("File Claim or Loan Request", parameters, options);
+        var result = await dialog.Result;
+        if (result is not null && !result.Canceled && result.Data is BenefitRequest req)
+        {
+            if (!Guid.TryParse(req.EmployeeId, out var empId) || !Guid.TryParse(req.ProgramId, out var progId))
+            {
+                Snackbar.Add("Invalid employee or program selection.", Severity.Error);
+                return;
+            }
+
+            var apiResult = await BenefitsApi.FileRequestAsync(new FileBenefitRequestRequest(
+                EmployeeId: empId, BenefitProgramId: progId,
+                Type: (DomainBen.BenefitRequestType)(int)req.Type,
+                Amount: req.Amount, Reason: req.Reason,
+                TermMonths: req.TermMonths,
+                MonthlyDeduction: req.MonthlyDeduction));
+
+            if (apiResult.Success)
+            {
+                Snackbar.Add($"Filed {RequestTypeLabel(req.Type).ToLower()} for {req.EmployeeName}", Severity.Success);
+                await ReloadAsync();
+            }
+            else
+            {
+                Snackbar.Add(apiResult.ErrorMessage ?? "Failed to file request.", Severity.Error);
+            }
+        }
+    }
+
+    private async Task OpenRequestDialog(string requestId)
+    {
+        var req = Requests.FirstOrDefault(r => r.Id == requestId);
+        if (req == null) return;
+        var parameters = new DialogParameters
+        {
+            ["AllEmployees"] = EmployeeViews,
+            ["AllPrograms"] = Programs,
+            ["Existing"] = req,
+        };
+        var options = new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true };
+        var dialog = await DialogService.ShowAsync<ClaimLoanDialog>(
+            $"{RequestTypeLabel(req.Type)} â€” {req.EmployeeName}",
+            parameters, options);
+        var result = await dialog.Result;
+        if (result is not null && !result.Canceled)
+        {
+            Snackbar.Add($"Updated request for {req.EmployeeName}", Severity.Info);
+            StateHasChanged();
+        }
+    }
+
+    private async void ApproveRequest(string id)
+    {
+        var req = Requests.FirstOrDefault(r => r.Id == id);
+        if (req == null) return;
+        if (!Guid.TryParse(req.Id, out var guid)) { Snackbar.Add("Invalid request id", Severity.Error); return; }
+
+        var apiResult = await BenefitsApi.ResolveRequestAsync(guid,
+            new ResolveBenefitRequestRequest(DomainBen.BenefitRequestStatus.Approved, "Approved"));
+        if (apiResult.Success)
+        {
+            Snackbar.Add($"Approved {RequestTypeLabel(req.Type).ToLower()} for {req.EmployeeName}", Severity.Success);
+            await ReloadAsync();
+        }
+        else
+        {
+            Snackbar.Add(apiResult.ErrorMessage ?? "Failed to approve request.", Severity.Error);
+        }
+    }
+
+    private async void RejectRequest(string id)
+    {
+        var req = Requests.FirstOrDefault(r => r.Id == id);
+        if (req == null) return;
+        if (!Guid.TryParse(req.Id, out var guid)) { Snackbar.Add("Invalid request id", Severity.Error); return; }
+
+        var apiResult = await BenefitsApi.ResolveRequestAsync(guid,
+            new ResolveBenefitRequestRequest(DomainBen.BenefitRequestStatus.Rejected, "Rejected"));
+        if (apiResult.Success)
+        {
+            Snackbar.Add($"Rejected request for {req.EmployeeName}", Severity.Warning);
+            await ReloadAsync();
+        }
+        else
+        {
+            Snackbar.Add(apiResult.ErrorMessage ?? "Failed to reject request.", Severity.Error);
+        }
+    }
+
+    // ─── Data ───────────────────────────────────────────────────
+    private List<BenefitProgram> Programs { get; set; } = new();
+    private List<BenefitEnrollment> Enrollments { get; set; } = new();
+    private List<Dependent> Dependents { get; set; } = new();
+    private List<BenefitRequest> Requests { get; set; } = new();
+    private List<EmployeeBenefitsView> EmployeeViews { get; set; } = new();
+
+    private static readonly string[] AvatarTones = { "green", "blue", "amber", "purple", "primary", "red" };
+
+    protected override async Task OnInitializedAsync() => await ReloadAsync();
+
+    private async Task ReloadAsync()
+    {
+        var programsTask    = BenefitsApi.ListProgramsAsync(includeInactive: true);
+        var enrollmentsTask = BenefitsApi.ListEnrollmentsAsync();
+        var requestsTask    = BenefitsApi.ListRequestsAsync();
+        var employeesTask   = EmployeesApi.ListAsync(page: 1, pageSize: 200);
+
+        await Task.WhenAll(programsTask, enrollmentsTask, requestsTask, employeesTask);
+
+        if (programsTask.Result is { Success: true, Value: { } progs })
+            Programs = progs.Select(MapProgram).ToList();
+        else if (programsTask.Result.ErrorMessage is { } pErr)
+            Snackbar.Add(pErr, Severity.Error);
+
+        if (enrollmentsTask.Result is { Success: true, Value: { } ens })
+            Enrollments = ens.Select(MapEnrollment).ToList();
+
+        if (requestsTask.Result is { Success: true, Value: { } reqs })
+            Requests = reqs.Select(MapRequest).ToList();
+
+        if (employeesTask.Result is { Success: true, Value: { } empPage })
+        {
+            EmployeeViews = empPage.Items.Select(e => new EmployeeBenefitsView
+            {
+                EmployeeId = e.Id.ToString(),
+                Name = $"{e.FirstName} {e.LastName}".Trim(),
+                Init = MakeInitials(e.FirstName, e.LastName),
+                Av = AvatarTones[Math.Abs(e.Id.GetHashCode()) % AvatarTones.Length],
+                Role = e.JobTitle,
+                Dept = e.DepartmentName,
+                HireDate = e.HireDate.ToDateTime(TimeOnly.MinValue),
+                Enrollments = Enrollments.Where(en => en.EmployeeId == e.Id.ToString()).ToList(),
+                Requests = Requests.Where(r => r.EmployeeId == e.Id.ToString()).ToList(),
+                Dependents = new List<Dependent>(),
+            }).ToList();
+        }
+
+        StateHasChanged();
+    }
+
+    private static BenefitProgram MapProgram(BenefitProgramDto d) => new()
+    {
+        Id = d.Id.ToString(),
+        Name = d.Name,
+        Provider = d.Provider,
+        Category = (BenefitCategory)(int)d.Category,
+        Description = d.Description,
+        IsActive = d.IsActive,
+        IsMandatory = d.IsMandatory,
+        Eligibility = d.Eligibility,
+        EffectiveDate = d.EffectiveDate.ToDateTime(TimeOnly.MinValue),
+        RenewalDate = d.RenewalDate?.ToDateTime(TimeOnly.MinValue),
+        MonthlyCostPerEmployee = d.MonthlyCostPerEmployee,
+        EmployerShare = d.EmployerShare,
+        EmployeeShare = d.EmployeeShare,
+        ShareIsPercent = d.ShareIsPercent,
+    };
+
+    private static BenefitEnrollment MapEnrollment(BenefitEnrollmentDto d) => new()
+    {
+        Id = d.Id.ToString(),
+        EmployeeId = d.EmployeeId.ToString(),
+        ProgramId = d.BenefitProgramId.ToString(),
+        EnrolledOn = d.EnrolledOn.ToDateTime(TimeOnly.MinValue),
+        EndDate = d.EndDate?.ToDateTime(TimeOnly.MinValue),
+        Status = d.Status.ToString(),
+        MonthlyContribution = d.MonthlyContribution,
+        Notes = d.Notes,
+    };
+
+    private static BenefitRequest MapRequest(BenefitRequestDto d) => new()
+    {
+        Id = d.Id.ToString(),
+        EmployeeId = d.EmployeeId.ToString(),
+        EmployeeName = d.EmployeeName,
+        EmployeeInit = MakeInitialsFromFullName(d.EmployeeName),
+        EmployeeAv = AvatarTones[Math.Abs(d.Id.GetHashCode()) % AvatarTones.Length],
+        Type = (BenefitRequestType)(int)d.Type,
+        ProgramId = d.BenefitProgramId.ToString(),
+        ProgramName = d.ProgramName,
+        Amount = d.Amount,
+        RequestedOn = d.RequestedAt.LocalDateTime,
+        ResolvedOn = d.ResolvedAt?.LocalDateTime,
+        Status = (BenefitRequestStatus)(int)d.Status,
+        Reason = d.Reason,
+        TermMonths = d.TermMonths,
+        MonthlyDeduction = d.MonthlyDeduction,
+        OutstandingBalance = d.OutstandingBalance,
+    };
+
+    private static string MakeInitials(string first, string last)
+    {
+        var f = string.IsNullOrEmpty(first) ? "" : first[..1];
+        var l = string.IsNullOrEmpty(last)  ? "" : last[..1];
+        return (f + l).ToUpperInvariant();
+    }
+
+    private static string MakeInitialsFromFullName(string name)
+    {
+        if (string.IsNullOrWhiteSpace(name)) return "—";
+        var parts = name.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        return parts.Length switch
+        {
+            0 => "—",
+            1 => parts[0][..Math.Min(2, parts[0].Length)].ToUpperInvariant(),
+            _ => $"{parts[0][0]}{parts[^1][0]}".ToUpperInvariant(),
+        };
+    }
+}

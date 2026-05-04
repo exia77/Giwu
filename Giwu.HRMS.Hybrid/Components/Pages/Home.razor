@@ -1,0 +1,349 @@
+@page "/"
+@layout DashboardLayout
+@inject IEmployeesApi EmployeesApi
+@inject IDepartmentsApi DepartmentsApi
+@inject ILeavesApi LeavesApi
+@inject NavigationManager Navigation
+
+@using Giwu.Contracts.Departments
+@using Giwu.Contracts.Employees
+@using Giwu.Contracts.Leaves
+@using Giwu.Domain.Organization
+@using LeaveRequestStatus = Giwu.Domain.Leaves.LeaveRequestStatus
+@using Giwu.HRMS.Hybrid.Services.Departments
+@using Giwu.HRMS.Hybrid.Services.Employees
+@using Giwu.HRMS.Hybrid.Services.Leaves
+
+@*Home Screen*@
+<MudGrid Spacing="2">
+
+  @* ── Stat cards ── *@
+  @foreach (var s in _stats)
+  {
+    <MudItem xs="12" sm="6" md="3">
+      <MudPaper Class="pa-4" Elevation="0" Style="border:1px solid var(--mud-palette-divider);border-radius:10px">
+        <MudText Typo="Typo.caption" Style="opacity:.65">@s.Label</MudText>
+        <MudText Typo="Typo.h5" Class="my-1 fw-bold">@s.Value</MudText>
+        <MudText Typo="Typo.caption" Style="@($"color:{s.ChangeColor}")">@s.Change</MudText>
+      </MudPaper>
+    </MudItem>
+  }
+
+  @* ── Recent employees ── *@
+  <MudItem xs="12" md="6">
+    <MudPaper Class="pa-4" Elevation="0" Style="border:1px solid var(--mud-palette-divider);border-radius:10px">
+      <MudText Typo="Typo.subtitle1" Class="mb-3 fw-semibold">
+        Recent employees
+        <MudText Inline="true" Typo="Typo.caption" Style="opacity:.55;margin-left:6px">latest hires</MudText>
+      </MudText>
+
+      @if (_loading)
+      {
+        <div style="padding:16px;display:flex;justify-content:center">
+          <MudProgressCircular Indeterminate="true" Size="Size.Small" />
+        </div>
+      }
+      else if (_employees.Count == 0)
+      {
+        <MudText Typo="Typo.caption" Style="opacity:.55">No employees yet.</MudText>
+      }
+      else
+      {
+        @foreach (var e in _employees)
+        {
+          <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--mud-palette-divider)">
+            <MudAvatar Style="@($"background:{e.AvatarBg};color:{e.AvatarFg};font-size:.75rem;width:32px;height:32px")">@e.Initials</MudAvatar>
+            <div style="flex:1;min-width:0">
+              <MudText Typo="Typo.body2" Class="fw-medium" Style="line-height:1.2">@e.Name</MudText>
+              <MudText Typo="Typo.caption" Style="opacity:.55">@e.Dept</MudText>
+            </div>
+            <MudChip T="string" Size="Size.Small" Color="@e.ChipColor" Variant="Variant.Filled" Style="height:22px;font-size:.7rem">@e.Status</MudChip>
+          </div>
+        }
+      }
+    </MudPaper>
+  </MudItem>
+
+  @* ── Leave requests ── *@
+  <MudItem xs="12" md="6">
+    <MudPaper Class="pa-4" Elevation="0" Style="border:1px solid var(--mud-palette-divider);border-radius:10px">
+      <MudText Typo="Typo.subtitle1" Class="mb-3 fw-semibold">
+        Leave requests
+        <MudText Inline="true" Typo="Typo.caption" Style="opacity:.55;margin-left:6px">pending</MudText>
+      </MudText>
+
+      @if (_loading)
+      {
+        <div style="padding:16px;display:flex;justify-content:center">
+          <MudProgressCircular Indeterminate="true" Size="Size.Small" />
+        </div>
+      }
+      else if (_leaveRequests.Count == 0)
+      {
+        <MudText Typo="Typo.caption" Style="opacity:.55">No pending requests.</MudText>
+      }
+      else
+      {
+        @foreach (var l in _leaveRequests)
+        {
+          <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--mud-palette-divider)">
+            <div style="flex:1;min-width:0">
+              <MudText Typo="Typo.body2" Class="fw-medium" Style="line-height:1.2">@l.Name</MudText>
+              <MudText Typo="Typo.caption" Style="opacity:.55">@l.DateRange</MudText>
+            </div>
+            <MudChip T="string" Size="Size.Small" Color="@l.ChipColor" Variant="Variant.Filled" Style="height:22px;font-size:.7rem">@l.Status</MudChip>
+          </div>
+        }
+      }
+    </MudPaper>
+  </MudItem>
+
+  @* ── Headcount by dept ── *@
+  <MudItem xs="12" md="4">
+    <MudPaper Class="pa-4" Elevation="0" Style="border:1px solid var(--mud-palette-divider);border-radius:10px;height:100%">
+      <MudText Typo="Typo.subtitle1" Class="mb-3 fw-semibold">Headcount by dept</MudText>
+
+      @if (_loading)
+      {
+        <div style="padding:16px;display:flex;justify-content:center">
+          <MudProgressCircular Indeterminate="true" Size="Size.Small" />
+        </div>
+      }
+      else if (_depts.Count == 0)
+      {
+        <MudText Typo="Typo.caption" Style="opacity:.55">No departments configured.</MudText>
+      }
+      else
+      {
+        @foreach (var d in _depts)
+        {
+          <div style="margin-bottom:12px">
+            <div style="display:flex;justify-content:space-between;margin-bottom:4px">
+              <MudText Typo="Typo.caption">@d.Name</MudText>
+              <MudText Typo="Typo.caption" Style="opacity:.65">@d.Count</MudText>
+            </div>
+            <MudProgressLinear Value="@d.Pct" Color="@d.Color" Rounded="true" Size="Size.Small" />
+          </div>
+        }
+      }
+    </MudPaper>
+  </MudItem>
+
+  @* ── Quick actions ── *@
+  <MudItem xs="12" md="8">
+    <MudPaper Class="pa-4" Elevation="0" Style="border:1px solid var(--mud-palette-divider);border-radius:10px;height:100%">
+      <MudText Typo="Typo.subtitle1" Class="mb-3 fw-semibold">Quick actions</MudText>
+
+      <MudGrid Spacing="2">
+        @foreach (var a in _actions)
+        {
+          <MudItem xs="12" sm="6" md="4">
+            <MudPaper Class="pa-3 d-flex align-center gap-3" Elevation="0"
+                      Style="@($"border:1px solid var(--mud-palette-divider);border-radius:8px;cursor:pointer;background:{a.IconBg}10")"
+                      @onclick="() => Navigate(a.Path)">
+              <MudAvatar Style="@($"background:{a.IconBg};border-radius:8px;width:32px;height:32px")" Rounded="true">
+                @((MarkupString)a.SvgIcon)
+              </MudAvatar>
+              <div style="min-width:0">
+                <MudText Typo="Typo.body2" Class="fw-medium" Style="line-height:1.2">@a.Label</MudText>
+                <MudText Typo="Typo.caption" Style="opacity:.55">@a.Desc</MudText>
+              </div>
+            </MudPaper>
+          </MudItem>
+        }
+      </MudGrid>
+    </MudPaper>
+  </MudItem>
+
+  @if (!string.IsNullOrEmpty(_loadError))
+  {
+    <MudItem xs="12">
+      <MudAlert Severity="Severity.Warning" Variant="Variant.Outlined">@_loadError</MudAlert>
+    </MudItem>
+  }
+</MudGrid>
+
+@code {
+    record StatCard(string Label, string Value, string Change, string ChangeColor);
+    record EmpRow(string Initials, string AvatarBg, string AvatarFg, string Name, string Dept, string Status, Color ChipColor);
+    record LeaveRow(string Name, string DateRange, string Status, Color ChipColor);
+    record DeptBar(string Name, int Count, double Pct, Color Color);
+    record QuickAction(string Label, string Desc, string Path, string IconBg, string SvgIcon);
+
+    bool _loading = true;
+    string? _loadError;
+
+    StatCard[] _stats = Array.Empty<StatCard>();
+    List<EmpRow>    _employees     = new();
+    List<LeaveRow>  _leaveRequests = new();
+    List<DeptBar>   _depts         = new();
+
+    static readonly Color[] _deptColors = { Color.Info, Color.Secondary, Color.Success, Color.Warning, Color.Error, Color.Tertiary };
+
+    static readonly (string Bg, string Fg)[] _avatarPalette =
+    {
+        ("#E6F1FB", "#0C447C"),
+        ("#EEEDFE", "#3C3489"),
+        ("#E1F5EE", "#085041"),
+        ("#FAEEDA", "#633806"),
+        ("#FCEBEB", "#791F1F"),
+        ("#EAF3DE", "#3B6D11"),
+    };
+
+    readonly QuickAction[] _actions =
+    [
+        new("Add employee",    "New hire onboarding",  "/employees",  "#E6F1FB",
+            """<svg width="16" height="16" fill="none" viewBox="0 0 16 16"><circle cx="7" cy="5" r="3" stroke="#185FA5" stroke-width="1.3"/><path d="M1.5 14c0-3 2.5-5 5.5-5" stroke="#185FA5" stroke-width="1.3" stroke-linecap="round"/><path d="M11.5 10v4M9.5 12h4" stroke="#185FA5" stroke-width="1.5" stroke-linecap="round"/></svg>"""),
+        new("Run payroll",     "Process monthly pay",  "/payroll",    "#E1F5EE",
+            """<svg width="16" height="16" fill="none" viewBox="0 0 16 16"><rect x="1.5" y="3" width="13" height="10" rx="1.5" stroke="#0F6E56" stroke-width="1.3"/><line x1="1.5" y1="6.5" x2="14.5" y2="6.5" stroke="#0F6E56" stroke-width="1.3"/><line x1="5" y1="10" x2="7" y2="10" stroke="#0F6E56" stroke-width="1.3" stroke-linecap="round"/></svg>"""),
+        new("Approve leave",   "Pending requests",     "/leave",      "#FAEEDA",
+            """<svg width="16" height="16" fill="none" viewBox="0 0 16 16"><path d="M3 8l3 3 7-7" stroke="#854F0B" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>"""),
+        new("Generate report", "Monthly HR summary",   "/reports",    "#EEEDFE",
+            """<svg width="16" height="16" fill="none" viewBox="0 0 16 16"><path d="M3 2h7l3 3v9a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V3a1 1 0 0 1 1-1z" stroke="#534AB7" stroke-width="1.3"/><path d="M10 2v4h3" stroke="#534AB7" stroke-width="1.3"/><line x1="5" y1="9" x2="11" y2="9" stroke="#534AB7" stroke-width="1.3" stroke-linecap="round"/><line x1="5" y1="12" x2="9" y2="12" stroke="#534AB7" stroke-width="1.3" stroke-linecap="round"/></svg>"""),
+        new("Post job",        "Open new position",    "/recruitment","#FAECE7",
+            """<svg width="16" height="16" fill="none" viewBox="0 0 16 16"><path d="M8 2L9.5 6h4.5l-3.6 2.6 1.4 4.4L8 10.5 4.2 13l1.4-4.4L2 6h4.5z" stroke="#993C1D" stroke-width="1.3" stroke-linejoin="round"/></svg>"""),
+        new("Attendance",      "View today's log",     "/attendance", "#EAF3DE",
+            """<svg width="16" height="16" fill="none" viewBox="0 0 16 16"><rect x="2" y="3" width="12" height="11" rx="1.5" stroke="#3B6D11" stroke-width="1.3"/><path d="M5 3V1.5M11 3V1.5" stroke="#3B6D11" stroke-width="1.3" stroke-linecap="round"/><line x1="2" y1="6.5" x2="14" y2="6.5" stroke="#3B6D11" stroke-width="1.3"/></svg>"""),
+    ];
+
+    protected override async Task OnInitializedAsync() => await LoadAsync();
+
+    async Task LoadAsync()
+    {
+        _loading = true;
+        _loadError = null;
+        StateHasChanged();
+
+        var employeesTask    = EmployeesApi.ListAsync(page: 1, pageSize: 200);
+        var departmentsTask  = DepartmentsApi.ListAsync();
+        var pendingLeaveTask = LeavesApi.ListRequestsAsync(page: 1, pageSize: 25, status: LeaveRequestStatus.Pending);
+        var allLeaveTask     = LeavesApi.ListRequestsAsync(page: 1, pageSize: 200);
+
+        await Task.WhenAll(employeesTask, departmentsTask, pendingLeaveTask, allLeaveTask);
+        _loading = false;
+
+        var employeesRes   = employeesTask.Result;
+        var departmentsRes = departmentsTask.Result;
+        var pendingRes     = pendingLeaveTask.Result;
+        var allLeaveRes    = allLeaveTask.Result;
+
+        var totalEmployees = employeesRes.Success && employeesRes.Value is not null ? employeesRes.Value.Total : 0;
+        var pendingCount   = pendingRes.Success && pendingRes.Value is not null ? pendingRes.Value.Total : 0;
+
+        var today = DateOnly.FromDateTime(DateTime.Today);
+        var onLeaveToday = allLeaveRes.Success && allLeaveRes.Value is not null
+            ? allLeaveRes.Value.Items.Count(r =>
+                (r.Status == LeaveRequestStatus.Approved || r.Status == LeaveRequestStatus.Taken)
+                && today >= r.StartDate && today <= r.EndDate)
+            : 0;
+
+        var deptCount = departmentsRes.Success && departmentsRes.Value is not null ? departmentsRes.Value.Count : 0;
+
+        _stats = new[]
+        {
+            new StatCard("Total employees", totalEmployees.ToString(),
+                deptCount > 0 ? $"across {deptCount} dept{(deptCount == 1 ? "" : "s")}" : "—",
+                "var(--mud-palette-text-secondary)"),
+            new StatCard("On leave today", onLeaveToday.ToString(),
+                pendingCount > 0 ? $"{pendingCount} pending approval" : "no pending",
+                "var(--mud-palette-text-secondary)"),
+            new StatCard("Pending leave", pendingCount.ToString(),
+                pendingCount > 0 ? "needs review" : "all caught up",
+                pendingCount > 0 ? "var(--mud-palette-warning)" : "var(--mud-palette-success)"),
+            new StatCard("Departments", deptCount.ToString(),
+                "active",
+                "var(--mud-palette-success)"),
+        };
+
+        _employees.Clear();
+        if (employeesRes.Success && employeesRes.Value is not null)
+        {
+            foreach (var dto in employeesRes.Value.Items
+                                              .OrderByDescending(e => e.HireDate)
+                                              .Take(5))
+            {
+                var (bg, fg) = AvatarColors(dto.Id);
+                _employees.Add(new EmpRow(
+                    Initials: $"{Initial(dto.FirstName)}{Initial(dto.LastName)}",
+                    AvatarBg: bg,
+                    AvatarFg: fg,
+                    Name:     $"{dto.FirstName} {dto.LastName}".Trim(),
+                    Dept:     dto.DepartmentName,
+                    Status:   StatusLabel(dto.Status),
+                    ChipColor: StatusColor(dto.Status)));
+            }
+        }
+        else if (!string.IsNullOrEmpty(employeesRes.ErrorMessage))
+        {
+            _loadError = employeesRes.ErrorMessage;
+        }
+
+        _leaveRequests.Clear();
+        if (pendingRes.Success && pendingRes.Value is not null)
+        {
+            foreach (var r in pendingRes.Value.Items
+                                              .OrderByDescending(r => r.FiledAt)
+                                              .Take(5))
+            {
+                _leaveRequests.Add(new LeaveRow(
+                    Name:      r.EmployeeName,
+                    DateRange: FormatLeaveDateRange(r),
+                    Status:    "Pending",
+                    ChipColor: Color.Warning));
+            }
+        }
+
+        _depts.Clear();
+        if (departmentsRes.Success && departmentsRes.Value is not null)
+        {
+            var max = departmentsRes.Value.Max(d => (int?)d.EmployeeCount) ?? 0;
+            int i = 0;
+            foreach (var d in departmentsRes.Value
+                                            .OrderByDescending(d => d.EmployeeCount)
+                                            .Take(5))
+            {
+                _depts.Add(new DeptBar(
+                    Name:  d.Name,
+                    Count: d.EmployeeCount,
+                    Pct:   max == 0 ? 0 : Math.Round(d.EmployeeCount * 100.0 / max, 1),
+                    Color: _deptColors[i % _deptColors.Length]));
+                i++;
+            }
+        }
+    }
+
+    static string FormatLeaveDateRange(LeaveRequestDto r)
+    {
+        var range = r.StartDate == r.EndDate
+            ? r.StartDate.ToString("MMM d")
+            : $"{r.StartDate:MMM d}–{r.EndDate:MMM d}";
+        return $"{range} · {r.LeaveTypeName}";
+    }
+
+    static string Initial(string s) => string.IsNullOrEmpty(s) ? "" : s[..1].ToUpperInvariant();
+
+    static (string Bg, string Fg) AvatarColors(Guid id) =>
+        _avatarPalette[Math.Abs(id.GetHashCode()) % _avatarPalette.Length];
+
+    static string StatusLabel(EmploymentStatus s) => s switch
+    {
+        EmploymentStatus.Active     => "Active",
+        EmploymentStatus.OnLeave    => "On Leave",
+        EmploymentStatus.Suspended  => "Suspended",
+        EmploymentStatus.Terminated => "Terminated",
+        EmploymentStatus.Resigned   => "Resigned",
+        _ => s.ToString(),
+    };
+
+    static Color StatusColor(EmploymentStatus s) => s switch
+    {
+        EmploymentStatus.Active     => Color.Success,
+        EmploymentStatus.OnLeave    => Color.Warning,
+        EmploymentStatus.Suspended  => Color.Error,
+        EmploymentStatus.Terminated => Color.Default,
+        EmploymentStatus.Resigned   => Color.Default,
+        _ => Color.Default,
+    };
+
+    void Navigate(string path) => Navigation.NavigateTo(path);
+}

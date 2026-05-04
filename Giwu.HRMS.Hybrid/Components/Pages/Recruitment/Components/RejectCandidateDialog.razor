@@ -1,0 +1,45 @@
+﻿
+<MudDialog>
+    <DialogContent>
+        <MudStack Spacing="3">
+            <MudText Typo="Typo.body2" Style="opacity:.7">
+                This will mark @Candidate.Name as rejected. This action is logged in the candidate's timeline.
+            </MudText>
+
+            <MudSelect T="string" Label="Reason" @bind-Value="Reason"
+                       Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true">
+                <MudSelectItem Value="@("Skills mismatch")">Skills mismatch</MudSelectItem>
+                <MudSelectItem Value="@("Culture fit")">Culture fit</MudSelectItem>
+                <MudSelectItem Value="@("Compensation expectations")">Compensation expectations</MudSelectItem>
+                <MudSelectItem Value="@("Withdrew from process")">Candidate withdrew</MudSelectItem>
+                <MudSelectItem Value="@("Position filled")">Position filled</MudSelectItem>
+                <MudSelectItem Value="@("Other")">Other</MudSelectItem>
+            </MudSelect>
+
+            <MudTextField T="string" Label="Additional notes (optional)" @bind-Value="Notes"
+                          Variant="Variant.Outlined" Lines="3" />
+        </MudStack>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Error" DisableElevation="true" OnClick="Confirm">
+            Reject Candidate
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = default!;
+    [Parameter] public Candidate Candidate { get; set; } = default!;
+
+    private string Reason { get; set; } = "Skills mismatch";
+    private string Notes { get; set; } = "";
+
+    private void Cancel() => MudDialog.Cancel();
+
+    private void Confirm()
+    {
+        var fullReason = string.IsNullOrWhiteSpace(Notes) ? Reason : $"{Reason} â€” {Notes}";
+        MudDialog.Close(DialogResult.Ok<string>(fullReason));
+    }
+}

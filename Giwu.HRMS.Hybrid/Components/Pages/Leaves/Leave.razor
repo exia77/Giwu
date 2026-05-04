@@ -1,0 +1,1244 @@
+﻿@page "/leave"
+@using static Giwu.HRMS.Hybrid.Components.Pages.Leaves.LeaveFormatting
+@using Giwu.Contracts.Leaves
+@using Giwu.HRMS.Hybrid.Services.Leaves
+@using Giwu.HRMS.Hybrid.Services.Employees
+@inject ISnackbar Snackbar
+@inject IDialogService DialogService
+@inject ILeavesApi LeavesApi
+@inject IEmployeesApi EmployeesApi
+
+@using Pages.Leaves.Components
+
+<PageTitle>Leave &amp; Time Off</PageTitle>
+
+@* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+   KPI STRIP
+â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• *@
+<MudGrid Spacing="3" Class="mb-4">
+    <MudItem xs="12" sm="6" md="3">
+        <MudPaper Class="leave-kpi" Elevation="0">
+            <div class="kpi-label">Pending Requests</div>
+            <div class="kpi-value">@PendingCount</div>
+            <div class="kpi-sub">
+                <span class="kpi-dot" style="background:var(--leave-amber)"></span>
+                <span>need approval</span>
+            </div>
+        </MudPaper>
+    </MudItem>
+    <MudItem xs="12" sm="6" md="3">
+        <MudPaper Class="leave-kpi" Elevation="0">
+            <div class="kpi-label">On Leave Today</div>
+            <div class="kpi-value">@OnLeaveTodayCount</div>
+            <div class="kpi-sub">
+                <span class="kpi-dot" style="background:var(--leave-blue)"></span>
+                <span>@OnLeaveTomorrowCount tomorrow</span>
+            </div>
+        </MudPaper>
+    </MudItem>
+    <MudItem xs="12" sm="6" md="3">
+        <MudPaper Class="leave-kpi" Elevation="0">
+            <div class="kpi-label">Approved This Month</div>
+            <div class="kpi-value">@ApprovedThisMonthCount</div>
+            <div class="kpi-sub">
+                <span class="kpi-dot" style="background:var(--leave-green)"></span>
+                <span>@TotalDaysThisMonth.ToString("F0") days total</span>
+            </div>
+        </MudPaper>
+    </MudItem>
+    <MudItem xs="12" sm="6" md="3">
+        <MudPaper Class="leave-kpi" Elevation="0">
+            <div class="kpi-label">Avg VL Balance</div>
+            <div class="kpi-value">@AvgVlBalance.ToString("F1")</div>
+            <div class="kpi-sub">
+                <span class="kpi-dot" style="background:var(--leave-purple)"></span>
+                <span>days available per employee</span>
+            </div>
+        </MudPaper>
+    </MudItem>
+</MudGrid>
+
+@* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+   MIDDLE ROW: TEAM CALENDAR + PENDING QUEUE
+â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• *@
+<MudGrid Spacing="3" Class="mb-4">
+    @* â”€â”€ Team calendar â”€â”€ *@
+    <MudItem xs="12" md="8">
+        <MudPaper Class="leave-card" Elevation="0">
+            <div class="leave-card-header">
+                <div>
+                    <MudText Typo="Typo.subtitle2" Class="fw-medium">@CalendarMonth.ToString("MMMM yyyy")</MudText>
+                    <MudText Typo="Typo.caption" Style="opacity:.55">Team availability</MudText>
+                </div>
+                <MudStack Row="true" Spacing="1">
+                    <MudIconButton Icon="@Icons.Material.Outlined.ChevronLeft" Size="Size.Small"
+                                   OnClick="@(() => CalendarMonth = CalendarMonth.AddMonths(-1))" />
+                    <MudButton Size="Size.Small" Variant="Variant.Outlined"
+                               OnClick="@(() => CalendarMonth = new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1))">
+                        Today
+                    </MudButton>
+                    <MudIconButton Icon="@Icons.Material.Outlined.ChevronRight" Size="Size.Small"
+                                   OnClick="@(() => CalendarMonth = CalendarMonth.AddMonths(1))" />
+                </MudStack>
+            </div>
+
+            @* Calendar grid *@
+            <div class="cal-grid">
+                <div class="cal-weekday-row">
+                    <div class="cal-weekday">Sun</div>
+                    <div class="cal-weekday">Mon</div>
+                    <div class="cal-weekday">Tue</div>
+                    <div class="cal-weekday">Wed</div>
+                    <div class="cal-weekday">Thu</div>
+                    <div class="cal-weekday">Fri</div>
+                    <div class="cal-weekday">Sat</div>
+                </div>
+                <div class="cal-days">
+                    @{
+                        var firstOfMonth = new DateTime(CalendarMonth.Year, CalendarMonth.Month, 1);
+                        var leadingBlanks = (int)firstOfMonth.DayOfWeek; // Sunday=0
+                        var daysInMonth = DateTime.DaysInMonth(CalendarMonth.Year, CalendarMonth.Month);
+                    }
+                    @for (int i = 0; i < leadingBlanks; i++)
+                    {
+                        <div class="cal-day cal-day-blank"></div>
+                    }
+                    @for (int day = 1; day <= daysInMonth; day++)
+                    {
+                        var thisDate = new DateTime(CalendarMonth.Year, CalendarMonth.Month, day);
+                        var leaveOnDay = LeavesOnDate(thisDate);
+                        var isWeekend = thisDate.DayOfWeek == DayOfWeek.Saturday || thisDate.DayOfWeek == DayOfWeek.Sunday;
+                        var isToday = thisDate.Date == DateTime.Today;
+                        <div class="cal-day @(isWeekend ? "cal-day-weekend" : "") @(isToday ? "cal-day-today" : "")"
+                             title="@($"{thisDate:dddd, MMM d, yyyy}{(leaveOnDay.Count > 0 ? $" â€” {leaveOnDay.Count} on leave" : "")}")">
+                            <div class="cal-day-num">@day</div>
+                            @if (leaveOnDay.Count > 0)
+                            {
+                                <div class="cal-day-leaves">
+                                    @foreach (var req in leaveOnDay.Take(3))
+                                    {
+                                        <div class="cal-leave-pill"
+                                             style="@($"background:{CategoryDotColor(req.LeaveCategory)}")"
+                                             title="@($"{req.EmployeeName} Â· {req.LeaveTypeCode}")">
+                                            @req.EmployeeInit
+                                        </div>
+                                    }
+                                    @if (leaveOnDay.Count > 3)
+                                    {
+                                        <div class="cal-leave-more">+@(leaveOnDay.Count - 3)</div>
+                                    }
+                                </div>
+                            }
+                        </div>
+                    }
+                </div>
+            </div>
+
+            @* Legend *@
+            <div class="cal-legend">
+                <div class="cal-legend-item"><span class="cal-legend-dot" style="background:var(--leave-blue)"></span>VL</div>
+                <div class="cal-legend-item"><span class="cal-legend-dot" style="background:var(--leave-red)"></span>SL</div>
+                <div class="cal-legend-item"><span class="cal-legend-dot" style="background:var(--leave-amber)"></span>EL</div>
+                <div class="cal-legend-item"><span class="cal-legend-dot" style="background:var(--leave-pink)"></span>ML / Magna</div>
+                <div class="cal-legend-item"><span class="cal-legend-dot" style="background:var(--leave-teal)"></span>PL</div>
+                <div class="cal-legend-item"><span class="cal-legend-dot" style="background:var(--leave-purple)"></span>Solo</div>
+                <div class="cal-legend-item"><span class="cal-legend-dot" style="background:var(--leave-green)"></span>SIL</div>
+            </div>
+        </MudPaper>
+    </MudItem>
+
+    @* â”€â”€ Pending queue â”€â”€ *@
+    <MudItem xs="12" md="4">
+        <MudPaper Class="leave-card" Elevation="0">
+            <div class="leave-card-header">
+                <MudText Typo="Typo.subtitle2" Class="fw-medium">Pending Approvals</MudText>
+                <MudChip T="string" Size="Size.Small" Color="Color.Error" Variant="Variant.Filled"
+                         Style="height:20px;font-size:.7rem">@PendingCount</MudChip>
+            </div>
+            @if (PendingCount == 0)
+            {
+                <div class="leave-empty">
+                    <div class="leave-empty-icon">âœ“</div>
+                    <MudText Typo="Typo.body2">All caught up.</MudText>
+                </div>
+            }
+            else
+            {
+                @foreach (var req in PendingRequests.Take(5))
+                {
+                    <div class="pending-row" @onclick="@(() => OpenRequestDetail(req.Id))">
+                        <MudAvatar Style="@AvatarStyle(req.EmployeeAv)" Class="leave-av-sm">@req.EmployeeInit</MudAvatar>
+                        <div class="pending-meta">
+                            <div class="pending-name">
+                                <span>@req.EmployeeName</span>
+                                <span class="@($"leave-badge {CategoryBadgeClass(req.LeaveCategory)}")">@req.LeaveTypeCode</span>
+                            </div>
+                            <div class="pending-detail">
+                                @FmtDateRange(req.StartDate, req.EndDate) Â· @FmtDays(req.DaysRequested)
+                            </div>
+                        </div>
+                        <MudStack Row="true" Spacing="1">
+                            <MudIconButton Icon="@Icons.Material.Outlined.Check" Color="Color.Success" Size="Size.Small"
+                                           Title="Approve"
+                                           OnClick="@(() => ApproveRequest(req.Id))" />
+                            <MudIconButton Icon="@Icons.Material.Outlined.Close" Color="Color.Error" Size="Size.Small"
+                                           Title="Reject"
+                                           OnClick="@(() => OpenRejectDialog(req.Id))" />
+                        </MudStack>
+                    </div>
+                }
+            }
+        </MudPaper>
+    </MudItem>
+</MudGrid>
+
+@* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+   MAIN TABS
+â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• *@
+<MudPaper Class="leave-card" Elevation="0">
+    <MudTabs Elevation="0" Rounded="false" ApplyEffectsToContainer="true"
+             PanelClass="leave-tab-panel" TabPanelClass="leave-tab-item"
+             @bind-ActivePanelIndex="ActiveTab">
+
+        @* â•â• REQUESTS TAB â•â• *@
+        <MudTabPanel Text="@($"Requests ({Requests.Count})")"
+                     Icon="@Icons.Material.Outlined.EventNote">
+            <div class="leave-card-header">
+                <div>
+                    <MudText Typo="Typo.subtitle2" Class="fw-medium">All Leave Requests</MudText>
+                    <MudText Typo="Typo.caption" Style="opacity:.55">
+                        @FilteredRequests.Count() of @Requests.Count records
+                    </MudText>
+                </div>
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" Size="Size.Small"
+                           StartIcon="@Icons.Material.Outlined.Add" DisableElevation="true"
+                           OnClick="OpenFileLeaveDialog">File Leave</MudButton>
+            </div>
+
+            <div class="filter-row">
+                <MudChipSet T="string" @bind-SelectedValue="RequestStatusFilter" CheckMark="false" Mandatory="true">
+                    <MudChip T="string" Value="@("All")" Size="Size.Small">All</MudChip>
+                    <MudChip T="string" Value="@("Pending")" Size="Size.Small">Pending</MudChip>
+                    <MudChip T="string" Value="@("Approved")" Size="Size.Small">Approved</MudChip>
+                    <MudChip T="string" Value="@("Rejected")" Size="Size.Small">Rejected</MudChip>
+                    <MudChip T="string" Value="@("Cancelled")" Size="Size.Small">Cancelled</MudChip>
+                </MudChipSet>
+                <MudSpacer />
+                <MudSelect T="string" @bind-Value="RequestTypeFilter" Placeholder="All types" Dense="true"
+                           Variant="Variant.Outlined" Margin="Margin.Dense" Style="min-width:160px" Clearable="true">
+                    <MudSelectItem Value="@("")">All types</MudSelectItem>
+                    @foreach (var lt in LeaveTypes.Where(l => l.IsActive))
+                    {
+                        <MudSelectItem Value="@lt.Id">@lt.Name</MudSelectItem>
+                    }
+                </MudSelect>
+                <MudTextField @bind-Value="RequestSearch" Placeholder="Search employeeâ€¦"
+                              Variant="Variant.Outlined" Margin="Margin.Dense" Class="leave-search"
+                              Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Outlined.Search"
+                              DebounceInterval="200" Immediate="true" />
+            </div>
+
+            <MudTable T="LeaveRequest" Items="@FilteredRequests" Dense="true" Hover="true"
+                      Elevation="0" Breakpoint="Breakpoint.Sm"
+                      @bind-RowsPerPage="RequestPageSize" @bind-Page="RequestPage"
+                      Class="leave-mud-table">
+                <HeaderContent>
+                    <MudTh><MudTableSortLabel T="LeaveRequest" SortBy="@(r => r.FiledOn)">Filed</MudTableSortLabel></MudTh>
+                    <MudTh><MudTableSortLabel T="LeaveRequest" SortBy="@(r => r.EmployeeName)">Employee</MudTableSortLabel></MudTh>
+                    <MudTh>Type</MudTh>
+                    <MudTh>Dates</MudTh>
+                    <MudTh Style="text-align:right">Days</MudTh>
+                    <MudTh>Status</MudTh>
+                    <MudTh Style="text-align:right">Actions</MudTh>
+                </HeaderContent>
+                <RowTemplate>
+                    <MudTd DataLabel="Filed" Style="opacity:.7;font-size:12px">@FmtDateShort(context.FiledOn)</MudTd>
+                    <MudTd DataLabel="Employee">
+                        <div style="display:flex;align-items:center;gap:9px">
+                            <MudAvatar Style="@AvatarStyle(context.EmployeeAv)" Class="leave-av-sm">@context.EmployeeInit</MudAvatar>
+                            <div>
+                                <MudText Typo="Typo.body2" Class="fw-medium" Style="line-height:1.2">@context.EmployeeName</MudText>
+                                <MudText Typo="Typo.caption" Style="opacity:.55">@context.Dept</MudText>
+                            </div>
+                        </div>
+                    </MudTd>
+                    <MudTd DataLabel="Type">
+                        <span class="@($"leave-badge {CategoryBadgeClass(context.LeaveCategory)}")">
+                            @context.LeaveTypeCode
+                        </span>
+                    </MudTd>
+                    <MudTd DataLabel="Dates" Style="font-size:12.5px">@FmtDateRange(context.StartDate, context.EndDate)</MudTd>
+                    <MudTd DataLabel="Days" Style="text-align:right;font-variant-numeric:tabular-nums">
+                        @context.DaysRequested.ToString(context.DaysRequested == Math.Floor(context.DaysRequested) ? "F0" : "F1")
+                    </MudTd>
+                    <MudTd DataLabel="Status">
+                        <span class="@($"leave-status {StatusBadgeClass(context.Status)}")">@StatusLabel(context.Status)</span>
+                    </MudTd>
+                    <MudTd DataLabel="Actions" Style="text-align:right">
+                        <MudStack Row="true" Spacing="1" Justify="Justify.FlexEnd">
+                            @if (context.Status == LeaveRequestStatus.Pending)
+                            {
+                                <MudButton Size="Size.Small" Variant="Variant.Filled" Color="Color.Success"
+                                           DisableElevation="true" Style="min-width:unset"
+                                           OnClick="@(() => ApproveRequest(context.Id))">Approve</MudButton>
+                                <MudButton Size="Size.Small" Variant="Variant.Outlined" Color="Color.Error"
+                                           Style="min-width:unset"
+                                           OnClick="@(() => OpenRejectDialog(context.Id))">Reject</MudButton>
+                            }
+                            <MudIconButton Icon="@Icons.Material.Outlined.Visibility" Size="Size.Small"
+                                           OnClick="@(() => OpenRequestDetail(context.Id))" />
+                        </MudStack>
+                    </MudTd>
+                </RowTemplate>
+                <NoRecordsContent>
+                    <div class="leave-empty">
+                        <div class="leave-empty-icon">âŠ˜</div>
+                        <MudText Typo="Typo.body2">No requests match your filter.</MudText>
+                    </div>
+                </NoRecordsContent>
+                <PagerContent>
+                    <MudTablePager PageSizeOptions="new int[] { 10, 25, 50 }" />
+                </PagerContent>
+            </MudTable>
+        </MudTabPanel>
+
+        @* â•â• BALANCES TAB â•â• *@
+        <MudTabPanel Text="@($"Balances ({Employees.Count})")"
+                     Icon="@Icons.Material.Outlined.AccountBalance">
+            <div class="leave-card-header">
+                <div>
+                    <MudText Typo="Typo.subtitle2" Class="fw-medium">Leave Balances</MudText>
+                    <MudText Typo="Typo.caption" Style="opacity:.55">
+                        Available days per employee, by leave type
+                    </MudText>
+                </div>
+            </div>
+
+            <div class="filter-row">
+                <MudChipSet T="string" @bind-SelectedValue="BalanceFilter" CheckMark="false" Mandatory="true">
+                    <MudChip T="string" Value="@("All")" Size="Size.Small">All</MudChip>
+                    <MudChip T="string" Value="@("Low VL")" Size="Size.Small">Low VL (â‰¤3 days)</MudChip>
+                    <MudChip T="string" Value="@("Has pending")" Size="Size.Small">Has pending</MudChip>
+                </MudChipSet>
+                <MudSpacer />
+                <MudTextField @bind-Value="BalanceSearch" Placeholder="Search employee, deptâ€¦"
+                              Variant="Variant.Outlined" Margin="Margin.Dense" Class="leave-search"
+                              Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Outlined.Search"
+                              DebounceInterval="200" Immediate="true" />
+            </div>
+
+            <MudTable T="EmployeeLeaveView" Items="@FilteredEmployees" Dense="true" Hover="true"
+                      Elevation="0" Breakpoint="Breakpoint.Sm"
+                      @bind-RowsPerPage="BalancePageSize" @bind-Page="BalancePage"
+                      Class="leave-mud-table">
+                <HeaderContent>
+                    <MudTh><MudTableSortLabel T="EmployeeLeaveView" SortBy="@(e => e.Name)">Employee</MudTableSortLabel></MudTh>
+                    <MudTh>Department</MudTh>
+                    <MudTh Style="text-align:right">VL</MudTh>
+                    <MudTh Style="text-align:right">SL</MudTh>
+                    <MudTh Style="text-align:right">EL</MudTh>
+                    <MudTh Style="text-align:right">SIL</MudTh>
+                    <MudTh>Pending</MudTh>
+                    <MudTh Style="text-align:right">Actions</MudTh>
+                </HeaderContent>
+                <RowTemplate>
+                    <MudTd DataLabel="Employee">
+                        <div style="display:flex;align-items:center;gap:9px">
+                            <MudAvatar Style="@AvatarStyle(context.Av)" Class="leave-av-sm">@context.Init</MudAvatar>
+                            <div>
+                                <MudText Typo="Typo.body2" Class="fw-medium" Style="line-height:1.2">@context.Name</MudText>
+                                <MudText Typo="Typo.caption" Style="opacity:.55">@context.Role</MudText>
+                            </div>
+                        </div>
+                    </MudTd>
+                    <MudTd DataLabel="Department" Style="opacity:.75">@context.Dept</MudTd>
+                    <MudTd DataLabel="VL" Style="text-align:right">
+                        @{
+                            var balVl = context.Balances.FirstOrDefault(b => b.LeaveTypeId == TypeIdByCode("VL"));
+                        }
+                        @if (balVl == null)
+                        {
+                            <span class="bal-cell bal-zero">â€”</span>
+                        }
+                        else
+                        {
+                            var avail = balVl.Available;
+                            var cls = avail == 0m ? "bal-cell bal-zero" : avail <= 2m ? "bal-cell bal-low" : "bal-cell";
+                            <span class="@cls">
+                                <span class="bal-avail">@avail.ToString(avail == Math.Floor(avail) ? "F0" : "F1")</span>
+                                <span class="bal-suffix">/ @((balVl.Entitlement + balVl.CarryOver).ToString("F0"))</span>
+                            </span>
+                        }
+                    </MudTd>
+                    <MudTd DataLabel="SL" Style="text-align:right">
+                        @{
+                            var balSl = context.Balances.FirstOrDefault(b => b.LeaveTypeId == TypeIdByCode("SL"));
+                        }
+                        @if (balSl == null)
+                        {
+                            <span class="bal-cell bal-zero">â€”</span>
+                        }
+                        else
+                        {
+                            var avail = balSl.Available;
+                            var cls = avail == 0m ? "bal-cell bal-zero" : avail <= 2m ? "bal-cell bal-low" : "bal-cell";
+                            <span class="@cls">
+                                <span class="bal-avail">@avail.ToString(avail == Math.Floor(avail) ? "F0" : "F1")</span>
+                                <span class="bal-suffix">/ @((balSl.Entitlement + balSl.CarryOver).ToString("F0"))</span>
+                            </span>
+                        }
+                    </MudTd>
+                    <MudTd DataLabel="EL" Style="text-align:right">
+                        @{
+                            var balEl = context.Balances.FirstOrDefault(b => b.LeaveTypeId == TypeIdByCode("EL"));
+                        }
+                        @if (balEl == null)
+                        {
+                            <span class="bal-cell bal-zero">â€”</span>
+                        }
+                        else
+                        {
+                            var avail = balEl.Available;
+                            var cls = avail == 0m ? "bal-cell bal-zero" : avail <= 2m ? "bal-cell bal-low" : "bal-cell";
+                            <span class="@cls">
+                                <span class="bal-avail">@avail.ToString(avail == Math.Floor(avail) ? "F0" : "F1")</span>
+                                <span class="bal-suffix">/ @((balEl.Entitlement + balEl.CarryOver).ToString("F0"))</span>
+                            </span>
+                        }
+                    </MudTd>
+                    <MudTd DataLabel="SIL" Style="text-align:right">
+                        @{
+                            var balSil = context.Balances.FirstOrDefault(b => b.LeaveTypeId == TypeIdByCode("SIL"));
+                        }
+                        @if (balSil == null)
+                        {
+                            <span class="bal-cell bal-zero">â€”</span>
+                        }
+                        else
+                        {
+                            var avail = balSil.Available;
+                            var cls = avail == 0m ? "bal-cell bal-zero" : avail <= 2m ? "bal-cell bal-low" : "bal-cell";
+                            <span class="@cls">
+                                <span class="bal-avail">@avail.ToString(avail == Math.Floor(avail) ? "F0" : "F1")</span>
+                                <span class="bal-suffix">/ @((balSil.Entitlement + balSil.CarryOver).ToString("F0"))</span>
+                            </span>
+                        }
+                    </MudTd>
+                    <MudTd DataLabel="Pending">
+                        @{
+                            var pending = context.Requests.Count(r => r.Status == LeaveRequestStatus.Pending);
+                        }
+                        @if (pending > 0)
+                        {
+                            <span class="leave-status leave-status-pending">@pending pending</span>
+                        }
+                        else
+                        {
+                            <span style="opacity:.4">â€”</span>
+                        }
+                    </MudTd>
+                    <MudTd DataLabel="Actions" Style="text-align:right">
+                        <MudButton Size="Size.Small" Variant="Variant.Outlined"
+                                   OnClick="@(() => OpenEmployeeLeaveDialog(context.EmployeeId))">View</MudButton>
+                    </MudTd>
+                </RowTemplate>
+                <NoRecordsContent>
+                    <div class="leave-empty">
+                        <div class="leave-empty-icon">âŠ˜</div>
+                        <MudText Typo="Typo.body2">No employees match your filter.</MudText>
+                    </div>
+                </NoRecordsContent>
+                <PagerContent>
+                    <MudTablePager PageSizeOptions="new int[] { 10, 25, 50 }" />
+                </PagerContent>
+            </MudTable>
+        </MudTabPanel>
+
+        @* â•â• LEAVE TYPES TAB â•â• *@
+        <MudTabPanel Text="@($"Leave Types ({LeaveTypes.Count(l => l.IsActive)})")"
+                     Icon="@Icons.Material.Outlined.Style">
+            <div class="leave-card-header">
+                <div>
+                    <MudText Typo="Typo.subtitle2" Class="fw-medium">Leave Type Configuration</MudText>
+                    <MudText Typo="Typo.caption" Style="opacity:.55">
+                        PH-mandated and company-defined leave types
+                    </MudText>
+                </div>
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" Size="Size.Small"
+                           StartIcon="@Icons.Material.Outlined.Add" DisableElevation="true"
+                           OnClick="OpenAddLeaveTypeDialog">Add Type</MudButton>
+            </div>
+
+            <MudTable T="LeaveType" Items="@LeaveTypes" Dense="true" Hover="true"
+                      Elevation="0" Breakpoint="Breakpoint.Sm"
+                      Class="leave-mud-table">
+                <HeaderContent>
+                    <MudTh>Name</MudTh>
+                    <MudTh>Code</MudTh>
+                    <MudTh>Entitlement</MudTh>
+                    <MudTh>Accrual</MudTh>
+                    <MudTh>Carryover</MudTh>
+                    <MudTh>Reference</MudTh>
+                    <MudTh>Status</MudTh>
+                    <MudTh Style="text-align:right">Actions</MudTh>
+                </HeaderContent>
+                <RowTemplate>
+                    <MudTd DataLabel="Name">
+                        <div style="display:flex;align-items:center;gap:6px">
+                            <MudText Typo="Typo.body2" Class="fw-medium">@context.Name</MudText>
+                            @if (context.IsMandated)
+                            {
+                                <span class="leave-mandated-chip">Mandated</span>
+                            }
+                            @if (!context.IsPaid)
+                            {
+                                <span class="leave-unpaid-chip">Unpaid</span>
+                            }
+                        </div>
+                    </MudTd>
+                    <MudTd DataLabel="Code">
+                        <span class="@($"leave-badge {CategoryBadgeClass(context.Category)}")">@context.Code</span>
+                    </MudTd>
+                    <MudTd DataLabel="Entitlement" Style="font-variant-numeric:tabular-nums">
+                        @context.AnnualEntitlementDays days/yr
+                    </MudTd>
+                    <MudTd DataLabel="Accrual" Style="font-size:12.5px;opacity:.8">@AccrualModeLabel(context.AccrualMode)</MudTd>
+                    <MudTd DataLabel="Carryover" Style="font-size:12.5px">
+                        @if (context.CarryoverAllowed)
+                        {
+                            <span>up to @context.MaxCarryoverDays days</span>
+                        }
+                        else
+                        {
+                            <span style="opacity:.5">No</span>
+                        }
+                    </MudTd>
+                    <MudTd DataLabel="Reference" Style="font-size:11.5px;opacity:.7">
+                        @(string.IsNullOrEmpty(context.LegalReference) ? "â€”" : context.LegalReference)
+                    </MudTd>
+                    <MudTd DataLabel="Status">
+                        @if (context.IsActive)
+                        {
+                            <span class="leave-status leave-status-approved">Active</span>
+                        }
+                        else
+                        {
+                            <span class="leave-status leave-status-cancelled">Inactive</span>
+                        }
+                    </MudTd>
+                    <MudTd DataLabel="Actions" Style="text-align:right">
+                        <MudIconButton Icon="@Icons.Material.Outlined.Edit" Size="Size.Small"
+                                       OnClick="@(() => OpenEditLeaveTypeDialog(context.Id))" />
+                    </MudTd>
+                </RowTemplate>
+                <NoRecordsContent>
+                    <div class="leave-empty">
+                        <div class="leave-empty-icon">âŠ˜</div>
+                        <MudText Typo="Typo.body2">No leave types configured.</MudText>
+                    </div>
+                </NoRecordsContent>
+            </MudTable>
+        </MudTabPanel>
+    </MudTabs>
+</MudPaper>
+
+@* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+   STYLES
+â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• *@
+<style>
+    :root {
+        --leave-green:        #1D9E75;
+        --leave-green-light:  #E1F5EE;
+        --leave-green-text:   #085041;
+        --leave-red:          #E24B4A;
+        --leave-red-light:    #FCEBEB;
+        --leave-red-text:     #791F1F;
+        --leave-amber:        #BA7517;
+        --leave-amber-light:  #FAEEDA;
+        --leave-amber-text:   #633806;
+        --leave-purple:       #534AB7;
+        --leave-purple-light: #EEEDFE;
+        --leave-purple-text:  #3C3489;
+        --leave-blue:         #185FA5;
+        --leave-blue-light:   #E6F1FB;
+        --leave-blue-text:    #0C447C;
+        --leave-pink:         #B8336A;
+        --leave-pink-light:   #FBE8EE;
+        --leave-pink-text:    #631838;
+        --leave-teal:         #0E7C7B;
+        --leave-teal-light:   #DAF1F0;
+        --leave-teal-text:    #084040;
+        --leave-grey:         #6B7280;
+    }
+
+    /* â”€â”€ KPI â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+    .leave-kpi {
+        padding: 16px;
+        border: 0.5px solid var(--mud-palette-divider);
+        border-radius: 10px;
+        background: var(--mud-palette-background);
+    }
+    .kpi-label { font-size: 10.5px; letter-spacing: .07em; text-transform: uppercase; opacity: .55; margin-bottom: 6px; font-weight: 500; }
+    .kpi-value { font-size: 2rem; font-weight: 500; line-height: 1; margin-bottom: 5px; font-variant-numeric: tabular-nums; }
+    .kpi-sub   { font-size: 11.5px; opacity: .6; display: flex; align-items: center; gap: 5px; }
+    .kpi-dot   { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; display: inline-block; }
+
+    /* â”€â”€ Card shell â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+    .leave-card {
+        border: 0.5px solid var(--mud-palette-divider);
+        border-radius: 10px;
+        overflow: hidden;
+        background: var(--mud-palette-background);
+    }
+    .leave-card-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 12px 16px;
+        border-bottom: 0.5px solid var(--mud-palette-divider);
+        gap: 8px;
+    }
+    .fw-medium { font-weight: 500; }
+
+    /* â”€â”€ Avatars â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+    .leave-av-sm {
+        width: 30px !important;
+        height: 30px !important;
+        font-size: 11px !important;
+        font-weight: 500;
+    }
+
+    /* â”€â”€ Leave-type code badges â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+    .leave-badge {
+        display: inline-block;
+        font-size: 11px;
+        padding: 2px 9px;
+        border-radius: 100px;
+        font-weight: 500;
+        white-space: nowrap;
+    }
+    .leave-badge-vacation     { background: var(--leave-blue-light);   color: var(--leave-blue-text);   }
+    .leave-badge-sick         { background: var(--leave-red-light);    color: var(--leave-red-text);    }
+    .leave-badge-emergency    { background: var(--leave-amber-light);  color: var(--leave-amber-text);  }
+    .leave-badge-maternity    { background: var(--leave-pink-light);   color: var(--leave-pink-text);   }
+    .leave-badge-paternity    { background: var(--leave-teal-light);   color: var(--leave-teal-text);   }
+    .leave-badge-solo         { background: var(--leave-purple-light); color: var(--leave-purple-text); }
+    .leave-badge-bereavement  { background: var(--mud-palette-background-grey); color: var(--mud-palette-text-secondary); }
+    .leave-badge-magna        { background: var(--leave-pink-light);   color: var(--leave-pink-text);   }
+    .leave-badge-vawc         { background: var(--leave-red-light);    color: var(--leave-red-text);    }
+    .leave-badge-sil          { background: var(--leave-green-light);  color: var(--leave-green-text);  }
+    .leave-badge-birthday     { background: var(--leave-amber-light);  color: var(--leave-amber-text);  }
+    .leave-badge-unpaid       { background: var(--mud-palette-background-grey); color: var(--mud-palette-text-secondary); }
+    .leave-badge-other        { background: var(--mud-palette-background-grey); color: var(--mud-palette-text-secondary); }
+
+    /* â”€â”€ Status badges (different family from category) â”€â”€â”€â”€ */
+    .leave-status {
+        display: inline-block;
+        font-size: 11px;
+        padding: 2px 9px;
+        border-radius: 100px;
+        font-weight: 500;
+        white-space: nowrap;
+    }
+    .leave-status-pending    { background: var(--leave-amber-light); color: var(--leave-amber-text); }
+    .leave-status-approved   { background: var(--leave-green-light); color: var(--leave-green-text); }
+    .leave-status-rejected   { background: var(--leave-red-light);   color: var(--leave-red-text);   }
+    .leave-status-cancelled  { background: var(--mud-palette-background-grey); color: var(--mud-palette-text-secondary); }
+    .leave-status-taken      { background: var(--leave-blue-light);  color: var(--leave-blue-text);  }
+
+    /* â”€â”€ Mandated / Unpaid chips â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+    .leave-mandated-chip,
+    .leave-unpaid-chip {
+        font-size: 9px;
+        font-weight: 500;
+        letter-spacing: .04em;
+        text-transform: uppercase;
+        padding: 1px 6px;
+        border-radius: 100px;
+    }
+    .leave-mandated-chip { background: var(--leave-amber-light); color: var(--leave-amber-text); }
+    .leave-unpaid-chip   { background: var(--mud-palette-background-grey); color: var(--mud-palette-text-secondary); }
+
+    /* â”€â”€ Calendar grid â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+    .cal-grid {
+        padding: 14px 16px 4px;
+    }
+    .cal-weekday-row,
+    .cal-days {
+        display: grid;
+        grid-template-columns: repeat(7, 1fr);
+        gap: 4px;
+    }
+    .cal-weekday {
+        font-size: 10px;
+        font-weight: 500;
+        letter-spacing: .055em;
+        text-transform: uppercase;
+        opacity: .55;
+        padding: 4px 0 6px;
+        text-align: center;
+    }
+    .cal-days { gap: 4px; }
+    .cal-day {
+        aspect-ratio: 1.15 / 1;
+        border: 0.5px solid var(--mud-palette-divider);
+        border-radius: 6px;
+        padding: 4px 5px;
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        min-height: 60px;
+        background: var(--mud-palette-background);
+    }
+    .cal-day-blank {
+        border: 0.5px dashed transparent;
+        background: transparent;
+    }
+    .cal-day-weekend { background: var(--mud-palette-background-grey); }
+    .cal-day-today {
+        border: 1.5px solid var(--leave-green);
+    }
+    .cal-day-num {
+        font-size: 11px;
+        font-weight: 500;
+        opacity: .65;
+        text-align: right;
+    }
+    .cal-day-today .cal-day-num {
+        opacity: 1;
+        color: var(--leave-green-text);
+        font-weight: 700;
+    }
+    .cal-day-leaves {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 2px;
+        align-content: flex-start;
+    }
+    .cal-leave-pill {
+        font-size: 9px;
+        font-weight: 600;
+        color: white;
+        padding: 1px 4px;
+        border-radius: 3px;
+        line-height: 1.2;
+        flex-shrink: 0;
+    }
+    .cal-leave-more {
+        font-size: 9px;
+        font-weight: 500;
+        color: var(--mud-palette-text-secondary);
+        padding: 1px 4px;
+        line-height: 1.2;
+    }
+
+    /* â”€â”€ Calendar legend â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+    .cal-legend {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 14px;
+        padding: 0 16px 14px;
+        border-top: 0.5px solid var(--mud-palette-divider);
+        padding-top: 10px;
+        margin-top: 6px;
+    }
+    .cal-legend-item {
+        display: flex;
+        align-items: center;
+        gap: 5px;
+        font-size: 11px;
+        opacity: .7;
+    }
+    .cal-legend-dot {
+        width: 10px; height: 10px;
+        border-radius: 2px;
+        flex-shrink: 0;
+    }
+
+    /* â”€â”€ Pending queue â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+    .pending-row {
+        display: flex; align-items: center; gap: 10px;
+        padding: 10px 14px;
+        border-bottom: 0.5px solid var(--mud-palette-divider);
+        cursor: pointer;
+        transition: background .1s;
+    }
+    .pending-row:last-child { border-bottom: none; }
+    .pending-row:hover { background: var(--mud-palette-background-grey); }
+    .pending-meta { flex: 1; min-width: 0; }
+    .pending-name {
+        display: flex; align-items: center; gap: 6px;
+        font-size: 13px; font-weight: 500;
+    }
+    .pending-detail {
+        font-size: 11px;
+        opacity: .55;
+        margin-top: 1px;
+    }
+
+    /* â”€â”€ Filter row â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+    .filter-row {
+        display: flex; flex-wrap: wrap; align-items: center; gap: 8px;
+        padding: 10px 14px;
+        border-bottom: 0.5px solid var(--mud-palette-divider);
+    }
+    .leave-search { max-width: 220px; }
+
+    /* â”€â”€ Empty state â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+    .leave-empty { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 40px 16px; opacity: .55; gap: 8px; }
+    .leave-empty-icon { font-size: 28px; }
+
+    /* â”€â”€ Tabs â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+    .leave-tab-panel { padding: 0 !important; }
+    .leave-tab-item  { min-width: unset !important; text-transform: none !important; font-size: 13px !important; }
+
+    /* â”€â”€ MudTable overrides â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+    .leave-mud-table .mud-table-container { border-radius: 0; }
+    .leave-mud-table th { font-size: 10.5px !important; font-weight: 500 !important; letter-spacing: .055em !important; text-transform: uppercase !important; opacity: .65; }
+    .leave-mud-table td { font-size: 13px !important; vertical-align: middle; }
+
+    /* â”€â”€ Balance cell â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+    .bal-cell {
+        display: inline-flex;
+        align-items: baseline;
+        gap: 3px;
+        font-variant-numeric: tabular-nums;
+    }
+    .bal-avail { font-weight: 500; }
+    .bal-low { color: var(--leave-red-text); font-weight: 600; }
+    .bal-zero { opacity: .35; }
+    .bal-suffix { font-size: 10.5px; opacity: .5; }
+
+    @@media (max-width: 600px) {
+        .leave-search { max-width: 100%; width: 100%; }
+        .cal-day { min-height: 48px; padding: 3px; }
+        .cal-day-num { font-size: 10px; }
+        .cal-leave-pill { font-size: 8px; padding: 1px 3px; }
+    }
+</style>
+
+@code {
+    // â”€â”€â”€ State â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    private int ActiveTab { get; set; } = 0;
+    private DateTime CalendarMonth { get; set; } = new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1);
+
+    private string RequestStatusFilter { get; set; } = "All";
+    private string RequestTypeFilter { get; set; } = "";
+    private string RequestSearch { get; set; } = "";
+    private int RequestPage { get; set; } = 0;
+    private int RequestPageSize { get; set; } = 10;
+
+    private string BalanceFilter { get; set; } = "All";
+    private string BalanceSearch { get; set; } = "";
+    private int BalancePage { get; set; } = 0;
+    private int BalancePageSize { get; set; } = 10;
+
+    // â”€â”€â”€ Derived â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    private int PendingCount => Requests.Count(r => r.Status == LeaveRequestStatus.Pending);
+
+    private int OnLeaveTodayCount => Requests
+        .Where(r => r.Status == LeaveRequestStatus.Approved || r.Status == LeaveRequestStatus.Taken)
+        .Count(r => DateTime.Today >= r.StartDate.Date && DateTime.Today <= r.EndDate.Date);
+
+    private int OnLeaveTomorrowCount => Requests
+        .Where(r => r.Status == LeaveRequestStatus.Approved || r.Status == LeaveRequestStatus.Taken)
+        .Count(r => DateTime.Today.AddDays(1) >= r.StartDate.Date && DateTime.Today.AddDays(1) <= r.EndDate.Date);
+
+    private int ApprovedThisMonthCount => Requests.Count(r =>
+        r.Status == LeaveRequestStatus.Approved
+        && r.ResolvedOn.HasValue
+        && r.ResolvedOn.Value.Year == DateTime.Today.Year
+        && r.ResolvedOn.Value.Month == DateTime.Today.Month);
+
+    private decimal TotalDaysThisMonth => Requests
+        .Where(r => r.Status == LeaveRequestStatus.Approved
+                 && r.ResolvedOn.HasValue
+                 && r.ResolvedOn.Value.Year == DateTime.Today.Year
+                 && r.ResolvedOn.Value.Month == DateTime.Today.Month)
+        .Sum(r => r.DaysRequested);
+
+    private decimal AvgVlBalance
+    {
+        get
+        {
+            var balances = Employees
+                .Select(e => e.Balances.FirstOrDefault(b => b.LeaveTypeId == TypeIdByCode("VL")))
+                .Where(b => b != null)
+                .Select(b => b!.Available)
+                .ToList();
+            return balances.Count == 0 ? 0m : balances.Average();
+        }
+    }
+
+    private List<LeaveRequest> PendingRequests => Requests
+        .Where(r => r.Status == LeaveRequestStatus.Pending)
+        .OrderByDescending(r => r.FiledOn)
+        .ToList();
+
+    private List<LeaveRequest> LeavesOnDate(DateTime date) => Requests
+        .Where(r => (r.Status == LeaveRequestStatus.Approved || r.Status == LeaveRequestStatus.Taken)
+                 && date.Date >= r.StartDate.Date && date.Date <= r.EndDate.Date)
+        .OrderBy(r => r.EmployeeName)
+        .ToList();
+
+    private IEnumerable<LeaveRequest> FilteredRequests
+    {
+        get
+        {
+            var q = (RequestSearch ?? "").Trim().ToLower();
+            return Requests.Where(r =>
+                (RequestStatusFilter == "All" || StatusLabel(r.Status) == RequestStatusFilter) &&
+                (string.IsNullOrEmpty(RequestTypeFilter) || r.LeaveTypeId == RequestTypeFilter) &&
+                (string.IsNullOrEmpty(q)
+                    || r.EmployeeName.ToLower().Contains(q)
+                    || r.Dept.ToLower().Contains(q))
+            ).OrderByDescending(r => r.FiledOn);
+        }
+    }
+
+    private IEnumerable<EmployeeLeaveView> FilteredEmployees
+    {
+        get
+        {
+            var q = (BalanceSearch ?? "").Trim().ToLower();
+            return Employees.Where(e =>
+            {
+                if (!string.IsNullOrEmpty(q)
+                    && !e.Name.ToLower().Contains(q)
+                    && !e.Dept.ToLower().Contains(q)
+                    && !e.Role.ToLower().Contains(q))
+                    return false;
+
+                return BalanceFilter switch
+                {
+                    "Low VL" => (e.Balances.FirstOrDefault(b => b.LeaveTypeId == TypeIdByCode("VL"))?.Available ?? 0m) <= 3m,
+                    "Has pending" => e.Requests.Any(r => r.Status == LeaveRequestStatus.Pending),
+                    _ => true
+                };
+            });
+        }
+    }
+
+    // ── Actions ─────────────────────────────────────────────────────────────
+    private async Task ApproveRequest(string id)
+    {
+        var req = Requests.FirstOrDefault(r => r.Id == id);
+        if (req == null || req.Status != LeaveRequestStatus.Pending) return;
+        if (!Guid.TryParse(req.Id, out var guid)) { Snackbar.Add("Invalid request id", Severity.Error); return; }
+
+        var apiResult = await LeavesApi.ApproveRequestAsync(guid, new ApproveLeaveRequest("Approved"));
+        if (apiResult.Success)
+        {
+            Snackbar.Add($"Approved leave for {req.EmployeeName}", Severity.Success);
+            await ReloadAsync();
+        }
+        else
+        {
+            Snackbar.Add(apiResult.ErrorMessage ?? "Failed to approve.", Severity.Error);
+        }
+    }
+
+    private async Task OpenRejectDialog(string id)
+    {
+        var req = Requests.FirstOrDefault(r => r.Id == id);
+        if (req == null || req.Status != LeaveRequestStatus.Pending) return;
+        if (!Guid.TryParse(req.Id, out var guid)) { Snackbar.Add("Invalid request id", Severity.Error); return; }
+
+        var parameters = new DialogParameters { ["Request"] = req };
+        var options = new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true };
+        var dialog = await DialogService.ShowAsync<RejectLeaveDialog>($"Reject — {req.EmployeeName}", parameters, options);
+        var result = await dialog.Result;
+        if (result is not null && !result.Canceled && result.Data is string reason)
+        {
+            var apiResult = await LeavesApi.RejectRequestAsync(guid, new RejectLeaveRequest(reason));
+            if (apiResult.Success)
+            {
+                Snackbar.Add($"Rejected leave for {req.EmployeeName}", Severity.Warning);
+                await ReloadAsync();
+            }
+            else
+            {
+                Snackbar.Add(apiResult.ErrorMessage ?? "Failed to reject.", Severity.Error);
+            }
+        }
+    }
+
+    private async Task OpenRequestDetail(string id)
+    {
+        var req = Requests.FirstOrDefault(r => r.Id == id);
+        if (req == null) return;
+        var parameters = new DialogParameters
+        {
+            ["Request"] = req,
+            ["OnApprove"] = EventCallback.Factory.Create<string>(this, ApproveRequest),
+            ["OnReject"] = EventCallback.Factory.Create<string>(this, async rid => await OpenRejectDialog(rid)),
+        };
+        var options = new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true };
+        await DialogService.ShowAsync<LeaveRequestDetailDialog>("Leave Request", parameters, options);
+    }
+
+    private async Task OpenFileLeaveDialog()
+    {
+        var parameters = new DialogParameters
+        {
+            ["AllEmployees"] = Employees,
+            ["AllLeaveTypes"] = LeaveTypes.Where(l => l.IsActive).ToList(),
+        };
+        var options = new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true };
+        var dialog = await DialogService.ShowAsync<FileLeaveDialog>("File Leave Request", parameters, options);
+        var result = await dialog.Result;
+        if (result is not null && !result.Canceled && result.Data is LeaveRequest req)
+        {
+            if (!Guid.TryParse(req.LeaveTypeId, out var typeGuid))
+            {
+                Snackbar.Add("Invalid leave type", Severity.Error);
+                return;
+            }
+
+            var apiReq = new FileLeaveRequest(
+                LeaveTypeId: typeGuid,
+                StartDate:   DateOnly.FromDateTime(req.StartDate),
+                EndDate:     DateOnly.FromDateTime(req.EndDate),
+                IsHalfDay:   req.IsHalfDay,
+                HalfDaySession: req.HalfDaySession,
+                Reason:      req.Reason);
+
+            var apiResult = await LeavesApi.FileRequestAsync(apiReq);
+            if (apiResult.Success)
+            {
+                Snackbar.Add($"Filed {req.LeaveTypeCode} for {req.EmployeeName}", Severity.Success);
+                await ReloadAsync();
+            }
+            else
+            {
+                Snackbar.Add(apiResult.ErrorMessage ?? "Failed to file leave.", Severity.Error);
+            }
+        }
+    }
+
+    private async Task OpenEmployeeLeaveDialog(string employeeId)
+    {
+        var emp = Employees.FirstOrDefault(e => e.EmployeeId == employeeId);
+        if (emp == null) return;
+        var parameters = new DialogParameters
+        {
+            ["Employee"] = emp,
+            ["AllLeaveTypes"] = LeaveTypes,
+            ["OnApprove"] = EventCallback.Factory.Create<string>(this, ApproveRequest),
+            ["OnReject"] = EventCallback.Factory.Create<string>(this, async rid => await OpenRejectDialog(rid)),
+        };
+        var options = new DialogOptions { MaxWidth = MaxWidth.Medium, FullWidth = true };
+        await DialogService.ShowAsync<EmployeeLeaveDialog>($"{emp.Name} â€” Leave", parameters, options);
+    }
+
+    private async Task OpenAddLeaveTypeDialog()
+    {
+        var options = new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true };
+        var dialog = await DialogService.ShowAsync<EditLeaveTypeDialog>("Add Leave Type", new DialogParameters(), options);
+        var result = await dialog.Result;
+        if (result is not null && !result.Canceled && result.Data is LeaveType lt)
+        {
+            var req = new CreateLeaveTypeRequest(
+                Name: lt.Name, Code: lt.Code,
+                Category: (Giwu.Domain.Leaves.LeaveCategory)(int)lt.Category,
+                Description: lt.Description,
+                IsPaid: lt.IsPaid, IsMandated: lt.IsMandated,
+                AnnualEntitlementDays: lt.AnnualEntitlementDays,
+                AccrualMode: (Giwu.Domain.Leaves.LeaveAccrualMode)(int)lt.AccrualMode,
+                CarryoverAllowed: lt.CarryoverAllowed,
+                MaxCarryoverDays: lt.MaxCarryoverDays,
+                RequiresMedCert: lt.RequiresMedCert,
+                RequiresMedCertAfterDays: lt.RequiresMedCertAfterDays,
+                LegalReference: lt.LegalReference);
+
+            var apiResult = await LeavesApi.CreateTypeAsync(req);
+            if (apiResult.Success)
+            {
+                Snackbar.Add($"Added: {lt.Name}", Severity.Success);
+                await ReloadAsync();
+            }
+            else
+            {
+                Snackbar.Add(apiResult.ErrorMessage ?? "Failed to add leave type.", Severity.Error);
+            }
+        }
+    }
+
+    private async Task OpenEditLeaveTypeDialog(string id)
+    {
+        var lt = LeaveTypes.FirstOrDefault(l => l.Id == id);
+        if (lt == null) return;
+        if (!Guid.TryParse(lt.Id, out var guid)) { Snackbar.Add("Invalid leave type id", Severity.Error); return; }
+
+        var parameters = new DialogParameters { ["Existing"] = lt };
+        var options = new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true };
+        var dialog = await DialogService.ShowAsync<EditLeaveTypeDialog>($"Edit — {lt.Name}", parameters, options);
+        var result = await dialog.Result;
+        if (result is not null && !result.Canceled && result.Data is LeaveType edited)
+        {
+            var req = new UpdateLeaveTypeRequest(
+                Name: edited.Name, Code: edited.Code,
+                Category: (Giwu.Domain.Leaves.LeaveCategory)(int)edited.Category,
+                Description: edited.Description,
+                IsActive: edited.IsActive,
+                IsPaid: edited.IsPaid, IsMandated: edited.IsMandated,
+                AnnualEntitlementDays: edited.AnnualEntitlementDays,
+                AccrualMode: (Giwu.Domain.Leaves.LeaveAccrualMode)(int)edited.AccrualMode,
+                CarryoverAllowed: edited.CarryoverAllowed,
+                MaxCarryoverDays: edited.MaxCarryoverDays,
+                RequiresMedCert: edited.RequiresMedCert,
+                RequiresMedCertAfterDays: edited.RequiresMedCertAfterDays,
+                LegalReference: edited.LegalReference);
+
+            var apiResult = await LeavesApi.UpdateTypeAsync(guid, req);
+            if (apiResult.Success)
+            {
+                Snackbar.Add($"Updated: {lt.Name}", Severity.Success);
+                await ReloadAsync();
+            }
+            else
+            {
+                Snackbar.Add(apiResult.ErrorMessage ?? "Failed to update leave type.", Severity.Error);
+            }
+        }
+    }
+
+    // ── Data (loaded from API) ──────────────────────────────────────────────
+    private List<LeaveType> LeaveTypes { get; set; } = new();
+    private List<EmployeeLeaveView> Employees { get; set; } = new();
+    private List<LeaveRequest> Requests { get; set; } = new();
+
+    private bool _loading = true;
+    private string? _loadError;
+
+    private string TypeIdByCode(string code) =>
+        LeaveTypes.FirstOrDefault(t => string.Equals(t.Code, code, StringComparison.OrdinalIgnoreCase))?.Id ?? "";
+
+    protected override async Task OnInitializedAsync() => await ReloadAsync();
+
+    private async Task ReloadAsync()
+    {
+        _loading = true;
+        _loadError = null;
+        StateHasChanged();
+
+        var typesTask     = LeavesApi.ListTypesAsync(includeInactive: true);
+        var requestsTask  = LeavesApi.ListRequestsAsync(page: 1, pageSize: 200);
+        var employeesTask = EmployeesApi.ListAsync(page: 1, pageSize: 200);
+        var balancesTask  = LeavesApi.ListBalancesAsync();
+
+        await Task.WhenAll(typesTask, requestsTask, employeesTask, balancesTask);
+        _loading = false;
+
+        if (!typesTask.Result.Success || typesTask.Result.Value is null)
+        { _loadError = typesTask.Result.ErrorMessage ?? "Failed to load leave types"; return; }
+        if (!requestsTask.Result.Success || requestsTask.Result.Value is null)
+        { _loadError = requestsTask.Result.ErrorMessage ?? "Failed to load leave requests"; return; }
+        if (!employeesTask.Result.Success || employeesTask.Result.Value is null)
+        { _loadError = employeesTask.Result.ErrorMessage ?? "Failed to load employees"; return; }
+
+        LeaveTypes = typesTask.Result.Value.Select(MapType).ToList();
+
+        var balancesByEmp = (balancesTask.Result.Value ?? Array.Empty<LeaveBalanceDto>())
+            .GroupBy(b => b.EmployeeId)
+            .ToDictionary(g => g.Key, g => g.ToList());
+
+        Requests = requestsTask.Result.Value.Items.Select(MapRequest).ToList();
+
+        var requestsByEmp = Requests.GroupBy(r => r.EmployeeId).ToDictionary(g => g.Key, g => g.ToList());
+
+        Employees = employeesTask.Result.Value.Items.Select(e =>
+        {
+            var view = new EmployeeLeaveView
+            {
+                EmployeeId = e.Id.ToString(),
+                Name = $"{e.FirstName} {e.LastName}".Trim(),
+                Init = MakeInitials(e.FirstName, e.LastName),
+                Av = AvatarTone(e.Id),
+                Role = e.JobTitle,
+                Dept = e.DepartmentName,
+                Gender = "",
+                HireDate = e.HireDate.ToDateTime(TimeOnly.MinValue),
+            };
+            if (balancesByEmp.TryGetValue(e.Id, out var bs))
+            {
+                foreach (var b in bs)
+                    view.Balances.Add(new LeaveBalance
+                    {
+                        EmployeeId = view.EmployeeId,
+                        LeaveTypeId = b.LeaveTypeId.ToString(),
+                        Entitlement = b.Entitlement,
+                        CarryOver = b.CarryOver,
+                        Used = b.Used,
+                        Pending = b.Pending,
+                    });
+            }
+            if (requestsByEmp.TryGetValue(view.EmployeeId, out var reqs))
+                view.Requests.AddRange(reqs);
+            return view;
+        }).ToList();
+    }
+
+    private static LeaveType MapType(LeaveTypeDto dto) => new()
+    {
+        Id = dto.Id.ToString(),
+        Name = dto.Name,
+        Code = dto.Code,
+        Category = (LeaveCategory)(int)dto.Category,
+        Description = dto.Description,
+        IsActive = dto.IsActive,
+        IsPaid = dto.IsPaid,
+        IsMandated = dto.IsMandated,
+        AnnualEntitlementDays = dto.AnnualEntitlementDays,
+        AccrualMode = (LeaveAccrualMode)(int)dto.AccrualMode,
+        CarryoverAllowed = dto.CarryoverAllowed,
+        MaxCarryoverDays = dto.MaxCarryoverDays,
+        RequiresMedCert = dto.RequiresMedCert,
+        RequiresMedCertAfterDays = dto.RequiresMedCertAfterDays,
+        LegalReference = dto.LegalReference,
+    };
+
+    private static LeaveRequest MapRequest(LeaveRequestDto dto) => new()
+    {
+        Id = dto.Id.ToString(),
+        EmployeeId = dto.EmployeeId.ToString(),
+        EmployeeName = dto.EmployeeName,
+        EmployeeInit = MakeInitialsFromFullName(dto.EmployeeName),
+        EmployeeAv = AvatarTone(dto.EmployeeId),
+        Dept = "",
+        LeaveTypeId = dto.LeaveTypeId.ToString(),
+        LeaveTypeName = dto.LeaveTypeName,
+        LeaveTypeCode = dto.LeaveTypeCode,
+        LeaveCategory = LeaveCategory.Other,
+        StartDate = dto.StartDate.ToDateTime(TimeOnly.MinValue),
+        EndDate = dto.EndDate.ToDateTime(TimeOnly.MinValue),
+        IsHalfDay = dto.IsHalfDay,
+        DaysRequested = dto.DaysRequested,
+        Reason = dto.Reason,
+        FiledOn = dto.FiledAt.LocalDateTime,
+        Status = (LeaveRequestStatus)(int)dto.Status,
+    };
+
+    private static string MakeInitials(string first, string last)
+    {
+        var f = string.IsNullOrEmpty(first) ? "" : first.Substring(0, 1);
+        var l = string.IsNullOrEmpty(last)  ? "" : last.Substring(0, 1);
+        return (f + l).ToUpperInvariant();
+    }
+
+    private static string MakeInitialsFromFullName(string name)
+    {
+        if (string.IsNullOrWhiteSpace(name)) return "·";
+        var parts = name.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        return parts.Length switch
+        {
+            0 => "·",
+            1 => parts[0].Substring(0, Math.Min(2, parts[0].Length)).ToUpperInvariant(),
+            _ => $"{parts[0][0]}{parts[^1][0]}".ToUpperInvariant(),
+        };
+    }
+
+    private static readonly string[] _avTones = { "green", "blue", "amber", "purple", "primary", "red" };
+    private static string AvatarTone(Guid id) => _avTones[Math.Abs(id.GetHashCode()) % _avTones.Length];
+
+}

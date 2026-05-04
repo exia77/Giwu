@@ -1,0 +1,57 @@
+@* ── View Department Dialog ── *@
+<MudDialog>
+    <TitleContent>
+        <div style="display:flex;align-items:center;gap:12px">
+            <div style="@($"width:38px;height:38px;border-radius:9px;background:{Department.IconBg};color:{Department.Color};display:flex;align-items:center;justify-content:center;flex-shrink:0;font-weight:700")">
+                @Department.ShortCode
+            </div>
+            <div style="flex:1">
+                <div style="display:flex;align-items:center;gap:8px">
+                    <MudText Typo="Typo.subtitle1" Style="font-weight:700;line-height:1.2">@Department.Name</MudText>
+                    <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined"
+                             Style="height:20px;font-size:.65rem;border-color:var(--mud-palette-divider)">
+                        @Department.Code
+                    </MudChip>
+                </div>
+                <MudText Typo="Typo.caption" Style="opacity:.5">
+                    @Department.Headcount members · Cost center @Department.CostCenter
+                </MudText>
+            </div>
+        </div>
+    </TitleContent>
+
+    <DialogContent>
+        @* Stat row *@
+        <div style="display:flex;gap:8px;margin-bottom:18px">
+            @foreach (var s in _stats)
+            {
+                <div style="flex:1;padding:10px 12px;border:1px solid var(--mud-palette-divider);border-radius:8px;text-align:center">
+                    <MudText Typo="Typo.body1" Style="font-weight:700;line-height:1">@s.Value</MudText>
+                    <MudText Typo="Typo.caption" Style="opacity:.5;font-size:.65rem">@s.Label</MudText>
+                </div>
+            }
+        </div>
+
+        <MudText Typo="Typo.body2" Style="opacity:.55">
+            Detailed members and head info will appear here once the API exposes them.
+        </MudText>
+    </DialogContent>
+
+    <DialogActions>
+        <MudButton Variant="Variant.Text" Style="text-transform:none" OnClick="() => MudDialog.Close()">Close</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] IMudDialogInstance MudDialog { get; set; } = default!;
+    [Parameter] public Departments.Department Department { get; set; } = default!;
+
+    record StatItem(string Label, string Value);
+
+    IEnumerable<StatItem> _stats => new[]
+    {
+        new StatItem("Members",     Department.Headcount.ToString()),
+        new StatItem("Cost center", Department.CostCenter),
+        new StatItem("Active",      Department.IsActive ? "Yes" : "No"),
+    };
+}

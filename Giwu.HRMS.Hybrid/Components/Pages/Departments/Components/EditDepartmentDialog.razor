@@ -1,0 +1,102 @@
+@* ── Edit Department Dialog ── *@
+<MudDialog>
+    <TitleContent>
+        <div style="display:flex;align-items:center;gap:10px">
+            <div style="@($"width:32px;height:32px;border-radius:8px;background:{Department.IconBg};color:{Department.Color};display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.78rem")">
+                @Department.ShortCode
+            </div>
+            <div>
+                <MudText Typo="Typo.subtitle1" Style="font-weight:600;line-height:1.2">Edit Department</MudText>
+                <MudText Typo="Typo.caption" Style="opacity:.55">@Department.Name</MudText>
+            </div>
+        </div>
+    </TitleContent>
+
+    <DialogContent>
+        <MudForm @ref="_form" @bind-IsValid="_isValid">
+
+            <MudText Typo="Typo.caption"
+                     Style="font-weight:600;text-transform:uppercase;letter-spacing:.06em;opacity:.5;margin-bottom:10px;display:block">
+                Basic Information
+            </MudText>
+            <MudGrid Spacing="2" Style="margin-bottom:16px">
+                <MudItem xs="12" sm="8">
+                    <MudTextField @bind-Value="_model.Name" Label="Department name"
+                                  Variant="Variant.Outlined" Margin="Margin.Dense" Required="true" />
+                </MudItem>
+                <MudItem xs="12" sm="4">
+                    <MudTextField @bind-Value="_model.Code" Label="Code"
+                                  Variant="Variant.Outlined" Margin="Margin.Dense" Required="true" />
+                </MudItem>
+            </MudGrid>
+
+            <MudDivider Style="margin-bottom:16px" />
+
+            <MudText Typo="Typo.caption"
+                     Style="font-weight:600;text-transform:uppercase;letter-spacing:.06em;opacity:.5;margin-bottom:10px;display:block">
+                Settings
+            </MudText>
+            <MudGrid Spacing="2">
+                <MudItem xs="12" sm="6">
+                    <MudTextField @bind-Value="_model.CostCenter" Label="Cost center"
+                                  Variant="Variant.Outlined" Margin="Margin.Dense" />
+                </MudItem>
+                <MudItem xs="12" sm="6">
+                    <MudSelect @bind-Value="_model.IsActive" Label="Status"
+                               Variant="Variant.Outlined" Margin="Margin.Dense">
+                        <MudSelectItem Value="true">Active</MudSelectItem>
+                        <MudSelectItem Value="false">Inactive</MudSelectItem>
+                    </MudSelect>
+                </MudItem>
+            </MudGrid>
+
+        </MudForm>
+    </DialogContent>
+
+    <DialogActions>
+        <MudButton Variant="Variant.Text" Style="text-transform:none" OnClick="Cancel">Cancel</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                   Style="text-transform:none;border-radius:8px"
+                   StartIcon="@Icons.Material.Outlined.Save"
+                   OnClick="Save" Disabled="!_isValid">
+            Save Changes
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] IMudDialogInstance MudDialog { get; set; } = default!;
+    [Parameter] public Departments.Department Department { get; set; } = default!;
+
+    MudForm _form = default!;
+    bool _isValid;
+
+    public class EditForm
+    {
+        public string Name       { get; set; } = "";
+        public string Code       { get; set; } = "";
+        public string CostCenter { get; set; } = "";
+        public bool   IsActive   { get; set; } = true;
+    }
+
+    EditForm _model = new();
+
+    protected override void OnParametersSet()
+    {
+        _model = new EditForm
+        {
+            Name       = Department.Name,
+            Code       = Department.Code,
+            CostCenter = Department.CostCenter == "—" ? "" : Department.CostCenter,
+            IsActive   = Department.IsActive,
+        };
+    }
+
+    async Task Save()
+    {
+        await _form.Validate();
+        if (_isValid) MudDialog.Close(DialogResult.Ok(_model));
+    }
+
+    void Cancel() => MudDialog.Cancel();
+}

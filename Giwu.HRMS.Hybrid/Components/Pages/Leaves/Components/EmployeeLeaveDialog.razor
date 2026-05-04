@@ -1,0 +1,264 @@
+﻿@using static Giwu.HRMS.Hybrid.Components.Pages.Leaves.LeaveFormatting
+
+<MudDialog>
+    <DialogContent>
+        @* Header *@
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px">
+            <MudAvatar Style="@($"width:48px;height:48px;font-size:14px;{AvatarStyle(Employee.Av)}")">
+                @Employee.Init
+            </MudAvatar>
+            <div style="flex:1;min-width:0">
+                <MudText Typo="Typo.subtitle1" Class="fw-medium">@Employee.Name</MudText>
+                <MudText Typo="Typo.caption" Style="opacity:.55">
+                    @Employee.Role Â· @Employee.Dept Â· Hired @FmtDate(Employee.HireDate)
+                </MudText>
+            </div>
+        </div>
+
+        <MudTabs Elevation="0" Rounded="false" PanelClass="emp-tab-panel" TabPanelClass="emp-tab-item">
+
+            @* â”€â”€ BALANCES â”€â”€ *@
+            <MudTabPanel Text="@($"Balances ({Employee.Balances.Count})")"
+                         Icon="@Icons.Material.Outlined.AccountBalance">
+                @if (Employee.Balances.Count == 0)
+                {
+                    <div class="leave-empty">
+                        <div class="leave-empty-icon">â€”</div>
+                        <MudText Typo="Typo.body2">No balances on record yet.</MudText>
+                    </div>
+                }
+                else
+                {
+                    <MudGrid Spacing="2" Class="mt-1">
+                        @foreach (var bal in Employee.Balances.OrderBy(b => SortOrder(b.LeaveTypeId)))
+                        {
+                            var lt = AllLeaveTypes.FirstOrDefault(l => l.Id == bal.LeaveTypeId);
+                            if (lt == null) continue;
+                            var available = bal.Available;
+                            var total = bal.Entitlement + bal.CarryOver;
+                            var usedPct = total > 0 ? (int)Math.Round((bal.Used + bal.Pending) / total * 100) : 0;
+                            <MudItem xs="12" sm="6">
+                                <div class="bal-card">
+                                    <div class="bal-card-head">
+                                        <span class="@($"leave-badge {CategoryBadgeClass(lt.Category)}")">@lt.Code</span>
+                                        <span class="bal-card-title">@lt.Name</span>
+                                    </div>
+                                    <div class="bal-card-value">
+                                        <span class="bal-card-num">@available.ToString(available == Math.Floor(available) ? "F0" : "F1")</span>
+                                        <span class="bal-card-suffix">of @total.ToString("F0") days available</span>
+                                    </div>
+                                    <div class="bal-card-bar">
+                                        <div class="bal-card-bar-fill" style="@($"width:{usedPct}%")"></div>
+                                    </div>
+                                    <div class="bal-card-meta">
+                                        <span><strong>@bal.Used.ToString("F1")</strong> used</span>
+                                        @if (bal.Pending > 0)
+                                        {
+                                            <span> Â· <strong>@bal.Pending.ToString("F1")</strong> pending</span>
+                                        }
+                                        @if (bal.CarryOver > 0)
+                                        {
+                                            <span> Â· <strong>@bal.CarryOver.ToString("F1")</strong> carryover</span>
+                                        }
+                                        @if (bal.LastTakenOn.HasValue)
+                                        {
+                                            <span> Â· last @RelativeTime(bal.LastTakenOn.Value)</span>
+                                        }
+                                    </div>
+                                </div>
+                            </MudItem>
+                        }
+                    </MudGrid>
+                }
+            </MudTabPanel>
+
+            @* â”€â”€ REQUEST HISTORY â”€â”€ *@
+            <MudTabPanel Text="@($"Requests ({Employee.Requests.Count})")"
+                         Icon="@Icons.Material.Outlined.History">
+                @if (Employee.Requests.Count == 0)
+                {
+                    <div class="leave-empty">
+                        <div class="leave-empty-icon">â€”</div>
+                        <MudText Typo="Typo.body2">No leave history.</MudText>
+                    </div>
+                }
+                else
+                {
+                    @foreach (var req in Employee.Requests.OrderByDescending(r => r.FiledOn))
+                    {
+                        <div class="emp-req-row">
+                            <div class="emp-req-date">
+                                <div class="emp-req-mo">@req.StartDate.ToString("MMM").ToUpper()</div>
+                                <div class="emp-req-day">@req.StartDate.Day</div>
+                            </div>
+                            <div class="emp-req-meta">
+                                <div class="emp-req-headline">
+                                    <span class="@($"leave-badge {CategoryBadgeClass(req.LeaveCategory)}")">@req.LeaveTypeCode</span>
+                                    <span class="emp-req-range">@FmtDateRange(req.StartDate, req.EndDate)</span>
+                                    <span class="emp-req-days">@FmtDays(req.DaysRequested)</span>
+                                </div>
+                                @if (!string.IsNullOrEmpty(req.Reason))
+                                {
+                                    <div class="emp-req-reason">@req.Reason</div>
+                                }
+                                @if (req.ResolvedOn.HasValue)
+                                {
+                                    <div class="emp-req-resolution">
+                                        @StatusLabel(req.Status) by @req.ResolvedBy Â· @RelativeTime(req.ResolvedOn.Value)
+                                        @if (!string.IsNullOrEmpty(req.ResolutionNote))
+                                        {
+                                            <span> â€” @req.ResolutionNote</span>
+                                        }
+                                    </div>
+                                }
+                            </div>
+                            <div class="emp-req-status">
+                                <span class="@($"leave-status {StatusBadgeClass(req.Status)}")">
+                                    @StatusLabel(req.Status)
+                                </span>
+                                @if (req.Status == LeaveRequestStatus.Pending)
+                                {
+                                    <MudStack Row="true" Spacing="1" Class="mt-1">
+                                        <MudIconButton Icon="@Icons.Material.Outlined.Check" Color="Color.Success"
+                                                       Size="Size.Small" Title="Approve"
+                                                       OnClick="@((MouseEventArgs e) => HandleApprove(req.Id))" />
+                                        <MudIconButton Icon="@Icons.Material.Outlined.Close" Color="Color.Error"
+                                                       Size="Size.Small" Title="Reject"
+                                                       OnClick="@((MouseEventArgs e) => HandleReject(req.Id))" />
+                                    </MudStack>
+                                }
+                            </div>
+                        </div>
+                    }
+                }
+            </MudTabPanel>
+        </MudTabs>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Close">Close</MudButton>
+    </DialogActions>
+</MudDialog>
+
+<style>
+    .emp-tab-panel { padding: 14px 4px 4px !important; }
+    .emp-tab-item { min-width: unset !important; text-transform: none !important; font-size: 13px !important; }
+
+    /* â”€â”€ Balance cards â”€â”€ */
+    .bal-card {
+        border: 0.5px solid var(--mud-palette-divider);
+        border-radius: 8px;
+        padding: 10px 12px;
+    }
+    .bal-card-head {
+        display: flex; align-items: center; gap: 8px;
+        margin-bottom: 6px;
+    }
+    .bal-card-title { font-size: 12.5px; font-weight: 500; }
+    .bal-card-value {
+        display: flex; align-items: baseline; gap: 4px;
+        margin-bottom: 8px;
+    }
+    .bal-card-num {
+        font-size: 1.6rem;
+        font-weight: 500;
+        line-height: 1;
+        font-variant-numeric: tabular-nums;
+    }
+    .bal-card-suffix { font-size: 11.5px; opacity: .6; }
+    .bal-card-bar {
+        height: 4px;
+        background: var(--mud-palette-divider);
+        border-radius: 2px;
+        margin-bottom: 6px;
+        overflow: hidden;
+    }
+    .bal-card-bar-fill {
+        height: 100%;
+        background: var(--leave-green);
+        border-radius: 2px;
+    }
+    .bal-card-meta { font-size: 10.5px; opacity: .65; }
+
+    /* â”€â”€ Request rows â”€â”€ */
+    .emp-req-row {
+        display: flex;
+        gap: 12px;
+        padding: 12px;
+        border-bottom: 0.5px solid var(--mud-palette-divider);
+    }
+    .emp-req-row:last-child { border-bottom: none; }
+    .emp-req-date {
+        width: 42px; flex-shrink: 0;
+        background: var(--mud-palette-background-grey);
+        border-radius: 6px;
+        padding: 6px 0;
+        text-align: center;
+        align-self: flex-start;
+    }
+    .emp-req-mo { font-size: 9px; opacity: .6; letter-spacing: .05em; }
+    .emp-req-day { font-size: 15px; font-weight: 600; line-height: 1.1; }
+    .emp-req-meta { flex: 1; min-width: 0; }
+    .emp-req-headline {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 12.5px;
+        flex-wrap: wrap;
+    }
+    .emp-req-range { font-weight: 500; }
+    .emp-req-days {
+        font-size: 11px;
+        opacity: .6;
+        font-variant-numeric: tabular-nums;
+    }
+    .emp-req-reason {
+        font-size: 11.5px;
+        opacity: .7;
+        margin-top: 3px;
+    }
+    .emp-req-resolution {
+        font-size: 11px;
+        opacity: .55;
+        margin-top: 4px;
+    }
+    .emp-req-status {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-end;
+        gap: 4px;
+        flex-shrink: 0;
+    }
+</style>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = default!;
+    [Parameter] public EmployeeLeaveView Employee { get; set; } = default!;
+    [Parameter] public List<LeaveType> AllLeaveTypes { get; set; } = new();
+    [Parameter] public EventCallback<string> OnApprove { get; set; }
+    [Parameter] public EventCallback<string> OnReject { get; set; }
+
+    /// <summary>Sort order for balance cards â€” VL first, then SL, EL, SIL, then alphabetical.</summary>
+    private int SortOrder(string leaveTypeId) => leaveTypeId switch
+    {
+        "LT-VL" => 0,
+        "LT-SL" => 1,
+        "LT-EL" => 2,
+        "LT-SIL" => 3,
+        _ => 99
+    };
+
+    private async Task HandleApprove(string id)
+    {
+        await OnApprove.InvokeAsync(id);
+        StateHasChanged();
+    }
+
+    private async Task HandleReject(string id)
+    {
+        // Closing the dialog so the reject dialog can take over without nesting
+        MudDialog.Close();
+        await OnReject.InvokeAsync(id);
+    }
+
+    private void Close() => MudDialog.Close();
+}

@@ -1,0 +1,192 @@
+﻿@using static Giwu.HRMS.Hybrid.Components.Pages.Leaves.LeaveFormatting
+
+<MudDialog>
+    <DialogContent>
+        <MudStack Spacing="3">
+            <MudGrid Spacing="2">
+                <MudItem xs="12" sm="8">
+                    <MudTextField T="string" Label="Name" @bind-Value="Working.Name"
+                                  Variant="Variant.Outlined" Margin="Margin.Dense" Required="true" />
+                </MudItem>
+                <MudItem xs="12" sm="4">
+                    <MudTextField T="string" Label="Code" @bind-Value="Working.Code"
+                                  HelperText="Short code, e.g. VL"
+                                  MaxLength="6"
+                                  Variant="Variant.Outlined" Margin="Margin.Dense" Required="true" />
+                </MudItem>
+            </MudGrid>
+
+            <MudSelect T="LeaveCategory" Label="Category" @bind-Value="Working.Category"
+                       Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true">
+                @foreach (var cat in Enum.GetValues<LeaveCategory>())
+                {
+                    <MudSelectItem Value="@cat">@CategoryLabel(cat)</MudSelectItem>
+                }
+            </MudSelect>
+
+            <MudTextField T="string" Label="Description" @bind-Value="Working.Description"
+                          Variant="Variant.Outlined" Lines="2" />
+
+            <div class="dlg-section-header">Entitlement &amp; Accrual</div>
+            <MudGrid Spacing="2">
+                <MudItem xs="6">
+                    <MudNumericField T="decimal" Label="Annual entitlement" @bind-Value="Working.AnnualEntitlementDays"
+                                     Min="0" Step="1"
+                                     Variant="Variant.Outlined" Margin="Margin.Dense"
+                                     Adornment="Adornment.End" AdornmentText="days" />
+                </MudItem>
+                <MudItem xs="6">
+                    <MudSelect T="LeaveAccrualMode" Label="Accrual mode" @bind-Value="Working.AccrualMode"
+                               Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true">
+                        @foreach (var m in Enum.GetValues<LeaveAccrualMode>())
+                        {
+                            <MudSelectItem Value="@m">@AccrualModeLabel(m)</MudSelectItem>
+                        }
+                    </MudSelect>
+                </MudItem>
+            </MudGrid>
+
+            <div class="dlg-section-header">Carryover &amp; Documentation</div>
+            <MudCheckBox T="bool" @bind-Value="Working.CarryoverAllowed" Size="Size.Small" Dense="true">
+                <MudText Typo="Typo.body2">Carryover allowed to next year</MudText>
+            </MudCheckBox>
+            @if (Working.CarryoverAllowed)
+            {
+                <MudNumericField T="decimal" Label="Max carryover days" @bind-Value="Working.MaxCarryoverDays"
+                                 Min="0" Step="1"
+                                 Variant="Variant.Outlined" Margin="Margin.Dense"
+                                 Adornment="Adornment.End" AdornmentText="days" />
+            }
+
+            <MudCheckBox T="bool" @bind-Value="Working.RequiresMedCert" Size="Size.Small" Dense="true">
+                <MudText Typo="Typo.body2">Requires medical certificate</MudText>
+            </MudCheckBox>
+            @if (Working.RequiresMedCert)
+            {
+                <MudNumericField T="int" Label="Required after (days)" @bind-Value="Working.RequiresMedCertAfterDays"
+                                 Min="1" Step="1"
+                                 Variant="Variant.Outlined" Margin="Margin.Dense" />
+            }
+
+            <div class="dlg-section-header">Eligibility &amp; Reference</div>
+            <MudTextField T="string" Label="Eligibility" @bind-Value="Working.Eligibility"
+                          Placeholder="e.g. Regular employees with 1+ year of service"
+                          Variant="Variant.Outlined" Margin="Margin.Dense" />
+            <MudTextField T="string" Label="Legal / policy reference" @bind-Value="Working.LegalReference"
+                          Placeholder="e.g. RA 11210, Labor Code Art. 95, Company policy"
+                          Variant="Variant.Outlined" Margin="Margin.Dense" />
+
+            <div class="dlg-checkboxes">
+                <MudCheckBox T="bool" @bind-Value="Working.IsActive" Size="Size.Small" Dense="true">
+                    <MudText Typo="Typo.body2">Active</MudText>
+                </MudCheckBox>
+                <MudCheckBox T="bool" @bind-Value="Working.IsPaid" Size="Size.Small" Dense="true">
+                    <MudText Typo="Typo.body2">Paid leave</MudText>
+                </MudCheckBox>
+                <MudCheckBox T="bool" @bind-Value="Working.IsMandated" Size="Size.Small" Dense="true">
+                    <MudText Typo="Typo.body2">Mandated by PH law</MudText>
+                </MudCheckBox>
+            </div>
+        </MudStack>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" DisableElevation="true" OnClick="Save">
+            @(IsEditing ? "Save Changes" : "Add Leave Type")
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+<style>
+    .dlg-section-header {
+        font-size: 10.5px;
+        letter-spacing: .06em;
+        text-transform: uppercase;
+        opacity: .55;
+        font-weight: 500;
+        margin-top: 6px;
+        margin-bottom: -4px;
+    }
+    .dlg-checkboxes { display: flex; flex-direction: column; gap: 2px; }
+</style>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = default!;
+    [Parameter] public LeaveType? Existing { get; set; }
+
+    private LeaveType Working { get; set; } = new();
+    private bool IsEditing => Existing != null;
+
+    // Snapshot for Cancel restore (when editing)
+    private LeaveType? _snapshot;
+
+    protected override void OnInitialized()
+    {
+        if (Existing != null)
+        {
+            Working = Existing;
+            _snapshot = new LeaveType
+            {
+                Id = Existing.Id, Name = Existing.Name, Code = Existing.Code,
+                Category = Existing.Category, Description = Existing.Description,
+                IsActive = Existing.IsActive, IsPaid = Existing.IsPaid, IsMandated = Existing.IsMandated,
+                AnnualEntitlementDays = Existing.AnnualEntitlementDays,
+                AccrualMode = Existing.AccrualMode,
+                CarryoverAllowed = Existing.CarryoverAllowed,
+                MaxCarryoverDays = Existing.MaxCarryoverDays,
+                RequiresMedCert = Existing.RequiresMedCert,
+                RequiresMedCertAfterDays = Existing.RequiresMedCertAfterDays,
+                Eligibility = Existing.Eligibility,
+                LegalReference = Existing.LegalReference,
+            };
+        }
+        else
+        {
+            Working = new LeaveType
+            {
+                Category = LeaveCategory.Other,
+                IsActive = true,
+                IsPaid = true,
+                IsMandated = false,
+                AnnualEntitlementDays = 5m,
+                AccrualMode = LeaveAccrualMode.Yearly,
+                CarryoverAllowed = false,
+                MaxCarryoverDays = 0m,
+                RequiresMedCertAfterDays = 2,
+            };
+        }
+    }
+
+    private void Cancel()
+    {
+        if (IsEditing && _snapshot != null && Existing != null)
+        {
+            Existing.Name = _snapshot.Name;
+            Existing.Code = _snapshot.Code;
+            Existing.Category = _snapshot.Category;
+            Existing.Description = _snapshot.Description;
+            Existing.IsActive = _snapshot.IsActive;
+            Existing.IsPaid = _snapshot.IsPaid;
+            Existing.IsMandated = _snapshot.IsMandated;
+            Existing.AnnualEntitlementDays = _snapshot.AnnualEntitlementDays;
+            Existing.AccrualMode = _snapshot.AccrualMode;
+            Existing.CarryoverAllowed = _snapshot.CarryoverAllowed;
+            Existing.MaxCarryoverDays = _snapshot.MaxCarryoverDays;
+            Existing.RequiresMedCert = _snapshot.RequiresMedCert;
+            Existing.RequiresMedCertAfterDays = _snapshot.RequiresMedCertAfterDays;
+            Existing.Eligibility = _snapshot.Eligibility;
+            Existing.LegalReference = _snapshot.LegalReference;
+        }
+        MudDialog.Cancel();
+    }
+
+    private void Save()
+    {
+        if (string.IsNullOrWhiteSpace(Working.Name) || string.IsNullOrWhiteSpace(Working.Code))
+        {
+            MudDialog.Cancel();
+            return;
+        }
+        MudDialog.Close(DialogResult.Ok(Working));
+    }
+}

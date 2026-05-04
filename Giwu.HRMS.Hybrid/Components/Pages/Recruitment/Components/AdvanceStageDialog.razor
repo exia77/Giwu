@@ -1,0 +1,63 @@
+﻿@using static Giwu.HRMS.Hybrid.Models.RecruitmentFormatting
+
+<MudDialog>
+    <DialogContent>
+        <MudStack Spacing="3">
+            <div>
+                <MudText Typo="Typo.body2" Style="opacity:.7">
+                    Currently: <span class="@($"rec-badge {StageBadgeClass(Candidate.Stage)}")">@Candidate.Stage</span>
+                </MudText>
+            </div>
+
+            <MudSelect T="string" Label="Move to stage" @bind-Value="NewStage"
+                       Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true">
+                @foreach (var s in AvailableStages)
+                {
+                    <MudSelectItem Value="@s">@s</MudSelectItem>
+                }
+            </MudSelect>
+
+            <MudTextField T="string" Label="Note (optional)" @bind-Value="Note"
+                          Placeholder="e.g. passed technical screen, extending offer Monday"
+                          Variant="Variant.Outlined" Lines="3" />
+        </MudStack>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" DisableElevation="true" OnClick="Confirm">
+            Advance
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = default!;
+    [Parameter] public Candidate Candidate { get; set; } = default!;
+
+    private string NewStage { get; set; } = "";
+    private string Note { get; set; } = "";
+
+    private List<string> AvailableStages
+    {
+        get
+        {
+            var current = Array.IndexOf(PipelineStages, Candidate.Stage);
+            if (current < 0) return PipelineStages.ToList();
+            return PipelineStages.Skip(current + 1).ToList();
+        }
+    }
+
+    protected override void OnInitialized()
+    {
+        if (AvailableStages.Count > 0) NewStage = AvailableStages[0];
+    }
+
+    private void Cancel() => MudDialog.Cancel();
+
+    private void Confirm()
+    {
+        if (string.IsNullOrEmpty(NewStage)) { MudDialog.Cancel(); return; }
+        var noteText = string.IsNullOrWhiteSpace(Note) ? $"Moved to {NewStage}" : Note;
+        MudDialog.Close(DialogResult.Ok(new StageChangeResult(NewStage, noteText)));
+    }
+}

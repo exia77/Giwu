@@ -1,0 +1,43 @@
+.theme-toggle {
+    position: fixed;
+    top: 18px;
+    right: 18px;
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    border: 1.5px solid var(--form-border);
+    background: var(--form-bg);
+    color: var(--form-sub);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    z-index: 100;
+    transition: background 0.2s, border-color 0.2s, color 0.2s;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+}
+
+.theme-toggle:hover {
+    color: var(--form-text);
+    background: var(--form-hover);
+}
+
+/* Inline variant — for placement inside app bars / toolbars (no fixed positioning). */
+.theme-toggle-inline {
+    position: static;
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    border: 1px solid var(--mud-palette-divider, var(--form-border));
+    background: transparent;
+    color: var(--mud-palette-text-primary, var(--form-sub));
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: background 0.2s, border-color 0.2s, color 0.2s;
+}
+
+.theme-toggle-inline:hover {
+    background: var(--mud-palette-action-default-hover, var(--form-hover));
+}

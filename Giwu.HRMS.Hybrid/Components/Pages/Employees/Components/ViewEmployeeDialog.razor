@@ -1,0 +1,128 @@
+@* ── View Employee Profile Dialog ── *@
+<MudDialog Style="min-width:520px">
+    <TitleContent>
+        @* Profile header *@
+        <div style="display:flex;align-items:center;gap:14px;padding:4px 0">
+            <MudAvatar Style="@($"background:{Employee.AvatarBg};color:{Employee.AvatarFg};width:52px;height:52px;font-size:1rem;font-weight:700")">
+                @Employee.Initials
+            </MudAvatar>
+            <div style="flex:1;min-width:0">
+                <MudText Typo="Typo.h6" Style="font-weight:700;line-height:1.2">@Employee.Name</MudText>
+                <MudText Typo="Typo.caption" Style="opacity:.55">@Employee.Role · @Employee.Dept</MudText>
+            </div>
+            <MudChip T="string" Size="Size.Small" Color="@Employee.ChipColor"
+                     Variant="Variant.Filled" Style="height:24px;font-size:.7rem">
+                @Employee.Status
+            </MudChip>
+        </div>
+    </TitleContent>
+
+    <DialogContent>
+
+        @* ── Quick contact row ── *@
+        <div style="display:flex;gap:8px;margin-bottom:20px;flex-wrap:wrap">
+            <div style="display:flex;align-items:center;gap:6px;padding:6px 12px;border:1px solid var(--mud-palette-divider);border-radius:8px;flex:1;min-width:180px">
+                <MudIcon Icon="@Icons.Material.Outlined.Email" Style="font-size:15px;opacity:.5" />
+                <MudText Typo="Typo.caption">@Employee.Email</MudText>
+            </div>
+            <div style="display:flex;align-items:center;gap:6px;padding:6px 12px;border:1px solid var(--mud-palette-divider);border-radius:8px;flex:1;min-width:140px">
+                <MudIcon Icon="@Icons.Material.Outlined.Phone" Style="font-size:15px;opacity:.5" />
+                <MudText Typo="Typo.caption">@Employee.Phone</MudText>
+            </div>
+        </div>
+
+        @* ── Info sections ── *@
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:0;border:1px solid var(--mud-palette-divider);border-radius:10px;overflow:hidden;margin-bottom:16px">
+            @foreach (var item in _infoItems)
+            {
+                <div style="padding:12px 16px;border-bottom:1px solid var(--mud-palette-divider);border-right:1px solid var(--mud-palette-divider)">
+                    <MudText Typo="Typo.caption" Style="opacity:.5;display:block;margin-bottom:2px">@item.Label</MudText>
+                    <MudText Typo="Typo.body2" Style="font-weight:500">@item.Value</MudText>
+                </div>
+            }
+        </div>
+
+        @* ── Leave balance mini-section ── *@
+        <MudText Typo="Typo.caption"
+                 Style="font-weight:600;text-transform:uppercase;letter-spacing:.06em;opacity:.5;display:block;margin-bottom:10px">
+            Leave Balance
+        </MudText>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+            @foreach (var lb in _leaveBalances)
+            {
+                <div style="@($"flex:1;min-width:80px;padding:10px 14px;border-radius:8px;background:{lb.Bg};border:1px solid {lb.Border}")">
+                    <MudText Typo="Typo.h6" Style="@($"font-weight:700;color:{lb.Color};line-height:1")">@lb.Days</MudText>
+                    <MudText Typo="Typo.caption" Style="@($"color:{lb.Color};opacity:.7")">@lb.Label</MudText>
+                </div>
+            }
+        </div>
+
+    </DialogContent>
+
+    <DialogActions>
+        <MudButton Variant="Variant.Text"
+                   Style="text-transform:none"
+                   OnClick="Close">
+            Close
+        </MudButton>
+        <MudButton Variant="Variant.Outlined"
+                   Color="Color.Primary"
+                   Style="text-transform:none;border-radius:8px"
+                   StartIcon="@Icons.Material.Outlined.Edit"
+                   OnClick="EditProfile">
+            Edit Profile
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] IMudDialogInstance MudDialog { get; set; } = default!;
+
+    [Parameter] public EmployeeProfile Employee { get; set; } = default!;
+
+    public class EmployeeProfile
+    {
+        public string Initials       { get; set; } = "";
+        public string AvatarBg       { get; set; } = "";
+        public string AvatarFg       { get; set; } = "";
+        public string Name           { get; set; } = "";
+        public string Role           { get; set; } = "";
+        public string Dept           { get; set; } = "";
+        public string Status         { get; set; } = "";
+        public Color  ChipColor      { get; set; }
+        public string Email          { get; set; } = "";
+        public string Phone          { get; set; } = "";
+        public string JoinDate       { get; set; } = "";
+        public string EmploymentType { get; set; } = "Full-time";
+        public string Salary         { get; set; } = "₱0.00";
+        public string Address        { get; set; } = "—";
+        public string BirthDate      { get; set; } = "—";
+        public string Gender         { get; set; } = "—";
+    }
+
+    record InfoItem(string Label, string Value);
+    record LeaveBalance(string Label, string Days, string Color, string Bg, string Border);
+
+    IEnumerable<InfoItem> _infoItems => new[]
+    {
+        new InfoItem("Department",       Employee.Dept),
+        new InfoItem("Employment Type",  Employee.EmploymentType),
+        new InfoItem("Join Date",        Employee.JoinDate),
+        new InfoItem("Salary",           Employee.Salary),
+        new InfoItem("Date of Birth",    Employee.BirthDate),
+        new InfoItem("Gender",           Employee.Gender),
+        new InfoItem("Address",          Employee.Address),
+        new InfoItem("Status",           Employee.Status),
+    };
+
+    readonly LeaveBalance[] _leaveBalances =
+    {
+        new("Vacation",  "8",  "#1e8c50", "#e6f5ec", "#b7dfc8"),
+        new("Sick",      "5",  "#0d6e9e", "#e1f0f8", "#a8d0e6"),
+        new("Emergency", "2",  "#9a5c00", "#fff3e0", "#f5d49a"),
+        new("Birthday",  "1",  "#6c3db5", "#f0ebfc", "#cbb8f0"),
+    };
+
+    void Close() => MudDialog.Close();
+    void EditProfile() => MudDialog.Close(DialogResult.Ok("edit"));
+}

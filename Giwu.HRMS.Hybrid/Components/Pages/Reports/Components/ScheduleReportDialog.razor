@@ -1,0 +1,239 @@
+﻿@using static Giwu.HRMS.Hybrid.Models.ReportsFormatting
+
+<MudDialog>
+    <DialogContent>
+        <MudStack Spacing="3">
+            <MudSelect T="string" Label="Report" @bind-Value="Working.DefinitionId"
+                       Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true"
+                       Disabled="@IsEditing">
+                @foreach (var def in AllDefinitions.OrderBy(d => CategoryLabel(d.Category)).ThenBy(d => d.Name))
+                {
+                    <MudSelectItem Value="@def.Id">
+                        @def.Name
+                        <span style="opacity:.55;font-size:11px"> Â· @CategoryLabel(def.Category)</span>
+                    </MudSelectItem>
+                }
+            </MudSelect>
+
+            <div>
+                <div class="dlg-section-header">Cadence</div>
+                <MudSelect T="ScheduleFrequency" Label="Frequency" @bind-Value="Working.Frequency"
+                           Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true">
+                    @foreach (var f in Enum.GetValues<ScheduleFrequency>())
+                    {
+                        <MudSelectItem Value="@f">@FrequencyLabel(f)</MudSelectItem>
+                    }
+                </MudSelect>
+                <MudTextField T="string" Label="Cadence description" @bind-Value="Working.Cadence"
+                              Placeholder="e.g. Every Monday at 8 AM"
+                              HelperText="A human-readable description of when this runs"
+                              Variant="Variant.Outlined" Margin="Margin.Dense" Class="mt-2" />
+            </div>
+
+            <div>
+                <div class="dlg-section-header">Recipients</div>
+
+                @if (Working.Recipients.Count > 0)
+                {
+                    <div class="recipient-list">
+                        @foreach (var email in Working.Recipients.ToList())
+                        {
+                            <div class="recipient-chip">
+                                <MudIcon Icon="@Icons.Material.Outlined.Email" Size="Size.Small" Style="opacity:.6" />
+                                <span>@email</span>
+                                <button type="button" class="recipient-remove" title="Remove"
+                                        @onclick="@(() => RemoveRecipient(email))">Ã—</button>
+                            </div>
+                        }
+                    </div>
+                }
+
+                <div class="recipient-add-row">
+                    <MudTextField T="string" @bind-Value="NewRecipient" Placeholder="email@company.com"
+                                  Variant="Variant.Outlined" Margin="Margin.Dense"
+                                  OnKeyUp="@OnRecipientKey" />
+                    <MudButton Variant="Variant.Outlined" Size="Size.Small"
+                               Disabled="@(string.IsNullOrWhiteSpace(NewRecipient))"
+                               OnClick="AddRecipient">Add</MudButton>
+                </div>
+            </div>
+
+            <div>
+                <div class="dlg-section-header">Output Format</div>
+                <div class="run-format-group">
+                    @{
+                        var def = AllDefinitions.FirstOrDefault(d => d.Id == Working.DefinitionId);
+                        var formats = def?.SupportedFormats ?? new() { ReportFormat.Csv, ReportFormat.Excel, ReportFormat.Pdf };
+                    }
+                    @foreach (var fmt in formats)
+                    {
+                        <button type="button"
+                                class="@($"run-format-btn {(Working.Format == fmt ? "active" : "")}")"
+                                @onclick="@(() => Working.Format = fmt)">
+                            <MudIcon Icon="@FormatIcon(fmt)" Size="Size.Small" />
+                            <span>@FormatLabel(fmt)</span>
+                        </button>
+                    }
+                </div>
+            </div>
+
+            <MudCheckBox T="bool" @bind-Value="Working.IsActive" Size="Size.Small" Dense="true">
+                <MudText Typo="Typo.body2">Active (runs automatically)</MudText>
+            </MudCheckBox>
+        </MudStack>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" DisableElevation="true"
+                   OnClick="Save" Disabled="@(!CanSave)">
+            @(IsEditing ? "Save Changes" : "Create Schedule")
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+<style>
+    .dlg-section-header {
+        font-size: 10.5px; letter-spacing: .06em; text-transform: uppercase;
+        opacity: .55; font-weight: 500; margin-bottom: 8px;
+    }
+
+    .recipient-list {
+        display: flex; flex-wrap: wrap; gap: 6px;
+        margin-bottom: 10px;
+    }
+    .recipient-chip {
+        display: inline-flex; align-items: center; gap: 6px;
+        padding: 4px 6px 4px 10px;
+        background: var(--mud-palette-background-grey);
+        border-radius: 100px;
+        font-size: 12px;
+    }
+    .recipient-remove {
+        background: none; border: none; cursor: pointer;
+        font-size: 16px; line-height: 1;
+        opacity: .5; padding: 0 4px;
+        font-family: inherit;
+    }
+    .recipient-remove:hover { opacity: 1; color: var(--rep-red-text); }
+    .recipient-add-row {
+        display: flex; gap: 8px; align-items: flex-start;
+    }
+    .recipient-add-row > :first-child { flex: 1; }
+
+    .run-format-group { display: flex; gap: 8px; flex-wrap: wrap; }
+    .run-format-btn {
+        display: inline-flex; align-items: center; gap: 6px;
+        padding: 8px 14px;
+        border: 0.5px solid var(--mud-palette-divider);
+        border-radius: 8px;
+        background: var(--mud-palette-background);
+        cursor: pointer;
+        font-size: 12.5px;
+        color: var(--mud-palette-text-primary);
+        transition: all .1s;
+        font-family: inherit;
+    }
+    .run-format-btn:hover { border-color: var(--rep-green); }
+    .run-format-btn.active {
+        background: var(--rep-green-light);
+        color: var(--rep-green-text);
+        border-color: var(--rep-green);
+        font-weight: 500;
+    }
+</style>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = default!;
+    [Parameter] public List<ReportDefinition> AllDefinitions { get; set; } = new();
+    [Parameter] public ReportSchedule? Existing { get; set; }
+
+    private ReportSchedule Working { get; set; } = new();
+    private string NewRecipient { get; set; } = "";
+
+    private bool IsEditing => Existing != null;
+
+    private bool CanSave =>
+        !string.IsNullOrEmpty(Working.DefinitionId)
+        && !string.IsNullOrWhiteSpace(Working.Cadence)
+        && Working.Recipients.Count > 0;
+
+    // Snapshot for Cancel restore
+    private ReportSchedule? _snapshot;
+
+    protected override void OnInitialized()
+    {
+        if (Existing != null)
+        {
+            Working = Existing;
+            _snapshot = new ReportSchedule
+            {
+                Id = Existing.Id, DefinitionId = Existing.DefinitionId, DefinitionName = Existing.DefinitionName,
+                Category = Existing.Category, Frequency = Existing.Frequency, Cadence = Existing.Cadence,
+                Recipients = Existing.Recipients.ToList(),
+                Format = Existing.Format, LastRunAt = Existing.LastRunAt, NextRunAt = Existing.NextRunAt,
+                IsActive = Existing.IsActive, CreatedBy = Existing.CreatedBy, CreatedOn = Existing.CreatedOn,
+            };
+        }
+        else
+        {
+            Working = new ReportSchedule
+            {
+                Frequency = ScheduleFrequency.Monthly,
+                Cadence = "1st of each month at 8:00 AM",
+                Format = ReportFormat.Excel,
+                IsActive = true,
+                NextRunAt = DateTime.Today.AddDays(7),
+            };
+        }
+    }
+
+    private void OnRecipientKey(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter") AddRecipient();
+    }
+
+    private void AddRecipient()
+    {
+        var email = (NewRecipient ?? "").Trim();
+        if (string.IsNullOrEmpty(email)) return;
+        if (!email.Contains('@')) return;
+        if (!Working.Recipients.Contains(email))
+        {
+            Working.Recipients.Add(email);
+        }
+        NewRecipient = "";
+    }
+
+    private void RemoveRecipient(string email)
+    {
+        Working.Recipients.Remove(email);
+    }
+
+    private void Cancel()
+    {
+        if (IsEditing && _snapshot != null && Existing != null)
+        {
+            Existing.Frequency = _snapshot.Frequency;
+            Existing.Cadence = _snapshot.Cadence;
+            Existing.Recipients = _snapshot.Recipients.ToList();
+            Existing.Format = _snapshot.Format;
+            Existing.IsActive = _snapshot.IsActive;
+        }
+        MudDialog.Cancel();
+    }
+
+    private void Save()
+    {
+        if (!CanSave) return;
+
+        // Hydrate definition info from picked ID
+        var def = AllDefinitions.FirstOrDefault(d => d.Id == Working.DefinitionId);
+        if (def != null)
+        {
+            Working.DefinitionName = def.Name;
+            Working.Category = def.Category;
+        }
+
+        MudDialog.Close(DialogResult.Ok(Working));
+    }
+}

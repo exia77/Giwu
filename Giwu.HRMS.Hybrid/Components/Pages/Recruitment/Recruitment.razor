@@ -1,0 +1,1121 @@
+﻿@page "/recruitment"
+@using static Giwu.HRMS.Hybrid.Models.RecruitmentFormatting
+@using Giwu.Contracts.Departments
+@using Giwu.Contracts.Recruitment
+@using Giwu.HRMS.Hybrid.Services.Departments
+@using Giwu.HRMS.Hybrid.Services.Recruitment
+@using DomainRec = Giwu.Domain.Recruitment
+@inject ISnackbar Snackbar
+@inject IDialogService DialogService
+@inject IRecruitmentApi RecruitmentApi
+@inject IDepartmentsApi DepartmentsApi
+
+@using Pages.Recruitment.Components
+
+<PageTitle>Recruitment</PageTitle>
+
+@* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+   KPI STRIP
+â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• *@
+<MudGrid Spacing="3" Class="mb-4">
+    <MudItem xs="12" sm="6" md="3">
+        <MudPaper Class="rec-kpi" Elevation="0">
+            <div class="kpi-label">Open Roles</div>
+            <div class="kpi-value">@OpenRolesCount</div>
+            <div class="kpi-sub">
+                <span class="kpi-dot" style="background:var(--rec-green)"></span>
+                <span>@TotalOpeningsCount openings total</span>
+            </div>
+        </MudPaper>
+    </MudItem>
+    <MudItem xs="12" sm="6" md="3">
+        <MudPaper Class="rec-kpi" Elevation="0">
+            <div class="kpi-label">Active Candidates</div>
+            <div class="kpi-value">@ActiveCandidateCount</div>
+            <div class="kpi-sub">
+                <span class="kpi-dot" style="background:var(--rec-blue)"></span>
+                <span>@NewThisWeek new this week</span>
+            </div>
+        </MudPaper>
+    </MudItem>
+    <MudItem xs="12" sm="6" md="3">
+        <MudPaper Class="rec-kpi" Elevation="0">
+            <div class="kpi-label">Interviews This Week</div>
+            <div class="kpi-value">@InterviewsThisWeekCount</div>
+            <div class="kpi-sub">
+                <span class="kpi-dot" style="background:var(--rec-amber)"></span>
+                <span>@UpcomingInterviewCount upcoming</span>
+            </div>
+        </MudPaper>
+    </MudItem>
+    <MudItem xs="12" sm="6" md="3">
+        <MudPaper Class="rec-kpi" Elevation="0">
+            <div class="kpi-label">Offers Pending</div>
+            <div class="kpi-value">@OffersCount</div>
+            <div class="kpi-sub">
+                <span class="kpi-dot" style="background:var(--rec-purple)"></span>
+                <span>avg 18 days to hire</span>
+            </div>
+        </MudPaper>
+    </MudItem>
+</MudGrid>
+
+@* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+   FUNNEL + UPCOMING INTERVIEWS
+â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• *@
+<MudGrid Spacing="3" Class="mb-4">
+    <MudItem xs="12" md="7">
+        <MudPaper Class="rec-card" Elevation="0">
+            <div class="rec-card-header">
+                <div>
+                    <MudText Typo="Typo.subtitle2" Class="fw-medium">Pipeline Funnel</MudText>
+                    <MudText Typo="Typo.caption" Style="opacity:.55">Candidates by current stage</MudText>
+                </div>
+                <MudSelect T="string" @bind-Value="FunnelJobFilter" Dense="true" Variant="Variant.Outlined"
+                           Style="width:200px" Margin="Margin.Dense" Clearable="true">
+                    <MudSelectItem Value="@("")">All roles</MudSelectItem>
+                    @foreach (var j in Jobs.Where(j => j.Status == "Open"))
+                    {
+                        <MudSelectItem Value="@j.Id">@j.Title</MudSelectItem>
+                    }
+                </MudSelect>
+            </div>
+            <div class="funnel-wrap">
+                @{
+                    var funnelMax = PipelineStages.Max(s => CountByStage(s, FunnelJobFilter));
+                    if (funnelMax == 0) funnelMax = 1;
+                }
+                @foreach (var stage in PipelineStages)
+                {
+                    var count = CountByStage(stage, FunnelJobFilter);
+                    var pct = (int)Math.Round(count / (double)funnelMax * 100);
+                    <div class="funnel-row">
+                        <div class="funnel-label">
+                            <span class="@($"rec-badge {StageBadgeClass(stage)}")">@stage</span>
+                        </div>
+                        <div class="funnel-track">
+                            <div class="funnel-fill" style="@($"width:{pct}%;background:{StageColor(stage)}")"></div>
+                        </div>
+                        <div class="funnel-count">@count</div>
+                    </div>
+                }
+            </div>
+        </MudPaper>
+    </MudItem>
+
+    <MudItem xs="12" md="5">
+        <MudPaper Class="rec-card" Elevation="0">
+            <div class="rec-card-header">
+                <MudText Typo="Typo.subtitle2" Class="fw-medium">Upcoming Interviews</MudText>
+                <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Style="height:20px;font-size:.7rem">
+                    Next 7 days
+                </MudChip>
+            </div>
+            @if (UpcomingInterviews.Count == 0)
+            {
+                <div class="rec-empty">
+                    <div class="rec-empty-icon">â€”</div>
+                    <MudText Typo="Typo.body2">No interviews scheduled.</MudText>
+                </div>
+            }
+            else
+            {
+                @foreach (var iv in UpcomingInterviews.Take(4))
+                {
+                    var cand = Candidates.FirstOrDefault(c => c.Id == iv.CandidateId);
+                    if (cand == null) continue;
+                    var job = Jobs.FirstOrDefault(j => j.Id == cand.JobId);
+                    <div class="interview-item">
+                        <div class="interview-date">
+                            <div class="interview-day">@iv.ScheduledAt.ToString("ddd").ToUpper()</div>
+                            <div class="interview-num">@iv.ScheduledAt.Day</div>
+                        </div>
+                        <div class="interview-meta">
+                            <MudText Typo="Typo.body2" Class="fw-medium">@cand.Name</MudText>
+                            <MudText Typo="Typo.caption" Style="opacity:.55">
+                                @iv.Kind Â· @iv.ScheduledAt.ToString("h:mm tt") Â· @(job?.Title ?? "â€”")
+                            </MudText>
+                        </div>
+                        <MudAvatar Style="@AvatarStyle(iv.InterviewerAv)" Class="rec-av-sm"
+                                   Title="@iv.Interviewer">@iv.InterviewerInit</MudAvatar>
+                    </div>
+                }
+            }
+        </MudPaper>
+    </MudItem>
+</MudGrid>
+
+@* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+   MAIN TABS: CANDIDATES / JOBS
+â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• *@
+<MudPaper Class="rec-card" Elevation="0">
+    <MudTabs Elevation="0" Rounded="false" ApplyEffectsToContainer="true"
+             PanelClass="rec-tab-panel" TabPanelClass="rec-tab-item"
+             @bind-ActivePanelIndex="ActiveTab">
+
+        @* â•â• CANDIDATES TAB â•â• *@
+        <MudTabPanel Text="@($"Candidates ({Candidates.Count(c => c.Stage != "Rejected")})")"
+                     Icon="@Icons.Material.Outlined.PeopleAlt">
+            <div class="rec-card-header">
+                <div>
+                    <MudText Typo="Typo.subtitle2" Class="fw-medium">All Candidates</MudText>
+                    <MudText Typo="Typo.caption" Style="opacity:.55">
+                        @FilteredCandidates.Count() of @Candidates.Count shown
+                    </MudText>
+                </div>
+                <MudStack Row="true" Spacing="2">
+                    <MudButton Variant="Variant.Outlined" Size="Size.Small"
+                               StartIcon="@Icons.Material.Outlined.FilterList"
+                               OnClick="ToggleAdvancedFilters">
+                        @(ShowAdvancedFilters ? "Hide Filters" : "Filters")
+                    </MudButton>
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary" Size="Size.Small"
+                               StartIcon="@Icons.Material.Outlined.PersonAdd" DisableElevation="true"
+                               OnClick="OpenAddCandidateDialog">Add Candidate</MudButton>
+                </MudStack>
+            </div>
+
+            <div class="filter-row">
+                <MudChipSet T="string" @bind-SelectedValue="CandidateStageFilter" CheckMark="false" Mandatory="true">
+                    <MudChip T="string" Value="@("All")" Size="Size.Small">All</MudChip>
+                    <MudChip T="string" Value="@("Applied")" Size="Size.Small">Applied</MudChip>
+                    <MudChip T="string" Value="@("Screening")" Size="Size.Small">Screening</MudChip>
+                    <MudChip T="string" Value="@("Interview")" Size="Size.Small">Interview</MudChip>
+                    <MudChip T="string" Value="@("Offer")" Size="Size.Small">Offer</MudChip>
+                    <MudChip T="string" Value="@("Hired")" Size="Size.Small">Hired</MudChip>
+                    <MudChip T="string" Value="@("Rejected")" Size="Size.Small">Rejected</MudChip>
+                </MudChipSet>
+                <MudSpacer />
+                <MudTextField @bind-Value="CandidateSearch" Placeholder="Search name, emailâ€¦"
+                              Variant="Variant.Outlined" Margin="Margin.Dense" Class="rec-search"
+                              Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Outlined.Search"
+                              DebounceInterval="200" Immediate="true" />
+            </div>
+
+            @if (ShowAdvancedFilters)
+            {
+                <div class="filter-row" style="border-top:none;padding-top:0">
+                    <MudSelect T="string" @bind-Value="CandidateJobFilter" Placeholder="Role" Dense="true"
+                               Variant="Variant.Outlined" Margin="Margin.Dense" Style="min-width:180px" Clearable="true">
+                        <MudSelectItem Value="@("")">All roles</MudSelectItem>
+                        @foreach (var j in Jobs)
+                        {
+                            <MudSelectItem Value="@j.Id">@j.Title</MudSelectItem>
+                        }
+                    </MudSelect>
+                    <MudSelect T="string" @bind-Value="CandidateSourceFilter" Placeholder="Source" Dense="true"
+                               Variant="Variant.Outlined" Margin="Margin.Dense" Style="min-width:160px" Clearable="true">
+                        <MudSelectItem Value="@("")">All sources</MudSelectItem>
+                        <MudSelectItem Value="@("LinkedIn")">LinkedIn</MudSelectItem>
+                        <MudSelectItem Value="@("Referral")">Referral</MudSelectItem>
+                        <MudSelectItem Value="@("Job Board")">Job Board</MudSelectItem>
+                        <MudSelectItem Value="@("Website")">Website</MudSelectItem>
+                    </MudSelect>
+                    <MudSelect T="int" @bind-Value="CandidateMinRating" Placeholder="Min rating" Dense="true"
+                               Variant="Variant.Outlined" Margin="Margin.Dense" Style="min-width:130px">
+                        <MudSelectItem Value="0">Any</MudSelectItem>
+                        <MudSelectItem Value="3">â‰¥ 3 â˜…</MudSelectItem>
+                        <MudSelectItem Value="4">â‰¥ 4 â˜…</MudSelectItem>
+                        <MudSelectItem Value="5">5 â˜… only</MudSelectItem>
+                    </MudSelect>
+                    <MudButton Variant="Variant.Text" Size="Size.Small" OnClick="ClearAdvancedFilters">Clear</MudButton>
+                </div>
+            }
+
+            <MudTable T="Candidate" Items="@FilteredCandidates" Dense="true" Hover="true"
+                      Elevation="0" Breakpoint="Breakpoint.Sm"
+                      @bind-RowsPerPage="CandidatePageSize" @bind-Page="CandidatePage"
+                      Class="rec-mud-table">
+                <HeaderContent>
+                    <MudTh><MudTableSortLabel T="Candidate" SortBy="@(c => c.Name)">Candidate</MudTableSortLabel></MudTh>
+                    <MudTh>Role</MudTh>
+                    <MudTh><MudTableSortLabel T="Candidate" SortBy="@(c => c.Stage)">Stage</MudTableSortLabel></MudTh>
+                    <MudTh>Source</MudTh>
+                    <MudTh><MudTableSortLabel T="Candidate" SortBy="@(c => c.Rating)">Rating</MudTableSortLabel></MudTh>
+                    <MudTh><MudTableSortLabel T="Candidate" SortBy="@(c => c.LastActivity)">Last Activity</MudTableSortLabel></MudTh>
+                    <MudTh Style="text-align:right">Actions</MudTh>
+                </HeaderContent>
+                <RowTemplate>
+                    <MudTd DataLabel="Candidate">
+                        <div style="display:flex;align-items:center;gap:9px">
+                            <MudAvatar Style="@AvatarStyle(context.Av)" Class="rec-av-sm">@context.Init</MudAvatar>
+                            <div>
+                                <MudText Typo="Typo.body2" Class="fw-medium" Style="line-height:1.2">@context.Name</MudText>
+                                <MudText Typo="Typo.caption" Style="opacity:.55">@context.Email</MudText>
+                            </div>
+                        </div>
+                    </MudTd>
+                    <MudTd DataLabel="Role" Style="opacity:.8">
+                        @(Jobs.FirstOrDefault(j => j.Id == context.JobId)?.Title ?? "â€”")
+                    </MudTd>
+                    <MudTd DataLabel="Stage">
+                        <span class="@($"rec-badge {StageBadgeClass(context.Stage)}")">@context.Stage</span>
+                    </MudTd>
+                    <MudTd DataLabel="Source" Style="opacity:.7;font-size:12px">@context.Source</MudTd>
+                    <MudTd DataLabel="Rating">@StarRating(context.Rating)</MudTd>
+                    <MudTd DataLabel="Last Activity" Style="opacity:.7;font-size:12px">
+                        @RelativeTime(context.LastActivity)
+                    </MudTd>
+                    <MudTd DataLabel="Actions" Style="text-align:right">
+                        <MudStack Row="true" Spacing="1" Justify="Justify.FlexEnd">
+                            @if (context.Stage != "Hired" && context.Stage != "Rejected")
+                            {
+                                <MudButton Size="Size.Small" Variant="Variant.Outlined"
+                                           OnClick="@(() => OpenAdvanceDialog(context.Id))">
+                                    Advance
+                                </MudButton>
+                            }
+                            <MudIconButton Icon="@Icons.Material.Outlined.Visibility" Size="Size.Small"
+                                           OnClick="@(() => OpenCandidateDetailDialog(context.Id))" />
+                            <MudMenu Icon="@Icons.Material.Outlined.MoreVert" Size="Size.Small" Dense="true">
+                                <MudMenuItem Icon="@Icons.Material.Outlined.Event"
+                                             OnClick="@(() => OpenScheduleInterviewDialog(context.Id))">
+                                    Schedule interview
+                                </MudMenuItem>
+                                <MudMenuItem Icon="@Icons.Material.Outlined.Edit"
+                                             OnClick="@(() => OpenEditCandidateDialog(context.Id))">
+                                    Edit candidate
+                                </MudMenuItem>
+                                @if (context.Stage != "Rejected" && context.Stage != "Hired")
+                                {
+                                    <MudMenuItem Icon="@Icons.Material.Outlined.Block"
+                                                 OnClick="@(() => OpenRejectDialog(context.Id))">
+                                        Reject
+                                    </MudMenuItem>
+                                }
+                            </MudMenu>
+                        </MudStack>
+                    </MudTd>
+                </RowTemplate>
+                <NoRecordsContent>
+                    <div class="rec-empty">
+                        <div class="rec-empty-icon">âŠ˜</div>
+                        <MudText Typo="Typo.body2">No candidates match your filters.</MudText>
+                    </div>
+                </NoRecordsContent>
+                <PagerContent>
+                    <MudTablePager PageSizeOptions="new int[] { 5, 10, 25, 50 }" />
+                </PagerContent>
+            </MudTable>
+        </MudTabPanel>
+
+        @* â•â• JOBS TAB â•â• *@
+        <MudTabPanel Text="@($"Jobs ({Jobs.Count(j => j.Status == "Open")} open)")"
+                     Icon="@Icons.Material.Outlined.WorkOutline">
+            <div class="rec-card-header">
+                <div>
+                    <MudText Typo="Typo.subtitle2" Class="fw-medium">Open Requisitions</MudText>
+                    <MudText Typo="Typo.caption" Style="opacity:.55">@FilteredJobs.Count() of @Jobs.Count roles</MudText>
+                </div>
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" Size="Size.Small"
+                           StartIcon="@Icons.Material.Outlined.Add" DisableElevation="true"
+                           OnClick="OpenCreateJobDialog">Post New Role</MudButton>
+            </div>
+            <div class="filter-row">
+                <MudChipSet T="string" @bind-SelectedValue="JobStatusFilter" CheckMark="false" Mandatory="true">
+                    <MudChip T="string" Value="@("All")" Size="Size.Small">All</MudChip>
+                    <MudChip T="string" Value="@("Open")" Size="Size.Small">Open</MudChip>
+                    <MudChip T="string" Value="@("On Hold")" Size="Size.Small">On Hold</MudChip>
+                    <MudChip T="string" Value="@("Closed")" Size="Size.Small">Closed</MudChip>
+                    <MudChip T="string" Value="@("Draft")" Size="Size.Small">Draft</MudChip>
+                </MudChipSet>
+                <MudSpacer />
+                <MudTextField @bind-Value="JobSearch" Placeholder="Search title, deptâ€¦"
+                              Variant="Variant.Outlined" Margin="Margin.Dense" Class="rec-search"
+                              Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Outlined.Search"
+                              DebounceInterval="200" Immediate="true" />
+            </div>
+
+            <MudTable T="JobRequisition" Items="@FilteredJobs" Dense="true" Hover="true"
+                      Elevation="0" Breakpoint="Breakpoint.Sm"
+                      @bind-RowsPerPage="JobPageSize" @bind-Page="JobPage"
+                      Class="rec-mud-table">
+                <HeaderContent>
+                    <MudTh><MudTableSortLabel T="JobRequisition" SortBy="@(j => j.Title)">Role</MudTableSortLabel></MudTh>
+                    <MudTh><MudTableSortLabel T="JobRequisition" SortBy="@(j => j.Dept)">Department</MudTableSortLabel></MudTh>
+                    <MudTh>Location</MudTh>
+                    <MudTh>Progress</MudTh>
+                    <MudTh>Candidates</MudTh>
+                    <MudTh>Status</MudTh>
+                    <MudTh>Owner</MudTh>
+                    <MudTh Style="text-align:right">Actions</MudTh>
+                </HeaderContent>
+                <RowTemplate>
+                    <MudTd DataLabel="Role">
+                        <div>
+                            <MudText Typo="Typo.body2" Class="fw-medium" Style="line-height:1.2">@context.Title</MudText>
+                            <MudText Typo="Typo.caption" Style="opacity:.55">
+                                @context.EmploymentType Â· @FmtSalary(context.SalaryMin, context.SalaryMax)
+                            </MudText>
+                        </div>
+                    </MudTd>
+                    <MudTd DataLabel="Department" Style="opacity:.8">@context.Dept</MudTd>
+                    <MudTd DataLabel="Location" Style="opacity:.7;font-size:12px">@context.Location</MudTd>
+                    <MudTd DataLabel="Progress">
+                        @{
+                            var prog = context.Openings == 0 ? 0
+                                : (int)Math.Round(context.Filled / (double)context.Openings * 100);
+                        }
+                        <div class="progress-wrap">
+                            <div class="progress-bar"><div class="progress-fill" style="@($"width:{prog}%")"></div></div>
+                            <span style="font-size:11px;opacity:.7">@context.Filled / @context.Openings</span>
+                        </div>
+                    </MudTd>
+                    <MudTd DataLabel="Candidates">
+                        @{
+                            var pipeline = Candidates.Count(c => c.JobId == context.Id
+                                && c.Stage != "Rejected" && c.Stage != "Hired");
+                        }
+                        <span style="font-size:12px">@pipeline active</span>
+                    </MudTd>
+                    <MudTd DataLabel="Status">
+                        <span class="@($"rec-badge {JobStatusBadgeClass(context.Status)}")">@context.Status</span>
+                    </MudTd>
+                    <MudTd DataLabel="Owner">
+                        <MudAvatar Style="@AvatarStyle(context.OwnerAv)" Class="rec-av-sm"
+                                   Title="@context.Owner">@context.Owner</MudAvatar>
+                    </MudTd>
+                    <MudTd DataLabel="Actions" Style="text-align:right">
+                        <MudStack Row="true" Spacing="1" Justify="Justify.FlexEnd">
+                            <MudIconButton Icon="@Icons.Material.Outlined.Edit" Size="Size.Small"
+                                           OnClick="@(() => OpenEditJobDialog(context.Id))" />
+                            <MudMenu Icon="@Icons.Material.Outlined.MoreVert" Size="Size.Small" Dense="true">
+                                @if (context.Status == "Open")
+                                {
+                                    <MudMenuItem Icon="@Icons.Material.Outlined.PauseCircle"
+                                                 OnClick="@(() => ChangeJobStatus(context.Id, "On Hold"))">
+                                        Put on hold
+                                    </MudMenuItem>
+                                    <MudMenuItem Icon="@Icons.Material.Outlined.CheckCircle"
+                                                 OnClick="@(() => ChangeJobStatus(context.Id, "Closed"))">
+                                        Close role
+                                    </MudMenuItem>
+                                }
+                                else if (context.Status == "On Hold" || context.Status == "Draft")
+                                {
+                                    <MudMenuItem Icon="@Icons.Material.Outlined.PlayCircle"
+                                                 OnClick="@(() => ChangeJobStatus(context.Id, "Open"))">
+                                        Reopen
+                                    </MudMenuItem>
+                                }
+                            </MudMenu>
+                        </MudStack>
+                    </MudTd>
+                </RowTemplate>
+                <NoRecordsContent>
+                    <div class="rec-empty">
+                        <div class="rec-empty-icon">âŠ˜</div>
+                        <MudText Typo="Typo.body2">No roles match your filters.</MudText>
+                    </div>
+                </NoRecordsContent>
+                <PagerContent>
+                    <MudTablePager PageSizeOptions="new int[] { 5, 10, 25 }" />
+                </PagerContent>
+            </MudTable>
+        </MudTabPanel>
+    </MudTabs>
+</MudPaper>
+
+@* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+   STYLES
+â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• *@
+<style>
+    :root {
+        --rec-green:        #1D9E75;
+        --rec-green-light:  #E1F5EE;
+        --rec-green-dark:   #0F6E56;
+        --rec-green-text:   #085041;
+        --rec-red:          #E24B4A;
+        --rec-red-light:    #FCEBEB;
+        --rec-red-text:     #791F1F;
+        --rec-amber:        #BA7517;
+        --rec-amber-light:  #FAEEDA;
+        --rec-amber-text:   #633806;
+        --rec-purple:       #534AB7;
+        --rec-purple-light: #EEEDFE;
+        --rec-purple-text:  #3C3489;
+        --rec-blue:         #185FA5;
+        --rec-blue-light:   #E6F1FB;
+        --rec-blue-text:    #0C447C;
+    }
+
+    /* â”€â”€ KPI â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+    .rec-kpi {
+        padding: 16px;
+        border: 0.5px solid var(--mud-palette-divider);
+        border-radius: 10px;
+        background: var(--mud-palette-background);
+    }
+    .kpi-label { font-size: 10.5px; letter-spacing: .07em; text-transform: uppercase; opacity: .55; margin-bottom: 6px; font-weight: 500; }
+    .kpi-value { font-size: 2.1rem; font-weight: 500; line-height: 1; margin-bottom: 5px; }
+    .kpi-sub   { font-size: 11.5px; opacity: .6; display: flex; align-items: center; gap: 5px; }
+    .kpi-dot   { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; display: inline-block; }
+
+    /* â”€â”€ Card shell â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+    .rec-card {
+        border: 0.5px solid var(--mud-palette-divider);
+        border-radius: 10px;
+        overflow: hidden;
+        background: var(--mud-palette-background);
+    }
+    .rec-card-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 12px 16px;
+        border-bottom: 0.5px solid var(--mud-palette-divider);
+        gap: 8px;
+    }
+    .fw-medium { font-weight: 500; }
+
+    /* â”€â”€ Avatars â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+    .rec-av-sm {
+        width: 30px !important;
+        height: 30px !important;
+        font-size: 11px !important;
+        font-weight: 500;
+    }
+
+    /* â”€â”€ Badges (stage colors) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+    .rec-badge {
+        display: inline-block;
+        font-size: 11px;
+        padding: 2px 9px;
+        border-radius: 100px;
+        font-weight: 500;
+        white-space: nowrap;
+    }
+    .rec-badge-applied   { background: var(--rec-blue-light);   color: var(--rec-blue-text);   }
+    .rec-badge-screening { background: var(--rec-purple-light); color: var(--rec-purple-text); }
+    .rec-badge-interview { background: var(--rec-amber-light);  color: var(--rec-amber-text);  }
+    .rec-badge-offer     { background: var(--rec-green-light);  color: var(--rec-green-dark);  border: 0.5px solid var(--rec-green); }
+    .rec-badge-hired     { background: var(--rec-green-light);  color: var(--rec-green-text);  }
+    .rec-badge-rejected  { background: var(--rec-red-light);    color: var(--rec-red-text);    }
+
+    /* â”€â”€ Funnel â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+    .funnel-wrap { padding: 16px; }
+    .funnel-row {
+        display: flex; align-items: center; gap: 12px;
+        margin-bottom: 10px;
+    }
+    .funnel-row:last-child { margin-bottom: 0; }
+    .funnel-label { width: 100px; flex-shrink: 0; }
+    .funnel-track {
+        flex: 1;
+        height: 22px;
+        background: var(--mud-palette-background-grey);
+        border-radius: 4px;
+        overflow: hidden;
+        position: relative;
+    }
+    .funnel-fill {
+        height: 100%;
+        border-radius: 4px;
+        transition: width .3s;
+        min-width: 4px;
+    }
+    .funnel-count {
+        width: 30px; text-align: right;
+        font-size: 13px; font-weight: 500;
+    }
+
+    /* â”€â”€ Upcoming interviews â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+    .interview-item {
+        display: flex; align-items: center; gap: 12px;
+        padding: 10px 16px;
+        border-bottom: 0.5px solid var(--mud-palette-divider);
+    }
+    .interview-item:last-child { border-bottom: none; }
+    .interview-date {
+        width: 42px; flex-shrink: 0;
+        background: var(--mud-palette-background-grey);
+        border-radius: 6px;
+        padding: 6px 0;
+        text-align: center;
+    }
+    .interview-day { font-size: 9px; opacity: .6; letter-spacing: .05em; }
+    .interview-num { font-size: 15px; font-weight: 600; line-height: 1.1; }
+    .interview-meta { flex: 1; min-width: 0; }
+
+    /* â”€â”€ Filter row â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+    .filter-row {
+        display: flex; flex-wrap: wrap; align-items: center; gap: 8px;
+        padding: 10px 14px;
+        border-bottom: 0.5px solid var(--mud-palette-divider);
+    }
+    .rec-search { max-width: 260px; }
+
+    /* â”€â”€ Progress bar (jobs table) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+    .progress-wrap { display: flex; align-items: center; gap: 7px; }
+    .progress-bar {
+        width: 60px; height: 5px; border-radius: 3px;
+        background: var(--mud-palette-divider); overflow: hidden; flex-shrink: 0;
+    }
+    .progress-fill { height: 100%; border-radius: 3px; background: var(--rec-green); }
+
+    /* â”€â”€ Star rating â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+    .rec-stars { display: inline-flex; gap: 1px; font-size: 13px; line-height: 1; }
+    .rec-star-filled { color: var(--rec-amber); }
+    .rec-star-empty  { color: var(--mud-palette-divider); }
+
+    /* â”€â”€ Empty state â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+    .rec-empty { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 40px 16px; opacity: .55; gap: 8px; }
+    .rec-empty-icon { font-size: 28px; }
+
+    /* â”€â”€ Tabs â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+    .rec-tab-panel { padding: 0 !important; }
+    .rec-tab-item  { min-width: unset !important; text-transform: none !important; font-size: 13px !important; }
+
+    /* â”€â”€ MudTable overrides â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+    .rec-mud-table .mud-table-container { border-radius: 0; }
+    .rec-mud-table th { font-size: 10.5px !important; font-weight: 500 !important; letter-spacing: .055em !important; text-transform: uppercase !important; opacity: .65; }
+    .rec-mud-table td { font-size: 13px !important; vertical-align: middle; }
+
+    /* â”€â”€ Responsive â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+    @@media (max-width: 600px) {
+        .rec-search { max-width: 100%; width: 100%; }
+        .funnel-label { width: 80px; }
+    }
+</style>
+
+@code {
+    // â”€â”€â”€ State â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    private int ActiveTab { get; set; } = 0;
+    private string FunnelJobFilter { get; set; } = "";
+
+    // Candidates tab state
+    private string CandidateStageFilter { get; set; } = "All";
+    private string CandidateSearch { get; set; } = "";
+    private string CandidateJobFilter { get; set; } = "";
+    private string CandidateSourceFilter { get; set; } = "";
+    private int CandidateMinRating { get; set; } = 0;
+    private bool ShowAdvancedFilters { get; set; } = false;
+    private int CandidatePage { get; set; } = 0;
+    private int CandidatePageSize { get; set; } = 10;
+
+    // Jobs tab state
+    private string JobStatusFilter { get; set; } = "All";
+    private string JobSearch { get; set; } = "";
+    private int JobPage { get; set; } = 0;
+    private int JobPageSize { get; set; } = 10;
+
+    // â”€â”€â”€ Derived â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    private int OpenRolesCount => Jobs.Count(j => j.Status == "Open");
+    private int TotalOpeningsCount => Jobs.Where(j => j.Status == "Open").Sum(j => j.Openings);
+    private int ActiveCandidateCount => Candidates.Count(c => c.Stage != "Rejected" && c.Stage != "Hired");
+    private int NewThisWeek => Candidates.Count(c => c.AppliedOn >= DateTime.Now.AddDays(-7));
+    private int InterviewsThisWeekCount
+    {
+        get
+        {
+            // Week = Sunday..Saturday. DayOfWeek: Sunday=0, Saturday=6
+            var today = DateTime.Today;
+            var startOfWeek = today.AddDays(-(int)today.DayOfWeek);
+            var endOfWeek = startOfWeek.AddDays(7);
+            return Interviews.Count(i => i.ScheduledAt >= startOfWeek && i.ScheduledAt < endOfWeek);
+        }
+    }
+    private int UpcomingInterviewCount => Interviews.Count(i => i.ScheduledAt >= DateTime.Now && i.Status == "Scheduled");
+    private int OffersCount => Candidates.Count(c => c.Stage == "Offer");
+
+    private List<Interview> UpcomingInterviews => Interviews
+        .Where(i => i.ScheduledAt >= DateTime.Now && i.Status == "Scheduled")
+        .OrderBy(i => i.ScheduledAt)
+        .ToList();
+
+    private int CountByStage(string stage, string jobFilter)
+    {
+        return Candidates.Count(c =>
+            c.Stage == stage &&
+            (string.IsNullOrEmpty(jobFilter) || c.JobId == jobFilter));
+    }
+
+    private IEnumerable<Candidate> FilteredCandidates
+    {
+        get
+        {
+            var q = (CandidateSearch ?? "").Trim().ToLower();
+            return Candidates.Where(c =>
+                (CandidateStageFilter == "All" || c.Stage == CandidateStageFilter) &&
+                (string.IsNullOrEmpty(CandidateJobFilter) || c.JobId == CandidateJobFilter) &&
+                (string.IsNullOrEmpty(CandidateSourceFilter) || c.Source == CandidateSourceFilter) &&
+                (CandidateMinRating == 0 || c.Rating >= CandidateMinRating) &&
+                (string.IsNullOrEmpty(q) || c.Name.ToLower().Contains(q) || c.Email.ToLower().Contains(q))
+            );
+        }
+    }
+
+    private IEnumerable<JobRequisition> FilteredJobs
+    {
+        get
+        {
+            var q = (JobSearch ?? "").Trim().ToLower();
+            return Jobs.Where(j =>
+                (JobStatusFilter == "All" || j.Status == JobStatusFilter) &&
+                (string.IsNullOrEmpty(q) || j.Title.ToLower().Contains(q) || j.Dept.ToLower().Contains(q))
+            );
+        }
+    }
+
+    // â”€â”€â”€ Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    private string StageColor(string s) => s switch
+    {
+        "Applied"   => "var(--rec-blue)",
+        "Screening" => "var(--rec-purple)",
+        "Interview" => "var(--rec-amber)",
+        "Offer"     => "var(--rec-green-dark)",
+        "Hired"     => "var(--rec-green)",
+        _           => "var(--mud-palette-divider)"
+    };
+
+    private RenderFragment StarRating(int r) => builder =>
+    {
+        builder.OpenElement(0, "span");
+        builder.AddAttribute(1, "class", "rec-stars");
+        builder.AddAttribute(2, "title", $"{r} / 5");
+        for (int i = 1; i <= 5; i++)
+        {
+            // Unique sequence numbers per star slot: 10..14, 20..24, 30..34, 40..44, 50..54
+            var baseSeq = i * 10;
+            builder.OpenElement(baseSeq, "span");
+            builder.AddAttribute(baseSeq + 1, "class", i <= r ? "rec-star-filled" : "rec-star-empty");
+            builder.AddContent(baseSeq + 2, "â˜…");
+            builder.CloseElement();
+        }
+        builder.CloseElement();
+    };
+
+    private void ToggleAdvancedFilters() => ShowAdvancedFilters = !ShowAdvancedFilters;
+
+    private void ClearAdvancedFilters()
+    {
+        CandidateJobFilter = "";
+        CandidateSourceFilter = "";
+        CandidateMinRating = 0;
+    }
+
+    // â”€â”€â”€ Actions â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    private async Task OpenCandidateDetailDialog(string id)
+    {
+        var cand = Candidates.FirstOrDefault(c => c.Id == id);
+        if (cand == null) return;
+        var job = Jobs.FirstOrDefault(j => j.Id == cand.JobId);
+        var interviews = Interviews.Where(i => i.CandidateId == id).OrderBy(i => i.ScheduledAt).ToList();
+
+        var parameters = new DialogParameters
+        {
+            ["Candidate"] = cand,
+            ["Job"] = job,
+            ["Interviews"] = interviews
+        };
+        var options = new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true };
+        await DialogService.ShowAsync<CandidateDetailDialog>("Candidate Detail", parameters, options);
+    }
+
+    private async Task OpenAdvanceDialog(string id)
+    {
+        var cand = Candidates.FirstOrDefault(c => c.Id == id);
+        if (cand == null) return;
+        if (!Guid.TryParse(cand.Id, out var guid)) { Snackbar.Add("Invalid candidate id", Severity.Error); return; }
+
+        var parameters = new DialogParameters { ["Candidate"] = cand };
+        var options = new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true };
+        var dialog = await DialogService.ShowAsync<AdvanceStageDialog>($"Advance {cand.Name}", parameters, options);
+        var result = await dialog.Result;
+        if (result is not null && !result.Canceled && result.Data is StageChangeResult scr)
+        {
+            var apiResult = await RecruitmentApi.AdvanceCandidateAsync(guid,
+                new AdvanceCandidateRequest(StageToEnum(scr.NewStage), scr.Note));
+            if (apiResult.Success)
+            {
+                Snackbar.Add($"{cand.Name} advanced to {scr.NewStage}", Severity.Success);
+                await ReloadAsync();
+            }
+            else
+            {
+                Snackbar.Add(apiResult.ErrorMessage ?? "Failed to advance candidate.", Severity.Error);
+            }
+        }
+    }
+
+    private async Task OpenRejectDialog(string id)
+    {
+        var cand = Candidates.FirstOrDefault(c => c.Id == id);
+        if (cand == null) return;
+        if (!Guid.TryParse(cand.Id, out var guid)) { Snackbar.Add("Invalid candidate id", Severity.Error); return; }
+
+        var parameters = new DialogParameters { ["Candidate"] = cand };
+        var options = new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true };
+        var dialog = await DialogService.ShowAsync<RejectCandidateDialog>($"Reject {cand.Name}", parameters, options);
+        var result = await dialog.Result;
+        if (result is not null && !result.Canceled && result.Data is string reason)
+        {
+            var apiResult = await RecruitmentApi.RejectCandidateAsync(guid, new RejectCandidateRequest(reason));
+            if (apiResult.Success)
+            {
+                Snackbar.Add($"{cand.Name} rejected", Severity.Warning);
+                await ReloadAsync();
+            }
+            else
+            {
+                Snackbar.Add(apiResult.ErrorMessage ?? "Failed to reject candidate.", Severity.Error);
+            }
+        }
+    }
+
+    private async Task OpenAddCandidateDialog()
+    {
+        var parameters = new DialogParameters { ["Jobs"] = Jobs };
+        var options = new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true };
+        var dialog = await DialogService.ShowAsync<EditCandidateDialog>("Add Candidate", parameters, options);
+        var result = await dialog.Result;
+        if (result is not null && !result.Canceled && result.Data is Candidate c)
+        {
+            if (!Guid.TryParse(c.JobId, out var jobId))
+            {
+                Snackbar.Add("Pick a job for the candidate.", Severity.Error);
+                return;
+            }
+            var (first, last) = SplitName(c.Name);
+            var apiResult = await RecruitmentApi.CreateCandidateAsync(new CreateCandidateRequest(
+                JobRequisitionId: jobId,
+                FirstName: first, LastName: last,
+                Email: c.Email, Phone: c.Phone,
+                Source: c.Source, Rating: c.Rating, Notes: c.Notes));
+            if (apiResult.Success)
+            {
+                Snackbar.Add($"{c.Name} added to pipeline", Severity.Success);
+                await ReloadAsync();
+            }
+            else
+            {
+                Snackbar.Add(apiResult.ErrorMessage ?? "Failed to add candidate.", Severity.Error);
+            }
+        }
+    }
+
+    private async Task OpenEditCandidateDialog(string id)
+    {
+        var cand = Candidates.FirstOrDefault(c => c.Id == id);
+        if (cand == null) return;
+        if (!Guid.TryParse(cand.Id, out var guid)) { Snackbar.Add("Invalid candidate id", Severity.Error); return; }
+
+        var parameters = new DialogParameters
+        {
+            ["Jobs"] = Jobs,
+            ["Existing"] = cand
+        };
+        var options = new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true };
+        var dialog = await DialogService.ShowAsync<EditCandidateDialog>($"Edit {cand.Name}", parameters, options);
+        var result = await dialog.Result;
+        if (result is not null && !result.Canceled)
+        {
+            var (first, last) = SplitName(cand.Name);
+            var apiResult = await RecruitmentApi.UpdateCandidateAsync(guid, new UpdateCandidateRequest(
+                FirstName: first, LastName: last,
+                Email: cand.Email, Phone: cand.Phone,
+                Source: cand.Source, Rating: cand.Rating, Notes: cand.Notes));
+            if (apiResult.Success)
+            {
+                Snackbar.Add($"{cand.Name} updated", Severity.Success);
+                await ReloadAsync();
+            }
+            else
+            {
+                Snackbar.Add(apiResult.ErrorMessage ?? "Failed to update candidate.", Severity.Error);
+            }
+        }
+    }
+
+    private async Task OpenScheduleInterviewDialog(string id)
+    {
+        var cand = Candidates.FirstOrDefault(c => c.Id == id);
+        if (cand == null) return;
+        if (!Guid.TryParse(cand.Id, out var candidateId)) { Snackbar.Add("Invalid candidate id", Severity.Error); return; }
+
+        var parameters = new DialogParameters { ["Candidate"] = cand };
+        var options = new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true };
+        var dialog = await DialogService.ShowAsync<ScheduleInterviewDialog>($"Schedule Interview — {cand.Name}", parameters, options);
+        var result = await dialog.Result;
+        if (result is not null && !result.Canceled && result.Data is Interview iv)
+        {
+            var apiResult = await RecruitmentApi.ScheduleInterviewAsync(new ScheduleInterviewRequest(
+                CandidateId: candidateId,
+                ScheduledAt: new DateTimeOffset(iv.ScheduledAt, TimeZoneInfo.Local.GetUtcOffset(iv.ScheduledAt)),
+                DurationMinutes: iv.DurationMinutes,
+                Kind: InterviewKindToEnum(iv.Kind),
+                InterviewerEmployeeId: null,
+                Location: iv.Location,
+                Notes: ""));
+            if (apiResult.Success)
+            {
+                Snackbar.Add($"Interview scheduled with {cand.Name}", Severity.Success);
+                await ReloadAsync();
+            }
+            else
+            {
+                Snackbar.Add(apiResult.ErrorMessage ?? "Failed to schedule interview.", Severity.Error);
+            }
+        }
+    }
+
+    private async Task OpenCreateJobDialog()
+    {
+        var options = new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true };
+        var dialog = await DialogService.ShowAsync<EditJobDialog>("Post New Role", new DialogParameters(), options);
+        var result = await dialog.Result;
+        if (result is not null && !result.Canceled && result.Data is JobRequisition j)
+        {
+            if (!_deptIdByName.TryGetValue(j.Dept, out var deptId))
+            {
+                Snackbar.Add($"Department '{j.Dept}' not found. Create it in Departments first.", Severity.Error);
+                return;
+            }
+            var apiResult = await RecruitmentApi.CreateJobAsync(new CreateJobRequisitionRequest(
+                Title: j.Title, DepartmentId: deptId, Location: j.Location,
+                EmploymentType: j.EmploymentType, Openings: j.Openings,
+                OwnerEmployeeId: null,
+                SalaryMin: j.SalaryMin, SalaryMax: j.SalaryMax,
+                TargetFillBy: j.TargetFillBy.HasValue ? DateOnly.FromDateTime(j.TargetFillBy.Value) : null,
+                Description: j.Description,
+                Status: JobStatusToEnum(j.Status)));
+            if (apiResult.Success)
+            {
+                Snackbar.Add($"Role posted: {j.Title}", Severity.Success);
+                await ReloadAsync();
+            }
+            else
+            {
+                Snackbar.Add(apiResult.ErrorMessage ?? "Failed to post role.", Severity.Error);
+            }
+        }
+    }
+
+    private async Task OpenEditJobDialog(string id)
+    {
+        var job = Jobs.FirstOrDefault(j => j.Id == id);
+        if (job == null) return;
+        if (!Guid.TryParse(job.Id, out var guid)) { Snackbar.Add("Invalid job id", Severity.Error); return; }
+
+        var parameters = new DialogParameters { ["Existing"] = job };
+        var options = new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true };
+        var dialog = await DialogService.ShowAsync<EditJobDialog>($"Edit — {job.Title}", parameters, options);
+        var result = await dialog.Result;
+        if (result is not null && !result.Canceled)
+        {
+            if (!_deptIdByName.TryGetValue(job.Dept, out var deptId))
+            {
+                Snackbar.Add($"Department '{job.Dept}' not found.", Severity.Error);
+                return;
+            }
+            var apiResult = await RecruitmentApi.UpdateJobAsync(guid, new UpdateJobRequisitionRequest(
+                Title: job.Title, DepartmentId: deptId, Location: job.Location,
+                EmploymentType: job.EmploymentType, Openings: job.Openings, Filled: job.Filled,
+                OwnerEmployeeId: null,
+                SalaryMin: job.SalaryMin, SalaryMax: job.SalaryMax,
+                TargetFillBy: job.TargetFillBy.HasValue ? DateOnly.FromDateTime(job.TargetFillBy.Value) : null,
+                Description: job.Description));
+            if (apiResult.Success)
+            {
+                Snackbar.Add($"{job.Title} updated", Severity.Success);
+                await ReloadAsync();
+            }
+            else
+            {
+                Snackbar.Add(apiResult.ErrorMessage ?? "Failed to update job.", Severity.Error);
+            }
+        }
+    }
+
+    private async void ChangeJobStatus(string id, string newStatus)
+    {
+        if (!Guid.TryParse(id, out var guid)) { Snackbar.Add("Invalid job id", Severity.Error); return; }
+
+        var apiResult = await RecruitmentApi.ChangeJobStatusAsync(guid,
+            new ChangeJobStatusRequest(JobStatusToEnum(newStatus)));
+        if (apiResult.Success)
+        {
+            var verb = newStatus switch { "Open" => "reopened", "On Hold" => "put on hold", "Closed" => "closed", _ => "updated" };
+            var job = Jobs.FirstOrDefault(j => j.Id == id);
+            Snackbar.Add($"{job?.Title ?? "Role"} {verb}", Severity.Info);
+            await ReloadAsync();
+        }
+        else
+        {
+            Snackbar.Add(apiResult.ErrorMessage ?? "Failed to change job status.", Severity.Error);
+        }
+    }
+
+    private List<JobRequisition> Jobs { get; set; } = new();
+    private List<Candidate> Candidates { get; set; } = new();
+    private List<Interview> Interviews { get; set; } = new();
+
+    private IReadOnlyList<DepartmentDto> _departments = Array.Empty<DepartmentDto>();
+    private readonly Dictionary<string, Guid> _deptIdByName = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string, string> _deptNameById = new();
+
+    private static readonly string[] AvatarTones = { "green", "blue", "amber", "purple", "primary", "red" };
+
+    protected override async Task OnInitializedAsync() => await ReloadAsync();
+
+    private async Task ReloadAsync()
+    {
+        var deptTask        = DepartmentsApi.ListAsync(includeInactive: true);
+        var jobsTask        = RecruitmentApi.ListJobsAsync();
+        var candidatesTask  = RecruitmentApi.ListCandidatesAsync();
+        var interviewsTask  = RecruitmentApi.ListInterviewsAsync();
+
+        await Task.WhenAll(deptTask, jobsTask, candidatesTask, interviewsTask);
+
+        if (deptTask.Result is { Success: true, Value: { } depts })
+        {
+            _departments = depts;
+            _deptIdByName.Clear();
+            _deptNameById.Clear();
+            foreach (var d in depts)
+            {
+                _deptIdByName[d.Name] = d.Id;
+                _deptNameById[d.Id.ToString()] = d.Name;
+            }
+        }
+
+        if (jobsTask.Result is { Success: true, Value: { } jobs })
+            Jobs = jobs.Select(MapJob).ToList();
+        else if (jobsTask.Result.ErrorMessage is { } jobErr)
+            Snackbar.Add(jobErr, Severity.Error);
+
+        if (candidatesTask.Result is { Success: true, Value: { } cands })
+            Candidates = cands.Select(MapCandidate).ToList();
+        else if (candidatesTask.Result.ErrorMessage is { } candErr)
+            Snackbar.Add(candErr, Severity.Error);
+
+        if (interviewsTask.Result is { Success: true, Value: { } ivs })
+            Interviews = ivs.Select(MapInterview).ToList();
+        else if (interviewsTask.Result.ErrorMessage is { } ivErr)
+            Snackbar.Add(ivErr, Severity.Error);
+
+        StateHasChanged();
+    }
+
+    // ── DTO ↔ UI mapping ────────────────────────────────────────────────────
+    private static JobRequisition MapJob(JobRequisitionDto d)
+    {
+        var ownerInit = MakeInitials(d.OwnerName);
+        var ownerAv   = AvatarTones[Math.Abs(d.Id.GetHashCode()) % AvatarTones.Length];
+        return new JobRequisition
+        {
+            Id = d.Id.ToString(),
+            Title = d.Title,
+            Dept = d.DepartmentName,
+            Location = d.Location,
+            EmploymentType = d.EmploymentType,
+            Openings = d.Openings,
+            Filled = d.Filled,
+            Status = JobStatusFromEnum(d.Status),
+            Owner = string.IsNullOrEmpty(ownerInit) ? "—" : ownerInit,
+            OwnerAv = ownerAv,
+            SalaryMin = d.SalaryMin,
+            SalaryMax = d.SalaryMax,
+            PostedOn = d.PostedAt.LocalDateTime,
+            TargetFillBy = d.TargetFillBy?.ToDateTime(TimeOnly.MinValue),
+            Description = d.Description,
+        };
+    }
+
+    private static Candidate MapCandidate(CandidateDto d) => new()
+    {
+        Id = d.Id.ToString(),
+        Name = $"{d.FirstName} {d.LastName}".Trim(),
+        Init = MakeInitials($"{d.FirstName} {d.LastName}"),
+        Av = AvatarTones[Math.Abs(d.Id.GetHashCode()) % AvatarTones.Length],
+        Email = d.Email,
+        Phone = d.Phone,
+        JobId = d.JobRequisitionId.ToString(),
+        Stage = d.Stage.ToString(),
+        Source = d.Source,
+        AppliedOn = d.AppliedAt.LocalDateTime,
+        LastActivity = d.LastActivityAt.LocalDateTime,
+        Rating = d.Rating,
+        Notes = d.Notes,
+    };
+
+    private static Interview MapInterview(InterviewDto d)
+    {
+        var name = d.InterviewerName ?? "";
+        return new Interview
+        {
+            Id = d.Id.ToString(),
+            CandidateId = d.CandidateId.ToString(),
+            ScheduledAt = d.ScheduledAt.LocalDateTime,
+            DurationMinutes = d.DurationMinutes,
+            Kind = InterviewKindFromEnum(d.Kind),
+            Interviewer = name,
+            InterviewerInit = MakeInitials(name),
+            InterviewerAv = AvatarTones[Math.Abs(d.Id.GetHashCode()) % AvatarTones.Length],
+            Location = d.Location,
+            Status = d.Status.ToString(),
+        };
+    }
+
+    private static string MakeInitials(string? name)
+    {
+        if (string.IsNullOrWhiteSpace(name)) return "";
+        var parts = name.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        return parts.Length switch
+        {
+            0 => "",
+            1 => parts[0][..Math.Min(2, parts[0].Length)].ToUpperInvariant(),
+            _ => $"{parts[0][0]}{parts[^1][0]}".ToUpperInvariant(),
+        };
+    }
+
+    private static (string First, string Last) SplitName(string fullName)
+    {
+        var parts = (fullName ?? "").Trim().Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        return parts.Length switch
+        {
+            0 => ("", ""),
+            1 => (parts[0], ""),
+            _ => (parts[0], string.Join(' ', parts[1..])),
+        };
+    }
+
+    private static string JobStatusFromEnum(DomainRec.JobStatus s) => s switch
+    {
+        DomainRec.JobStatus.Open => "Open",
+        DomainRec.JobStatus.OnHold => "On Hold",
+        DomainRec.JobStatus.Closed => "Closed",
+        DomainRec.JobStatus.Draft => "Draft",
+        _ => s.ToString(),
+    };
+
+    private static DomainRec.JobStatus JobStatusToEnum(string s) => s switch
+    {
+        "Open" => DomainRec.JobStatus.Open,
+        "On Hold" => DomainRec.JobStatus.OnHold,
+        "Closed" => DomainRec.JobStatus.Closed,
+        "Draft" => DomainRec.JobStatus.Draft,
+        _ => DomainRec.JobStatus.Draft,
+    };
+
+    private static DomainRec.CandidateStage StageToEnum(string s) =>
+        Enum.TryParse<DomainRec.CandidateStage>(s, out var v) ? v : DomainRec.CandidateStage.Applied;
+
+    private static string InterviewKindFromEnum(DomainRec.InterviewKind k) => k switch
+    {
+        DomainRec.InterviewKind.PhoneScreen => "Phone Screen",
+        DomainRec.InterviewKind.Technical   => "Technical",
+        DomainRec.InterviewKind.Panel       => "Panel",
+        DomainRec.InterviewKind.Final       => "Final",
+        _ => "Other",
+    };
+
+    private static DomainRec.InterviewKind InterviewKindToEnum(string s) => s switch
+    {
+        "Phone Screen" => DomainRec.InterviewKind.PhoneScreen,
+        "Technical"    => DomainRec.InterviewKind.Technical,
+        "Panel"        => DomainRec.InterviewKind.Panel,
+        "Final"        => DomainRec.InterviewKind.Final,
+        _              => DomainRec.InterviewKind.Other,
+    };
+}

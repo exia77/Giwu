@@ -1,0 +1,71 @@
+﻿
+<MudDialog>
+    <DialogContent>
+        <MudText Typo="Typo.body2" Style="opacity:.7" Class="mb-3">
+            Create a new pay run. The current employee roster will be pre-populated and you can adjust individual payslips before calculating.
+        </MudText>
+
+        <MudStack Spacing="3">
+            <MudGrid Spacing="2">
+                <MudItem xs="6">
+                    <MudDatePicker Label="Period start" @bind-Date="PeriodStart"
+                                   Variant="Variant.Outlined" Margin="Margin.Dense" />
+                </MudItem>
+                <MudItem xs="6">
+                    <MudDatePicker Label="Period end" @bind-Date="PeriodEnd"
+                                   Variant="Variant.Outlined" Margin="Margin.Dense" />
+                </MudItem>
+            </MudGrid>
+
+            <MudSelect T="string" Label="Pay frequency" @bind-Value="Frequency"
+                       Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true">
+                <MudSelectItem Value="@("Monthly")">Monthly (end of month)</MudSelectItem>
+                <MudSelectItem Value="@("Semi-Monthly")">Semi-Monthly (15th and 30th)</MudSelectItem>
+            </MudSelect>
+
+            <MudTextField T="string" Label="Notes (optional)" @bind-Value="Notes"
+                          Placeholder="e.g. 13th month included, bonus payout period"
+                          Variant="Variant.Outlined" Lines="2" />
+        </MudStack>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" DisableElevation="true" OnClick="Create">
+            Create Pay Run
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = default!;
+
+    private DateTime? PeriodStart { get; set; }
+    private DateTime? PeriodEnd { get; set; }
+    private string Frequency { get; set; } = "Monthly";
+    private string Notes { get; set; } = "";
+
+    protected override void OnInitialized()
+    {
+        // Default: next month
+        var nextMonth = DateTime.Today.AddMonths(1);
+        PeriodStart = new DateTime(nextMonth.Year, nextMonth.Month, 1);
+        PeriodEnd = PeriodStart.Value.AddMonths(1).AddDays(-1);
+    }
+
+    private void Cancel() => MudDialog.Cancel();
+
+    private void Create()
+    {
+        if (!PeriodStart.HasValue || !PeriodEnd.HasValue) { MudDialog.Cancel(); return; }
+        var run = new PayRun
+        {
+            PeriodStart = PeriodStart.Value,
+            PeriodEnd = PeriodEnd.Value,
+            Period = PeriodStart.Value.ToString("MMMM yyyy"),
+            Frequency = Frequency,
+            Status = "Draft",
+            Notes = Notes,
+        };
+        MudDialog.Close(DialogResult.Ok(run));
+    }
+}

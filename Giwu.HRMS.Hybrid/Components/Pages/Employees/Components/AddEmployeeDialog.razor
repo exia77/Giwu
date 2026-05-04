@@ -1,0 +1,250 @@
+@* ── Add Employee Dialog ── *@
+@using Giwu.Contracts.Departments
+<MudDialog>
+    <TitleContent>
+        <div style="display:flex;align-items:center;gap:10px">
+            <div style="width:32px;height:32px;background:#E6F1FB;border-radius:8px;display:flex;align-items:center;justify-content:center">
+                <svg width="16" height="16" fill="none" viewBox="0 0 16 16">
+                    <circle cx="7" cy="5" r="3" stroke="#185FA5" stroke-width="1.3"/>
+                    <path d="M1.5 14c0-3 2.5-5 5.5-5" stroke="#185FA5" stroke-width="1.3" stroke-linecap="round"/>
+                    <path d="M11.5 10v4M9.5 12h4" stroke="#185FA5" stroke-width="1.5" stroke-linecap="round"/>
+                </svg>
+            </div>
+            <div>
+                <MudText Typo="Typo.subtitle1" Style="font-weight:600;line-height:1.2">Add Employee</MudText>
+                <MudText Typo="Typo.caption" Style="opacity:.55">Fill in the new hire's information</MudText>
+            </div>
+        </div>
+    </TitleContent>
+
+    <DialogContent>
+        <MudForm @ref="_form" @bind-IsValid="_isValid">
+
+            @* ── Section: Personal Info ── *@
+            <MudText Typo="Typo.caption"
+                     Style="font-weight:600;text-transform:uppercase;letter-spacing:.06em;opacity:.5;margin-bottom:10px;display:block">
+                Personal Information
+            </MudText>
+
+            <MudGrid Spacing="2" Style="margin-bottom:16px">
+                <MudItem xs="12" sm="6">
+                    <MudTextField @bind-Value="_model.EmployeeNumber"
+                                  Label="Employee number"
+                                  Variant="Variant.Outlined"
+                                  Margin="Margin.Dense"
+                                  Required="true"
+                                  RequiredError="Employee number is required"
+                                  Placeholder="e.g. EMP-2025-001" />
+                </MudItem>
+                <MudItem xs="12" sm="6"></MudItem>
+                <MudItem xs="12" sm="6">
+                    <MudTextField @bind-Value="_model.FirstName"
+                                  Label="First name"
+                                  Variant="Variant.Outlined"
+                                  Margin="Margin.Dense"
+                                  Required="true"
+                                  RequiredError="First name is required" />
+                </MudItem>
+                <MudItem xs="12" sm="6">
+                    <MudTextField @bind-Value="_model.LastName"
+                                  Label="Last name"
+                                  Variant="Variant.Outlined"
+                                  Margin="Margin.Dense"
+                                  Required="true"
+                                  RequiredError="Last name is required" />
+                </MudItem>
+                <MudItem xs="12" sm="6">
+                    <MudTextField @bind-Value="_model.Email"
+                                  Label="Email address"
+                                  Variant="Variant.Outlined"
+                                  Margin="Margin.Dense"
+                                  InputType="InputType.Email"
+                                  Required="true"
+                                  RequiredError="Email is required" />
+                </MudItem>
+                <MudItem xs="12" sm="6">
+                    <MudTextField @bind-Value="_model.Phone"
+                                  Label="Phone number"
+                                  Variant="Variant.Outlined"
+                                  Margin="Margin.Dense"
+                                  Placeholder="+63 9XX XXX XXXX" />
+                </MudItem>
+                <MudItem xs="12" sm="6">
+                    <MudDatePicker @bind-Date="_model.BirthDate"
+                                   Label="Date of birth"
+                                   Variant="Variant.Outlined"
+                                   Margin="Margin.Dense"
+                                   Editable="true" />
+                </MudItem>
+                <MudItem xs="12" sm="6">
+                    <MudSelect @bind-Value="_model.Gender"
+                               Label="Gender"
+                               Variant="Variant.Outlined"
+                               Margin="Margin.Dense">
+                        <MudSelectItem Value="@("Male")">Male</MudSelectItem>
+                        <MudSelectItem Value="@("Female")">Female</MudSelectItem>
+                        <MudSelectItem Value="@("Prefer not to say")">Prefer not to say</MudSelectItem>
+                    </MudSelect>
+                </MudItem>
+            </MudGrid>
+
+            <MudDivider Style="margin-bottom:16px" />
+
+            @* ── Section: Employment Info ── *@
+            <MudText Typo="Typo.caption"
+                     Style="font-weight:600;text-transform:uppercase;letter-spacing:.06em;opacity:.5;margin-bottom:10px;display:block">
+                Employment Details
+            </MudText>
+
+            <MudGrid Spacing="2" Style="margin-bottom:16px">
+                <MudItem xs="12" sm="6">
+                    <MudSelect @bind-Value="_model.Department"
+                               Label="Department"
+                               Variant="Variant.Outlined"
+                               Margin="Margin.Dense"
+                               Required="true"
+                               RequiredError="Department is required">
+                        @foreach (var d in Departments)
+                        {
+                            <MudSelectItem Value="@d.Name">@d.Name</MudSelectItem>
+                        }
+                    </MudSelect>
+                </MudItem>
+                <MudItem xs="12" sm="6">
+                    <MudTextField @bind-Value="_model.Role"
+                                  Label="Job title / Role"
+                                  Variant="Variant.Outlined"
+                                  Margin="Margin.Dense"
+                                  Required="true"
+                                  RequiredError="Role is required" />
+                </MudItem>
+                <MudItem xs="12" sm="6">
+                    <MudSelect @bind-Value="_model.EmploymentType"
+                               Label="Employment type"
+                               Variant="Variant.Outlined"
+                               Margin="Margin.Dense">
+                        <MudSelectItem Value="@("Regular")">Regular</MudSelectItem>
+                        <MudSelectItem Value="@("Probationary")">Probationary</MudSelectItem>
+                        <MudSelectItem Value="@("Contractual")">Contractual</MudSelectItem>
+                        <MudSelectItem Value="@("Project")">Project</MudSelectItem>
+                        <MudSelectItem Value="@("Consultant")">Consultant</MudSelectItem>
+                        <MudSelectItem Value="@("Intern")">Intern</MudSelectItem>
+                    </MudSelect>
+                </MudItem>
+                <MudItem xs="12" sm="6">
+                    <MudDatePicker @bind-Date="_model.StartDate"
+                                   Label="Start date"
+                                   Variant="Variant.Outlined"
+                                   Margin="Margin.Dense"
+                                   Editable="true"
+                                   Required="true"
+                                   RequiredError="Start date is required" />
+                </MudItem>
+                <MudItem xs="12" sm="6">
+                    <MudSelect @bind-Value="_model.Status"
+                               Label="Status"
+                               Variant="Variant.Outlined"
+                               Margin="Margin.Dense">
+                        <MudSelectItem Value="@("Active")">Active</MudSelectItem>
+                        <MudSelectItem Value="@("Probation")">Probation</MudSelectItem>
+                        <MudSelectItem Value="@("Onboarding")">Onboarding</MudSelectItem>
+                    </MudSelect>
+                </MudItem>
+                <MudItem xs="12" sm="6">
+                    <MudNumericField @bind-Value="_model.Salary"
+                                     Label="Basic salary (₱)"
+                                     Variant="Variant.Outlined"
+                                     Margin="Margin.Dense"
+                                     Format="N2" />
+                </MudItem>
+            </MudGrid>
+
+            <MudDivider Style="margin-bottom:16px" />
+
+            @* ── Section: Address ── *@
+            <MudText Typo="Typo.caption"
+                     Style="font-weight:600;text-transform:uppercase;letter-spacing:.06em;opacity:.5;margin-bottom:10px;display:block">
+                Address
+            </MudText>
+
+            <MudGrid Spacing="2">
+                <MudItem xs="12">
+                    <MudTextField @bind-Value="_model.Address"
+                                  Label="Street address"
+                                  Variant="Variant.Outlined"
+                                  Margin="Margin.Dense" />
+                </MudItem>
+                <MudItem xs="12" sm="6">
+                    <MudTextField @bind-Value="_model.City"
+                                  Label="City / Municipality"
+                                  Variant="Variant.Outlined"
+                                  Margin="Margin.Dense" />
+                </MudItem>
+                <MudItem xs="12" sm="6">
+                    <MudTextField @bind-Value="_model.Province"
+                                  Label="Province"
+                                  Variant="Variant.Outlined"
+                                  Margin="Margin.Dense" />
+                </MudItem>
+            </MudGrid>
+
+        </MudForm>
+    </DialogContent>
+
+    <DialogActions>
+        <MudButton Variant="Variant.Text"
+                   Style="text-transform:none"
+                   OnClick="Cancel">
+            Cancel
+        </MudButton>
+        <MudButton Variant="Variant.Filled"
+                   Color="Color.Primary"
+                   Style="text-transform:none;border-radius:8px"
+                   StartIcon="@Icons.Material.Outlined.PersonAdd"
+                   OnClick="Submit"
+                   Disabled="!_isValid">
+            Add Employee
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] IMudDialogInstance MudDialog { get; set; } = default!;
+
+    [Parameter] public IReadOnlyList<DepartmentDto> Departments { get; set; } = Array.Empty<DepartmentDto>();
+
+    MudForm _form = default!;
+    bool _isValid;
+
+    public class EmployeeForm
+    {
+        public string EmployeeNumber { get; set; } = "";
+        public string FirstName      { get; set; } = "";
+        public string LastName       { get; set; } = "";
+        public string Email          { get; set; } = "";
+        public string Phone          { get; set; } = "";
+        public DateTime? BirthDate   { get; set; }
+        public string Gender         { get; set; } = "";
+        public string Department     { get; set; } = "";
+        public Guid   DepartmentId   { get; set; }
+        public string Role           { get; set; } = "";
+        public string EmploymentType { get; set; } = "Regular";
+        public DateTime? StartDate   { get; set; } = DateTime.Today;
+        public string Status         { get; set; } = "Active";
+        public decimal Salary        { get; set; }
+        public string Address        { get; set; } = "";
+        public string City           { get; set; } = "";
+        public string Province       { get; set; } = "";
+    }
+
+    readonly EmployeeForm _model = new();
+
+    async Task Submit()
+    {
+        await _form.Validate();
+        if (_isValid)
+            MudDialog.Close(DialogResult.Ok(_model));
+    }
+
+    void Cancel() => MudDialog.Cancel();
+}

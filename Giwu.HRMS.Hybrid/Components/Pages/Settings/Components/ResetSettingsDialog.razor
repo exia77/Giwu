@@ -1,0 +1,90 @@
+<MudDialog>
+    <DialogContent>
+        <div class="reset-icon-row">
+            <div class="reset-icon">
+                <MudIcon Icon="@Icons.Material.Outlined.RestartAlt" Size="Size.Large" />
+            </div>
+            <div>
+                <MudText Typo="Typo.subtitle1" Class="fw-medium">Reset all settings to defaults?</MudText>
+                <MudText Typo="Typo.body2" Style="opacity:.7" Class="mt-1">
+                    This restores Branding, Organization, and Localization to their factory values.
+                    Payroll defaults, notification preferences, and security policies are unaffected.
+                </MudText>
+            </div>
+        </div>
+
+        <div class="reset-impact-list">
+            <div class="reset-impact-item">
+                <MudIcon Icon="@Icons.Material.Outlined.RemoveCircleOutline" Size="Size.Small" Color="Color.Error" />
+                <span>Company name, logo, theme mode, and accent color cleared</span>
+            </div>
+            <div class="reset-impact-item">
+                <MudIcon Icon="@Icons.Material.Outlined.RemoveCircleOutline" Size="Size.Small" Color="Color.Error" />
+                <span>Address, contact info, and statutory employer numbers cleared</span>
+            </div>
+            <div class="reset-impact-item">
+                <MudIcon Icon="@Icons.Material.Outlined.RemoveCircleOutline" Size="Size.Small" Color="Color.Error" />
+                <span>Timezone, date format, currency, and fiscal year reset</span>
+            </div>
+            <div class="reset-impact-item reset-impact-safe">
+                <MudIcon Icon="@Icons.Material.Outlined.CheckCircleOutline" Size="Size.Small" Color="Color.Success" />
+                <span>Employee data, payroll runs, and integrations are preserved</span>
+            </div>
+        </div>
+
+        <MudCheckBox T="bool" @bind-Value="IsConfirmed" Color="Color.Error" Dense="true" Class="mt-3">
+            <MudText Typo="Typo.body2">I understand this can't be undone</MudText>
+        </MudCheckBox>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Error" DisableElevation="true"
+                   Disabled="@(!IsConfirmed)"
+                   OnClick="Confirm">Reset Everything</MudButton>
+    </DialogActions>
+</MudDialog>
+
+<style>
+    .reset-icon-row {
+        display: flex; align-items: flex-start; gap: 14px;
+        margin-bottom: 18px;
+    }
+    .reset-icon {
+        width: 44px; height: 44px;
+        border-radius: 8px;
+        background: var(--mud-palette-error-hover, #FCEBEB);
+        color: var(--mud-palette-error, #E24B4A);
+        display: flex; align-items: center; justify-content: center;
+        flex-shrink: 0;
+    }
+    .reset-impact-list {
+        display: flex; flex-direction: column; gap: 8px;
+        padding: 14px;
+        background: var(--mud-palette-background-grey);
+        border-radius: 8px;
+    }
+    .reset-impact-item {
+        display: flex; align-items: center; gap: 8px;
+        font-size: 13px;
+    }
+    .reset-impact-item.reset-impact-safe {
+        margin-top: 6px;
+        padding-top: 8px;
+        border-top: 0.5px solid var(--mud-palette-divider);
+    }
+    .fw-medium { font-weight: 500; }
+</style>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = default!;
+
+    private bool IsConfirmed { get; set; }
+
+    private void Cancel() => MudDialog.Cancel();
+
+    private void Confirm()
+    {
+        if (!IsConfirmed) return;
+        MudDialog.Close(DialogResult.Ok(true));
+    }
+}

@@ -1,0 +1,32 @@
+<MudTextField T="string"
+              Label="@Label"
+              Value="@Value"
+              ValueChanged="@ValueChanged"
+              Placeholder="@Placeholder"
+              HelperText="@HelperText"
+              Required="@Required"
+              RequiredError="@RequiredError"
+              Disabled="@Disabled"
+              ReadOnly="@ReadOnly"
+              Variant="Variant.Outlined"
+              FullWidth="true"
+              InputType="InputType.Email"
+              Adornment="Adornment.End"
+              AdornmentIcon="@Icons.Material.Filled.Email"
+              For="@For"
+              Class="@Class" />
+
+@code {
+    [Parameter] public string Label { get; set; } = "Email";
+    [Parameter] public string Value { get; set; } = string.Empty;
+    [Parameter] public EventCallback<string> ValueChanged { get; set; }
+    [Parameter] public string Placeholder { get; set; } = "you@company.com";
+    [Parameter] public string? HelperText { get; set; }
+    [Parameter] public bool Required { get; set; }
+    [Parameter] public string RequiredError { get; set; } = "Email is required.";
+    [Parameter] public bool Disabled { get; set; }
+    [Parameter] public bool ReadOnly { get; set; }
+    [Parameter] public Expression<Func<string>>? For { get; set; }
+    [Parameter] public string? Class { get; set; }
+    [Parameter(CaptureUnmatchedValues = true)] public Dictionary<string, object>? AdditionalAttributes { get; set; }
+}

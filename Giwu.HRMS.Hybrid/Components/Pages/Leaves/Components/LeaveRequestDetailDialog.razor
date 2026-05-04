@@ -1,0 +1,223 @@
+﻿@using static Giwu.HRMS.Hybrid.Components.Pages.Leaves.LeaveFormatting
+
+<MudDialog>
+    <DialogContent>
+        @* Header *@
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px">
+            <MudAvatar Style="@($"width:48px;height:48px;font-size:14px;{AvatarStyle(Request.EmployeeAv)}")">
+                @Request.EmployeeInit
+            </MudAvatar>
+            <div style="flex:1;min-width:0">
+                <MudText Typo="Typo.subtitle1" Class="fw-medium">@Request.EmployeeName</MudText>
+                <MudText Typo="Typo.caption" Style="opacity:.55">
+                    @Request.Dept Â· Filed @RelativeTime(Request.FiledOn)
+                </MudText>
+            </div>
+            <span class="@($"leave-status {StatusBadgeClass(Request.Status)}")">@StatusLabel(Request.Status)</span>
+        </div>
+
+        @* Period banner *@
+        <div class="detail-banner">
+            <div class="detail-banner-left">
+                <span class="@($"leave-badge {CategoryBadgeClass(Request.LeaveCategory)}")">
+                    @Request.LeaveTypeCode
+                </span>
+                <span style="font-weight:500">@Request.LeaveTypeName</span>
+            </div>
+            <div class="detail-banner-right">
+                <span>@FmtDateRange(Request.StartDate, Request.EndDate)</span>
+                <span class="detail-days">@FmtDays(Request.DaysRequested)</span>
+            </div>
+        </div>
+
+        @* Day-by-day breakdown â€” for short ranges show each day, for long ranges show summary *@
+        @if (Request.DaysRequested <= 14)
+        {
+            <div class="detail-section-header">Day-by-day</div>
+            <div class="detail-days-grid">
+                @{
+                    var current = Request.StartDate.Date;
+                    var end = Request.EndDate.Date;
+                }
+                @while (current <= end)
+                {
+                    var d = current;
+                    var isWeekend = d.DayOfWeek == DayOfWeek.Saturday || d.DayOfWeek == DayOfWeek.Sunday;
+                    <div class="detail-day @(isWeekend ? "detail-day-weekend" : "")">
+                        <div class="detail-day-dow">@d.ToString("ddd").ToUpper()</div>
+                        <div class="detail-day-num">@d.Day</div>
+                        <div class="detail-day-mo">@d.ToString("MMM")</div>
+                        @if (isWeekend)
+                        {
+                            <div class="detail-day-tag">weekend</div>
+                        }
+                        else if (Request.IsHalfDay && d == Request.StartDate.Date)
+                        {
+                            <div class="detail-day-tag">Â½ @Request.HalfDaySession</div>
+                        }
+                        else
+                        {
+                            <div class="detail-day-tag detail-day-tag-leave">on leave</div>
+                        }
+                    </div>
+                    current = current.AddDays(1);
+                }
+            </div>
+        }
+
+        @* Reason *@
+        @if (!string.IsNullOrEmpty(Request.Reason))
+        {
+            <div class="detail-section-header">Reason</div>
+            <div class="detail-reason">@Request.Reason</div>
+        }
+
+        @* Resolution info if past pending *@
+        @if (Request.ResolvedOn.HasValue)
+        {
+            <div class="detail-section-header">Resolution</div>
+            <div class="detail-resolution">
+                <div class="detail-info-row">
+                    <span class="detail-info-key">Status</span>
+                    <span class="@($"leave-status {StatusBadgeClass(Request.Status)}")">@StatusLabel(Request.Status)</span>
+                </div>
+                <div class="detail-info-row">
+                    <span class="detail-info-key">Resolved</span>
+                    <span>@FmtDate(Request.ResolvedOn) by @Request.ResolvedBy</span>
+                </div>
+                @if (!string.IsNullOrEmpty(Request.ResolutionNote))
+                {
+                    <div class="detail-info-row">
+                        <span class="detail-info-key">Note</span>
+                        <span style="text-align:right;max-width:60%">@Request.ResolutionNote</span>
+                    </div>
+                }
+            </div>
+        }
+    </DialogContent>
+    <DialogActions>
+        @if (Request.Status == LeaveRequestStatus.Pending)
+        {
+            <MudButton Color="Color.Error" Variant="Variant.Outlined"
+                       OnClick="HandleReject">Reject</MudButton>
+            <MudButton Variant="Variant.Filled" Color="Color.Success" DisableElevation="true"
+                       StartIcon="@Icons.Material.Outlined.Check"
+                       OnClick="HandleApprove">Approve</MudButton>
+        }
+        <MudButton OnClick="Close">Close</MudButton>
+    </DialogActions>
+</MudDialog>
+
+<style>
+    .detail-banner {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 12px 14px;
+        background: var(--mud-palette-background-grey);
+        border-radius: 8px;
+        margin-bottom: 14px;
+        gap: 10px;
+        flex-wrap: wrap;
+    }
+    .detail-banner-left { display: flex; align-items: center; gap: 10px; font-size: 13px; }
+    .detail-banner-right { display: flex; align-items: center; gap: 14px; font-size: 13px; }
+    .detail-days {
+        font-weight: 600;
+        font-variant-numeric: tabular-nums;
+        padding: 2px 9px;
+        border-radius: 100px;
+        background: var(--leave-blue-light);
+        color: var(--leave-blue-text);
+    }
+
+    .detail-section-header {
+        font-size: 10.5px;
+        letter-spacing: .06em;
+        text-transform: uppercase;
+        opacity: .55;
+        font-weight: 500;
+        margin-bottom: 8px;
+        margin-top: 6px;
+    }
+
+    .detail-days-grid {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        margin-bottom: 14px;
+    }
+    .detail-day {
+        flex: 0 0 auto;
+        width: 60px;
+        border: 0.5px solid var(--mud-palette-divider);
+        border-radius: 6px;
+        padding: 6px 4px;
+        text-align: center;
+        background: var(--mud-palette-background);
+    }
+    .detail-day-weekend { opacity: .5; background: var(--mud-palette-background-grey); }
+    .detail-day-dow { font-size: 9px; letter-spacing: .05em; opacity: .6; }
+    .detail-day-num { font-size: 17px; font-weight: 600; line-height: 1.1; }
+    .detail-day-mo { font-size: 9px; opacity: .55; }
+    .detail-day-tag {
+        font-size: 9px;
+        margin-top: 3px;
+        opacity: .6;
+    }
+    .detail-day-tag-leave {
+        background: var(--leave-blue-light);
+        color: var(--leave-blue-text);
+        opacity: 1;
+        padding: 1px 4px;
+        border-radius: 100px;
+        font-weight: 500;
+    }
+
+    .detail-reason {
+        background: var(--mud-palette-background-grey);
+        border-radius: 6px;
+        padding: 10px 12px;
+        font-size: 12.5px;
+        line-height: 1.55;
+        margin-bottom: 14px;
+    }
+
+    .detail-resolution {
+        border: 0.5px solid var(--mud-palette-divider);
+        border-radius: 8px;
+        overflow: hidden;
+    }
+    .detail-info-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        padding: 8px 12px;
+        font-size: 13px;
+        border-bottom: 0.5px solid var(--mud-palette-divider);
+        gap: 10px;
+    }
+    .detail-info-row:last-child { border-bottom: none; }
+    .detail-info-key { opacity: .55; flex-shrink: 0; }
+</style>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = default!;
+    [Parameter] public LeaveRequest Request { get; set; } = default!;
+    [Parameter] public EventCallback<string> OnApprove { get; set; }
+    [Parameter] public EventCallback<string> OnReject { get; set; }
+
+    private async Task HandleApprove()
+    {
+        await OnApprove.InvokeAsync(Request.Id);
+        MudDialog.Close();
+    }
+
+    private async Task HandleReject()
+    {
+        MudDialog.Close();
+        await OnReject.InvokeAsync(Request.Id);
+    }
+
+    private void Close() => MudDialog.Close();
+}

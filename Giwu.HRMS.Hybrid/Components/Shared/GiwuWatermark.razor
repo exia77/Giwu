@@ -1,0 +1,244 @@
+@inject ThemeService Theme
+@implements IDisposable
+
+@if (Theme.IsDark)
+{
+    <svg width="100%" viewBox="0 0 690 210" role="img" xmlns="http://www.w3.org/2000/svg">
+        <title>Powered by GIWU</title>
+        <defs>
+            <radialGradient id="d-coreG" cx="50%" cy="50%" r="50%">
+                <stop offset="0%" stop-color="#ffffff"/>
+                <stop offset="40%" stop-color="#e8f0ff" stop-opacity="0.9"/>
+                <stop offset="100%" stop-color="#aabbdd" stop-opacity="0"/>
+            </radialGradient>
+            <radialGradient id="d-haloG" cx="50%" cy="50%" r="50%">
+                <stop offset="0%" stop-color="#ffffff" stop-opacity="0.2"/>
+                <stop offset="100%" stop-color="#ffffff" stop-opacity="0"/>
+            </radialGradient>
+            <linearGradient id="d-rH" x1="0" y1="0" x2="1" y2="0">
+                <stop offset="0%" stop-color="#ffffff" stop-opacity="0.3"/>
+                <stop offset="40%" stop-color="#ffffff"/>
+                <stop offset="60%" stop-color="#ffffff"/>
+                <stop offset="100%" stop-color="#ffffff" stop-opacity="0.3"/>
+            </linearGradient>
+            <linearGradient id="d-rV" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stop-color="#ffffff" stop-opacity="0.3"/>
+                <stop offset="40%" stop-color="#ffffff"/>
+                <stop offset="60%" stop-color="#ffffff"/>
+                <stop offset="100%" stop-color="#ffffff" stop-opacity="0.3"/>
+            </linearGradient>
+            <linearGradient id="d-dTL" x1="1" y1="1" x2="0" y2="0">
+                <stop offset="0%" stop-color="#ffffff"/>
+                <stop offset="100%" stop-color="#ffffff" stop-opacity="0"/>
+            </linearGradient>
+            <linearGradient id="d-dTR" x1="0" y1="1" x2="1" y2="0">
+                <stop offset="0%" stop-color="#ffffff"/>
+                <stop offset="100%" stop-color="#ffffff" stop-opacity="0"/>
+            </linearGradient>
+            <linearGradient id="d-dBL" x1="1" y1="0" x2="0" y2="1">
+                <stop offset="0%" stop-color="#ffffff"/>
+                <stop offset="100%" stop-color="#ffffff" stop-opacity="0"/>
+            </linearGradient>
+            <linearGradient id="d-dBR" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stop-color="#ffffff"/>
+                <stop offset="100%" stop-color="#ffffff" stop-opacity="0"/>
+            </linearGradient>
+            <linearGradient id="d-tg" x1="0" y1="0" x2="1" y2="0">
+                <stop offset="0%" stop-color="#aaaacc" stop-opacity="0.7"/>
+                <stop offset="45%" stop-color="#ffffff"/>
+                <stop offset="100%" stop-color="#aaaacc" stop-opacity="0.7"/>
+            </linearGradient>
+            <filter id="d-soft"><feGaussianBlur stdDeviation="1.5"/></filter>
+            <filter id="d-cBlur"><feGaussianBlur stdDeviation="5"/></filter>
+            <filter id="d-hBlur"><feGaussianBlur stdDeviation="12"/></filter>
+            <filter id="d-dGlow"><feGaussianBlur stdDeviation="2"/></filter>
+        </defs>
+        <g transform="translate(85,105)">
+            <circle cx="0" cy="0" r="55" fill="url(#d-haloG)" filter="url(#d-hBlur)">
+                <animate attributeName="r" values="45;65;45" dur="3s" repeatCount="indefinite"/>
+                <animate attributeName="opacity" values="0.4;0.9;0.4" dur="3s" repeatCount="indefinite"/>
+            </circle>
+            <rect x="-75" y="-2.5" width="150" height="5" fill="url(#d-rH)" filter="url(#d-soft)" opacity="0.5"/>
+            <rect x="-75" y="-1" width="150" height="2" fill="url(#d-rH)"/>
+            <rect x="-2.5" y="-75" width="5" height="150" fill="url(#d-rV)" filter="url(#d-soft)" opacity="0.5"/>
+            <rect x="-1" y="-75" width="2" height="150" fill="url(#d-rV)"/>
+            <line x1="0" y1="0" x2="-38" y2="-38" stroke="url(#d-dTL)" stroke-width="4" filter="url(#d-dGlow)">
+                <animate attributeName="opacity" values="0.2;0.9;0.2" dur="2s" repeatCount="indefinite"/>
+                <animate attributeName="x2" values="-30;-42;-30" dur="2s" repeatCount="indefinite"/>
+                <animate attributeName="y2" values="-30;-42;-30" dur="2s" repeatCount="indefinite"/>
+            </line>
+            <line x1="0" y1="0" x2="-38" y2="-38" stroke="url(#d-dTL)" stroke-width="1.2">
+                <animate attributeName="opacity" values="0.5;1;0.5" dur="2s" repeatCount="indefinite"/>
+                <animate attributeName="x2" values="-30;-42;-30" dur="2s" repeatCount="indefinite"/>
+                <animate attributeName="y2" values="-30;-42;-30" dur="2s" repeatCount="indefinite"/>
+            </line>
+            <line x1="0" y1="0" x2="38" y2="-38" stroke="url(#d-dTR)" stroke-width="4" filter="url(#d-dGlow)">
+                <animate attributeName="opacity" values="0.2;0.9;0.2" dur="2s" repeatCount="indefinite" begin="0.5s"/>
+                <animate attributeName="x2" values="30;42;30" dur="2s" repeatCount="indefinite" begin="0.5s"/>
+                <animate attributeName="y2" values="-30;-42;-30" dur="2s" repeatCount="indefinite" begin="0.5s"/>
+            </line>
+            <line x1="0" y1="0" x2="38" y2="-38" stroke="url(#d-dTR)" stroke-width="1.2">
+                <animate attributeName="opacity" values="0.5;1;0.5" dur="2s" repeatCount="indefinite" begin="0.5s"/>
+                <animate attributeName="x2" values="30;42;30" dur="2s" repeatCount="indefinite" begin="0.5s"/>
+                <animate attributeName="y2" values="-30;-42;-30" dur="2s" repeatCount="indefinite" begin="0.5s"/>
+            </line>
+            <line x1="0" y1="0" x2="38" y2="38" stroke="url(#d-dBR)" stroke-width="4" filter="url(#d-dGlow)">
+                <animate attributeName="opacity" values="0.2;0.9;0.2" dur="2s" repeatCount="indefinite" begin="1s"/>
+                <animate attributeName="x2" values="30;42;30" dur="2s" repeatCount="indefinite" begin="1s"/>
+                <animate attributeName="y2" values="30;42;30" dur="2s" repeatCount="indefinite" begin="1s"/>
+            </line>
+            <line x1="0" y1="0" x2="38" y2="38" stroke="url(#d-dBR)" stroke-width="1.2">
+                <animate attributeName="opacity" values="0.5;1;0.5" dur="2s" repeatCount="indefinite" begin="1s"/>
+                <animate attributeName="x2" values="30;42;30" dur="2s" repeatCount="indefinite" begin="1s"/>
+                <animate attributeName="y2" values="30;42;30" dur="2s" repeatCount="indefinite" begin="1s"/>
+            </line>
+            <line x1="0" y1="0" x2="-38" y2="38" stroke="url(#d-dBL)" stroke-width="4" filter="url(#d-dGlow)">
+                <animate attributeName="opacity" values="0.2;0.9;0.2" dur="2s" repeatCount="indefinite" begin="1.5s"/>
+                <animate attributeName="x2" values="-30;-42;-30" dur="2s" repeatCount="indefinite" begin="1.5s"/>
+                <animate attributeName="y2" values="30;42;30" dur="2s" repeatCount="indefinite" begin="1.5s"/>
+            </line>
+            <line x1="0" y1="0" x2="-38" y2="38" stroke="url(#d-dBL)" stroke-width="1.2">
+                <animate attributeName="opacity" values="0.5;1;0.5" dur="2s" repeatCount="indefinite" begin="1.5s"/>
+                <animate attributeName="x2" values="-30;-42;-30" dur="2s" repeatCount="indefinite" begin="1.5s"/>
+                <animate attributeName="y2" values="30;42;30" dur="2s" repeatCount="indefinite" begin="1.5s"/>
+            </line>
+            <circle cx="0" cy="0" r="14" fill="url(#d-coreG)" filter="url(#d-cBlur)">
+                <animate attributeName="r" values="10;18;10" dur="2s" repeatCount="indefinite"/>
+            </circle>
+            <circle cx="0" cy="0" r="7" fill="#e8f0ff">
+                <animate attributeName="r" values="5.5;8;5.5" dur="2s" repeatCount="indefinite"/>
+                <animate attributeName="fill" values="#ccddff;#ffffff;#ccddff" dur="2s" repeatCount="indefinite"/>
+            </circle>
+            <circle cx="0" cy="0" r="3" fill="#ffffff">
+                <animate attributeName="opacity" values="0.9;1;0.9" dur="1.5s" repeatCount="indefinite"/>
+            </circle>
+        </g>
+        <text x="220" y="75" font-family="Arial,sans-serif" font-size="20" font-weight="400" fill="#888888" letter-spacing="3">POWERED BY</text>
+        <text x="217" y="140" font-family="Arial,sans-serif" font-size="58" font-weight="700" fill="#888888" letter-spacing="8">
+            GIWU
+        </text>
+    </svg>
+}
+else
+{
+     <svg width="100%" viewBox="0 0 690 210" role="img" xmlns="http://www.w3.org/2000/svg">
+        <title>Powered by GIWU</title>
+        <defs>
+            <radialGradient id="l-coreG" cx="50%" cy="50%" r="50%">
+                <stop offset="0%" stop-color="#000000"/>
+                <stop offset="40%" stop-color="#0a1540" stop-opacity="0.9"/>
+                <stop offset="100%" stop-color="#0a1540" stop-opacity="0"/>
+            </radialGradient>
+            <radialGradient id="l-haloG" cx="50%" cy="50%" r="50%">
+                <stop offset="0%" stop-color="#0a1540" stop-opacity="0.15"/>
+                <stop offset="100%" stop-color="#0a1540" stop-opacity="0"/>
+            </radialGradient>
+            <linearGradient id="l-rH" x1="0" y1="0" x2="1" y2="0">
+                <stop offset="0%" stop-color="#0a1540" stop-opacity="0.3"/>
+                <stop offset="40%" stop-color="#0a1540"/>
+                <stop offset="60%" stop-color="#0a1540"/>
+                <stop offset="100%" stop-color="#0a1540" stop-opacity="0.3"/>
+            </linearGradient>
+            <linearGradient id="l-rV" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stop-color="#0a1540" stop-opacity="0.3"/>
+                <stop offset="40%" stop-color="#0a1540"/>
+                <stop offset="60%" stop-color="#0a1540"/>
+                <stop offset="100%" stop-color="#0a1540" stop-opacity="0.3"/>
+            </linearGradient>
+            <linearGradient id="l-dTL" x1="1" y1="1" x2="0" y2="0">
+                <stop offset="0%" stop-color="#0a1540"/>
+                <stop offset="100%" stop-color="#0a1540" stop-opacity="0"/>
+            </linearGradient>
+            <linearGradient id="l-dTR" x1="0" y1="1" x2="1" y2="0">
+                <stop offset="0%" stop-color="#0a1540"/>
+                <stop offset="100%" stop-color="#0a1540" stop-opacity="0"/>
+            </linearGradient>
+            <linearGradient id="l-dBL" x1="1" y1="0" x2="0" y2="1">
+                <stop offset="0%" stop-color="#0a1540"/>
+                <stop offset="100%" stop-color="#0a1540" stop-opacity="0"/>
+            </linearGradient>
+            <linearGradient id="l-dBR" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stop-color="#0a1540"/>
+                <stop offset="100%" stop-color="#0a1540" stop-opacity="0"/>
+            </linearGradient>
+            <linearGradient id="l-tg" x1="0" y1="0" x2="1" y2="0">
+                <stop offset="0%" stop-color="#333355" stop-opacity="0.7"/>
+                <stop offset="45%" stop-color="#0a1540"/>
+                <stop offset="100%" stop-color="#333355" stop-opacity="0.7"/>
+            </linearGradient>
+            <filter id="l-soft"><feGaussianBlur stdDeviation="1.5"/></filter>
+            <filter id="l-cBlur"><feGaussianBlur stdDeviation="5"/></filter>
+            <filter id="l-hBlur"><feGaussianBlur stdDeviation="12"/></filter>
+            <filter id="l-dGlow"><feGaussianBlur stdDeviation="2"/></filter>
+        </defs>
+        <g transform="translate(85,105)">
+            <circle cx="0" cy="0" r="55" fill="url(#l-haloG)" filter="url(#l-hBlur)">
+                <animate attributeName="r" values="45;65;45" dur="3s" repeatCount="indefinite"/>
+                <animate attributeName="opacity" values="0.4;0.9;0.4" dur="3s" repeatCount="indefinite"/>
+            </circle>
+            <rect x="-75" y="-2.5" width="150" height="5" fill="url(#l-rH)" filter="url(#l-soft)" opacity="0.5"/>
+            <rect x="-75" y="-1" width="150" height="2" fill="url(#l-rH)"/>
+            <rect x="-2.5" y="-75" width="5" height="150" fill="url(#l-rV)" filter="url(#l-soft)" opacity="0.5"/>
+            <rect x="-1" y="-75" width="2" height="150" fill="url(#l-rV)"/>
+            <line x1="0" y1="0" x2="-38" y2="-38" stroke="url(#l-dTL)" stroke-width="4" filter="url(#l-dGlow)">
+                <animate attributeName="opacity" values="0.2;0.9;0.2" dur="2s" repeatCount="indefinite"/>
+                <animate attributeName="x2" values="-30;-42;-30" dur="2s" repeatCount="indefinite"/>
+                <animate attributeName="y2" values="-30;-42;-30" dur="2s" repeatCount="indefinite"/>
+            </line>
+            <line x1="0" y1="0" x2="-38" y2="-38" stroke="url(#l-dTL)" stroke-width="1.2">
+                <animate attributeName="opacity" values="0.5;1;0.5" dur="2s" repeatCount="indefinite"/>
+                <animate attributeName="x2" values="-30;-42;-30" dur="2s" repeatCount="indefinite"/>
+                <animate attributeName="y2" values="-30;-42;-30" dur="2s" repeatCount="indefinite"/>
+            </line>
+            <line x1="0" y1="0" x2="38" y2="-38" stroke="url(#l-dTR)" stroke-width="4" filter="url(#l-dGlow)">
+                <animate attributeName="opacity" values="0.2;0.9;0.2" dur="2s" repeatCount="indefinite" begin="0.5s"/>
+                <animate attributeName="x2" values="30;42;30" dur="2s" repeatCount="indefinite" begin="0.5s"/>
+                <animate attributeName="y2" values="-30;-42;-30" dur="2s" repeatCount="indefinite" begin="0.5s"/>
+            </line>
+            <line x1="0" y1="0" x2="38" y2="-38" stroke="url(#l-dTR)" stroke-width="1.2">
+                <animate attributeName="opacity" values="0.5;1;0.5" dur="2s" repeatCount="indefinite" begin="0.5s"/>
+                <animate attributeName="x2" values="30;42;30" dur="2s" repeatCount="indefinite" begin="0.5s"/>
+                <animate attributeName="y2" values="-30;-42;-30" dur="2s" repeatCount="indefinite" begin="0.5s"/>
+            </line>
+            <line x1="0" y1="0" x2="38" y2="38" stroke="url(#l-dBR)" stroke-width="4" filter="url(#l-dGlow)">
+                <animate attributeName="opacity" values="0.2;0.9;0.2" dur="2s" repeatCount="indefinite" begin="1s"/>
+                <animate attributeName="x2" values="30;42;30" dur="2s" repeatCount="indefinite" begin="1s"/>
+                <animate attributeName="y2" values="30;42;30" dur="2s" repeatCount="indefinite" begin="1s"/>
+            </line>
+            <line x1="0" y1="0" x2="38" y2="38" stroke="url(#l-dBR)" stroke-width="1.2">
+                <animate attributeName="opacity" values="0.5;1;0.5" dur="2s" repeatCount="indefinite" begin="1s"/>
+                <animate attributeName="x2" values="30;42;30" dur="2s" repeatCount="indefinite" begin="1s"/>
+                <animate attributeName="y2" values="30;42;30" dur="2s" repeatCount="indefinite" begin="1s"/>
+            </line>
+            <line x1="0" y1="0" x2="-38" y2="38" stroke="url(#l-dBL)" stroke-width="4" filter="url(#l-dGlow)">
+                <animate attributeName="opacity" values="0.2;0.9;0.2" dur="2s" repeatCount="indefinite" begin="1.5s"/>
+                <animate attributeName="x2" values="-30;-42;-30" dur="2s" repeatCount="indefinite" begin="1.5s"/>
+                <animate attributeName="y2" values="30;42;30" dur="2s" repeatCount="indefinite" begin="1.5s"/>
+            </line>
+            <line x1="0" y1="0" x2="-38" y2="38" stroke="url(#l-dBL)" stroke-width="1.2">
+                <animate attributeName="opacity" values="0.5;1;0.5" dur="2s" repeatCount="indefinite" begin="1.5s"/>
+                <animate attributeName="x2" values="-30;-42;-30" dur="2s" repeatCount="indefinite" begin="1.5s"/>
+                <animate attributeName="y2" values="30;42;30" dur="2s" repeatCount="indefinite" begin="1.5s"/>
+            </line>
+            <circle cx="0" cy="0" r="14" fill="url(#l-coreG)" filter="url(#l-cBlur)">
+                <animate attributeName="r" values="10;18;10" dur="2s" repeatCount="indefinite"/>
+            </circle>
+            <circle cx="0" cy="0" r="7" fill="#0a1540">
+                <animate attributeName="r" values="5.5;8;5.5" dur="2s" repeatCount="indefinite"/>
+                <animate attributeName="fill" values="#0d1a50;#000000;#0d1a50" dur="2s" repeatCount="indefinite"/>
+            </circle>
+            <circle cx="0" cy="0" r="3" fill="#000000">
+                <animate attributeName="opacity" values="0.9;1;0.9" dur="1.5s" repeatCount="indefinite"/>
+            </circle>
+        </g>
+        <text x="220" y="75" font-family="Arial,sans-serif" font-size="20" font-weight="400"   letter-spacing="3">POWERED BY</text>
+        <text x="217" y="140" font-family="Arial,sans-serif" font-size="58" font-weight="700" letter-spacing="8">
+            GIWU
+        </text>
+    </svg>
+}
+
+@code {
+    protected override void OnInitialized() => Theme.OnChange += StateHasChanged;
+    public void Dispose() => Theme.OnChange -= StateHasChanged;
+}

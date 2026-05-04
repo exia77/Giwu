@@ -1,0 +1,442 @@
+﻿@using static Giwu.HRMS.Hybrid.Models.PayrollFormatting
+
+<MudDialog>
+    <DialogContent>
+        <MudText Typo="Typo.body2" Style="opacity:.7" Class="mb-2">
+            Adjusting @Slip.Name's payslip. Statutory deductions auto-compute from the basic
+            salary â€” edit any field to override its computed value, and use â†» to restore it.
+        </MudText>
+
+        @* â”€â”€ Earnings â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ *@
+        <div class="adjust-section-header">Earnings</div>
+        <MudGrid Spacing="2" Class="mb-3">
+            <MudItem xs="6">
+                <MudNumericField T="decimal" Label="Basic Salary" Value="Slip.BasicSalary"
+                                 ValueChanged="@OnBasicSalaryChanged"
+                                 Variant="Variant.Outlined" Margin="Margin.Dense"
+                                 Min="0" Step="1000"
+                                 Adornment="Adornment.Start" AdornmentText="â‚±" />
+            </MudItem>
+            <MudItem xs="6">
+                <MudNumericField T="decimal" Label="Allowance" Value="Slip.Allowance"
+                                 ValueChanged="@(v => { Slip.Allowance = v; AutoRecalcStatutory(); })"
+                                 Variant="Variant.Outlined" Margin="Margin.Dense"
+                                 Min="0" Step="500"
+                                 Adornment="Adornment.Start" AdornmentText="â‚±" />
+            </MudItem>
+            <MudItem xs="6">
+                <MudNumericField T="decimal" Label="Overtime" Value="Slip.Overtime"
+                                 ValueChanged="@(v => { Slip.Overtime = v; AutoRecalcStatutory(); })"
+                                 Variant="Variant.Outlined" Margin="Margin.Dense"
+                                 Min="0" Step="500"
+                                 Adornment="Adornment.Start" AdornmentText="â‚±" />
+            </MudItem>
+            <MudItem xs="6">
+                <MudNumericField T="decimal" Label="Bonus" Value="Slip.Bonus"
+                                 ValueChanged="@(v => { Slip.Bonus = v; AutoRecalcStatutory(); })"
+                                 Variant="Variant.Outlined" Margin="Margin.Dense"
+                                 Min="0" Step="500"
+                                 Adornment="Adornment.Start" AdornmentText="â‚±" />
+            </MudItem>
+        </MudGrid>
+
+        @* â”€â”€ Statutory Deductions (auto-compute, override-able) â”€â”€â”€ *@
+        <div class="adjust-section-header">
+            <span>Statutory Deductions</span>
+            <span class="adjust-section-hint">auto-computed from Basic Salary</span>
+        </div>
+        <MudGrid Spacing="2" Class="mb-3">
+            <MudItem xs="6">
+                <div class="adjust-stat-field">
+                    @if (SssOverridden)
+                    {
+                        <span class="stat-override-pill">Override</span>
+                    }
+                    <MudNumericField T="decimal" Label="SSS" Value="Slip.Sss"
+                                     ValueChanged="@OnSssChanged"
+                                     Variant="Variant.Outlined" Margin="Margin.Dense"
+                                     Min="0" Step="50"
+                                     Adornment="Adornment.Start" AdornmentText="â‚±" />
+                    @if (SssOverridden)
+                    {
+                        <button type="button" class="stat-reset-btn" title="Reset to auto-computed"
+                                @onclick="ResetSss">â†»</button>
+                    }
+                </div>
+            </MudItem>
+            <MudItem xs="6">
+                <div class="adjust-stat-field">
+                    @if (PhilHealthOverridden)
+                    {
+                        <span class="stat-override-pill">Override</span>
+                    }
+                    <MudNumericField T="decimal" Label="PhilHealth" Value="Slip.PhilHealth"
+                                     ValueChanged="@OnPhilHealthChanged"
+                                     Variant="Variant.Outlined" Margin="Margin.Dense"
+                                     Min="0" Step="50"
+                                     Adornment="Adornment.Start" AdornmentText="â‚±" />
+                    @if (PhilHealthOverridden)
+                    {
+                        <button type="button" class="stat-reset-btn" title="Reset to auto-computed"
+                                @onclick="ResetPhilHealth">â†»</button>
+                    }
+                </div>
+            </MudItem>
+            <MudItem xs="6">
+                <div class="adjust-stat-field">
+                    @if (PagIbigOverridden)
+                    {
+                        <span class="stat-override-pill">Override</span>
+                    }
+                    <MudNumericField T="decimal" Label="Pag-IBIG" Value="Slip.PagIbig"
+                                     ValueChanged="@OnPagIbigChanged"
+                                     Variant="Variant.Outlined" Margin="Margin.Dense"
+                                     Min="0" Step="50"
+                                     Adornment="Adornment.Start" AdornmentText="â‚±" />
+                    @if (PagIbigOverridden)
+                    {
+                        <button type="button" class="stat-reset-btn" title="Reset to auto-computed"
+                                @onclick="ResetPagIbig">â†»</button>
+                    }
+                </div>
+            </MudItem>
+            <MudItem xs="6">
+                <div class="adjust-stat-field">
+                    @if (WhtOverridden)
+                    {
+                        <span class="stat-override-pill">Override</span>
+                    }
+                    <MudNumericField T="decimal" Label="Withholding Tax" Value="Slip.WithholdingTax"
+                                     ValueChanged="@OnWhtChanged"
+                                     Variant="Variant.Outlined" Margin="Margin.Dense"
+                                     Min="0" Step="100"
+                                     Adornment="Adornment.Start" AdornmentText="â‚±" />
+                    @if (WhtOverridden)
+                    {
+                        <button type="button" class="stat-reset-btn" title="Reset to auto-computed"
+                                @onclick="ResetWht">â†»</button>
+                    }
+                </div>
+            </MudItem>
+        </MudGrid>
+
+        @* â”€â”€ Non-statutory deductions â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ *@
+        <div class="adjust-section-header">Other Deductions</div>
+        <MudGrid Spacing="2" Class="mb-3">
+            <MudItem xs="6">
+                <MudNumericField T="decimal" Label="Loan Deduction" @bind-Value="Slip.LoanDeduction"
+                                 Variant="Variant.Outlined" Margin="Margin.Dense"
+                                 Min="0" Step="500"
+                                 Adornment="Adornment.Start" AdornmentText="â‚±" />
+            </MudItem>
+            <MudItem xs="6">
+                <MudNumericField T="decimal" Label="Other Deduction" @bind-Value="Slip.OtherDeduction"
+                                 Variant="Variant.Outlined" Margin="Margin.Dense"
+                                 Min="0" Step="500"
+                                 Adornment="Adornment.Start" AdornmentText="â‚±" />
+            </MudItem>
+        </MudGrid>
+
+        <MudTextField T="string" Label="Adjustment note" @bind-Value="Slip.Notes"
+                      Placeholder="e.g. mid-month hire â€” prorated SSS"
+                      Variant="Variant.Outlined" Lines="2" />
+
+        @* â”€â”€ Live preview â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ *@
+        <div class="adjust-preview">
+            <div class="adjust-preview-title">Live Preview</div>
+            <div class="adjust-preview-row">
+                <span>Gross</span>
+                <span class="slip-amt">@Money(Slip.Gross)</span>
+            </div>
+            <div class="adjust-preview-row">
+                <span>Total Deductions</span>
+                <span class="slip-amt neg">âˆ’@Money(Slip.TotalDeductions)</span>
+            </div>
+            <div class="adjust-preview-row adjust-preview-net">
+                <span>Net Pay</span>
+                <span class="slip-amt">@Money(Slip.Net)</span>
+            </div>
+            @if (AnyOverridden)
+            {
+                <div class="adjust-override-note">
+                    <span class="override-dot"></span>
+                    Manual overrides will be saved as-is.
+                </div>
+            }
+        </div>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" DisableElevation="true" OnClick="Save">
+            Save Adjustments
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+<style>
+    .adjust-section-header {
+        font-size: 10.5px;
+        letter-spacing: .06em;
+        text-transform: uppercase;
+        opacity: .55;
+        font-weight: 500;
+        margin-bottom: 8px;
+        margin-top: 4px;
+        display: flex; justify-content: space-between; align-items: baseline;
+    }
+    .adjust-section-hint {
+        font-size: 10px;
+        letter-spacing: 0;
+        text-transform: none;
+        font-weight: 400;
+        opacity: .7;
+        font-style: italic;
+    }
+
+    .adjust-stat-field {
+        position: relative;
+    }
+    .adjust-stat-field .stat-reset-btn {
+        position: absolute;
+        right: 30px;
+        top: 50%;
+        transform: translateY(-50%);
+        background: none; border: none; cursor: pointer;
+        padding: 2px 4px;
+        opacity: .5;
+        font-size: 13px;
+        color: var(--pay-amber-text);
+        z-index: 2;
+        line-height: 1;
+        display: inline-flex; align-items: center; gap: 3px;
+    }
+    .adjust-stat-field .stat-reset-btn:hover { opacity: 1; }
+    .adjust-stat-field .stat-override-pill {
+        position: absolute;
+        top: -6px;
+        right: 8px;
+        background: var(--pay-amber-light);
+        color: var(--pay-amber-text);
+        font-size: 9px;
+        font-weight: 500;
+        letter-spacing: .04em;
+        text-transform: uppercase;
+        padding: 1px 6px;
+        border-radius: 100px;
+        z-index: 3;
+    }
+
+    .adjust-preview {
+        margin-top: 14px;
+        padding: 12px;
+        background: var(--mud-palette-background-grey);
+        border-radius: 8px;
+    }
+    .adjust-preview-title {
+        font-size: 10.5px;
+        letter-spacing: .06em;
+        text-transform: uppercase;
+        opacity: .55;
+        margin-bottom: 8px;
+    }
+    .adjust-preview-row {
+        display: flex;
+        justify-content: space-between;
+        padding: 4px 0;
+        font-size: 13px;
+    }
+    .adjust-preview-net {
+        border-top: 0.5px solid var(--mud-palette-divider);
+        padding-top: 8px;
+        margin-top: 4px;
+        font-weight: 600;
+    }
+    .slip-amt { font-variant-numeric: tabular-nums; }
+    .slip-amt.neg { color: var(--pay-red-text); }
+
+    .adjust-override-note {
+        display: flex; align-items: center; gap: 6px;
+        margin-top: 8px;
+        padding-top: 8px;
+        border-top: 0.5px solid var(--mud-palette-divider);
+        font-size: 11px;
+        opacity: .75;
+    }
+    .override-dot {
+        width: 6px; height: 6px; border-radius: 50%;
+        background: var(--pay-amber);
+        display: inline-block;
+    }
+</style>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = default!;
+    [Parameter] public Payslip Slip { get; set; } = default!;
+
+    // Per-field override flags. When true, the field has been manually edited and
+    // should NOT be auto-recomputed when the basic salary or other gross components change.
+    private bool SssOverridden { get; set; } = false;
+    private bool PhilHealthOverridden { get; set; } = false;
+    private bool PagIbigOverridden { get; set; } = false;
+    private bool WhtOverridden { get; set; } = false;
+
+    private bool AnyOverridden =>
+        SssOverridden || PhilHealthOverridden || PagIbigOverridden || WhtOverridden;
+
+    // Snapshot of original values, taken on open. Restored on Cancel.
+    private decimal _origBasic, _origAllow, _origOt, _origBonus;
+    private decimal _origSss, _origPh, _origPag, _origWht;
+    private decimal _origLoan, _origOther;
+    private string _origNotes = "";
+
+    protected override void OnInitialized()
+    {
+        // Snapshot â€” Cancel will restore these
+        _origBasic = Slip.BasicSalary;
+        _origAllow = Slip.Allowance;
+        _origOt    = Slip.Overtime;
+        _origBonus = Slip.Bonus;
+        _origSss   = Slip.Sss;
+        _origPh    = Slip.PhilHealth;
+        _origPag   = Slip.PagIbig;
+        _origWht   = Slip.WithholdingTax;
+        _origLoan  = Slip.LoanDeduction;
+        _origOther = Slip.OtherDeduction;
+        _origNotes = Slip.Notes ?? "";
+
+        // If the slip arrives with statutory values that don't match what the calculator
+        // would produce for this basic salary, treat them as already-overridden so we
+        // don't silently overwrite a prior manual adjustment when gross changes.
+        var calcSss = PhPayrollCalculator.CalculateSss(Slip.BasicSalary);
+        var calcPh  = PhPayrollCalculator.CalculatePhilHealth(Slip.BasicSalary);
+        var calcPag = PhPayrollCalculator.CalculatePagIbig(Slip.BasicSalary);
+
+        SssOverridden        = Slip.Sss != calcSss;
+        PhilHealthOverridden = Slip.PhilHealth != calcPh;
+        PagIbigOverridden    = Slip.PagIbig != calcPag;
+
+        var taxable = Slip.Gross - (Slip.Sss + Slip.PhilHealth + Slip.PagIbig);
+        var calcWht = PhPayrollCalculator.CalculateWithholdingTax(taxable);
+        WhtOverridden = Slip.WithholdingTax != calcWht;
+    }
+
+    /// <summary>
+    /// Called whenever Basic Salary changes. Auto-recomputes any statutory field that
+    /// the user hasn't manually overridden in this dialog session.
+    /// </summary>
+    private void OnBasicSalaryChanged(decimal newValue)
+    {
+        Slip.BasicSalary = newValue;
+        AutoRecalcStatutory();
+    }
+
+    /// <summary>
+    /// Re-runs the statutory calculator for any field NOT marked as overridden.
+    /// Called whenever a gross component changes (basic, allowance, overtime, bonus).
+    /// </summary>
+    private void AutoRecalcStatutory()
+    {
+        if (!SssOverridden)
+            Slip.Sss = PhPayrollCalculator.CalculateSss(Slip.BasicSalary);
+        if (!PhilHealthOverridden)
+            Slip.PhilHealth = PhPayrollCalculator.CalculatePhilHealth(Slip.BasicSalary);
+        if (!PagIbigOverridden)
+            Slip.PagIbig = PhPayrollCalculator.CalculatePagIbig(Slip.BasicSalary);
+
+        // WHT depends on the taxable base, which depends on the other three. Always
+        // recompute WHT when something changes â€” unless the user explicitly overrode it.
+        if (!WhtOverridden)
+            RecalcWht();
+    }
+
+    private void RecalcWht()
+    {
+        var taxable = Slip.Gross - (Slip.Sss + Slip.PhilHealth + Slip.PagIbig);
+        Slip.WithholdingTax = PhPayrollCalculator.CalculateWithholdingTax(taxable);
+    }
+
+    // â”€â”€ Per-statutory-field change handlers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // Each one sets the field value, marks it as overridden, and recomputes WHT
+    // (because WHT depends on the other three statutory amounts).
+
+    private void OnSssChanged(decimal v)
+    {
+        Slip.Sss = v;
+        SssOverridden = true;
+        if (!WhtOverridden) RecalcWht();
+    }
+
+    private void OnPhilHealthChanged(decimal v)
+    {
+        Slip.PhilHealth = v;
+        PhilHealthOverridden = true;
+        if (!WhtOverridden) RecalcWht();
+    }
+
+    private void OnPagIbigChanged(decimal v)
+    {
+        Slip.PagIbig = v;
+        PagIbigOverridden = true;
+        if (!WhtOverridden) RecalcWht();
+    }
+
+    private void OnWhtChanged(decimal v)
+    {
+        Slip.WithholdingTax = v;
+        WhtOverridden = true;
+    }
+
+    // â”€â”€ Per-field reset handlers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+
+    private void ResetSss()
+    {
+        SssOverridden = false;
+        Slip.Sss = PhPayrollCalculator.CalculateSss(Slip.BasicSalary);
+        if (!WhtOverridden) RecalcWht();
+    }
+
+    private void ResetPhilHealth()
+    {
+        PhilHealthOverridden = false;
+        Slip.PhilHealth = PhPayrollCalculator.CalculatePhilHealth(Slip.BasicSalary);
+        if (!WhtOverridden) RecalcWht();
+    }
+
+    private void ResetPagIbig()
+    {
+        PagIbigOverridden = false;
+        Slip.PagIbig = PhPayrollCalculator.CalculatePagIbig(Slip.BasicSalary);
+        if (!WhtOverridden) RecalcWht();
+    }
+
+    private void ResetWht()
+    {
+        WhtOverridden = false;
+        RecalcWht();
+    }
+
+    private void Cancel()
+    {
+        // Restore the snapshot taken on dialog open. Necessary because all field edits
+        // flow directly into the live Slip reference as the user types.
+        Slip.BasicSalary    = _origBasic;
+        Slip.Allowance      = _origAllow;
+        Slip.Overtime       = _origOt;
+        Slip.Bonus          = _origBonus;
+        Slip.Sss            = _origSss;
+        Slip.PhilHealth     = _origPh;
+        Slip.PagIbig        = _origPag;
+        Slip.WithholdingTax = _origWht;
+        Slip.LoanDeduction  = _origLoan;
+        Slip.OtherDeduction = _origOther;
+        Slip.Notes          = _origNotes;
+        MudDialog.Cancel();
+    }
+
+    private void Save()
+    {
+        // Whatever's in the fields right now (auto-computed or overridden) is saved as-is.
+        // The parent page checks IsEdited; we let it set that based on whether anything changed.
+        MudDialog.Close(DialogResult.Ok(true));
+    }
+}

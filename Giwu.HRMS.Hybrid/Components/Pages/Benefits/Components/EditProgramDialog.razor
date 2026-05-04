@@ -1,0 +1,188 @@
+﻿@using static Giwu.HRMS.Hybrid.Models.BenefitsFormatting
+
+<MudDialog>
+    <DialogContent>
+        <MudStack Spacing="3">
+            <MudGrid Spacing="2">
+                <MudItem xs="12" sm="8">
+                    <MudTextField T="string" Label="Program name" @bind-Value="Working.Name"
+                                  Variant="Variant.Outlined" Margin="Margin.Dense" Required="true" />
+                </MudItem>
+                <MudItem xs="12" sm="4">
+                    <MudSelect T="BenefitCategory" Label="Category" @bind-Value="Working.Category"
+                               Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true">
+                        @foreach (var cat in Enum.GetValues<BenefitCategory>())
+                        {
+                            <MudSelectItem Value="@cat">@CategoryLabel(cat)</MudSelectItem>
+                        }
+                    </MudSelect>
+                </MudItem>
+            </MudGrid>
+
+            <MudTextField T="string" Label="Provider" @bind-Value="Working.Provider"
+                          Placeholder="e.g. Maxicare, Sun Life, In-house"
+                          Variant="Variant.Outlined" Margin="Margin.Dense" />
+
+            <MudTextField T="string" Label="Description" @bind-Value="Working.Description"
+                          Variant="Variant.Outlined" Lines="3" />
+
+            <MudTextField T="string" Label="Eligibility" @bind-Value="Working.Eligibility"
+                          Placeholder="e.g. Regular employees only"
+                          Variant="Variant.Outlined" Margin="Margin.Dense" />
+
+            <div class="dlg-section-header">Cost Sharing (per month, per employee)</div>
+            <MudGrid Spacing="2">
+                <MudItem xs="4">
+                    <MudNumericField T="decimal" Label="Total cost" @bind-Value="Working.MonthlyCostPerEmployee"
+                                     Variant="Variant.Outlined" Margin="Margin.Dense" Min="0" Step="100"
+                                     Adornment="Adornment.Start" AdornmentText="â‚±" />
+                </MudItem>
+                <MudItem xs="4">
+                    <MudNumericField T="decimal" Label="Employer share" @bind-Value="Working.EmployerShare"
+                                     Variant="Variant.Outlined" Margin="Margin.Dense" Min="0" Step="100"
+                                     Adornment="Adornment.Start" AdornmentText="â‚±" />
+                </MudItem>
+                <MudItem xs="4">
+                    <MudNumericField T="decimal" Label="Employee share" @bind-Value="Working.EmployeeShare"
+                                     Variant="Variant.Outlined" Margin="Margin.Dense" Min="0" Step="100"
+                                     Adornment="Adornment.Start" AdornmentText="â‚±" />
+                </MudItem>
+            </MudGrid>
+            @if (Working.MonthlyCostPerEmployee > 0
+                 && Math.Abs(Working.EmployerShare + Working.EmployeeShare - Working.MonthlyCostPerEmployee) > 0.01m)
+            {
+                <MudAlert Severity="Severity.Warning" Dense="true" Class="cost-mismatch">
+                    Employer + Employee shares (@Money(Working.EmployerShare + Working.EmployeeShare))
+                    don't add up to the total cost (@Money(Working.MonthlyCostPerEmployee)).
+                </MudAlert>
+            }
+
+            <MudGrid Spacing="2">
+                <MudItem xs="6">
+                    <MudDatePicker Label="Effective date" @bind-Date="EffectiveDateNullable"
+                                   Variant="Variant.Outlined" Margin="Margin.Dense" />
+                </MudItem>
+                <MudItem xs="6">
+                    <MudDatePicker Label="Renewal date (optional)" @bind-Date="RenewalDateNullable"
+                                   Variant="Variant.Outlined" Margin="Margin.Dense" Clearable="true" />
+                </MudItem>
+            </MudGrid>
+
+            <div class="dlg-checkboxes">
+                <MudCheckBox T="bool" @bind-Value="Working.IsActive" Size="Size.Small" Dense="true">
+                    <MudText Typo="Typo.body2">Active</MudText>
+                </MudCheckBox>
+                <MudCheckBox T="bool" @bind-Value="Working.IsMandatory" Size="Size.Small" Dense="true">
+                    <MudText Typo="Typo.body2">Mandatory (auto-enroll all employees)</MudText>
+                </MudCheckBox>
+            </div>
+        </MudStack>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" DisableElevation="true" OnClick="Save">
+            @(IsEditing ? "Save Changes" : "Add Program")
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+<style>
+    .dlg-section-header {
+        font-size: 10.5px;
+        letter-spacing: .06em;
+        text-transform: uppercase;
+        opacity: .55;
+        font-weight: 500;
+        margin-top: 6px;
+        margin-bottom: -4px;
+    }
+    .dlg-checkboxes { display: flex; flex-direction: column; gap: 2px; }
+    .cost-mismatch { font-size: 11.5px !important; }
+</style>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = default!;
+    [Parameter] public BenefitProgram? Existing { get; set; }
+
+    private BenefitProgram Working { get; set; } = new();
+    private bool IsEditing => Existing != null;
+
+    // Snapshot fields for Cancel restore (when editing)
+    private BenefitProgram? _snapshot;
+
+    // MudDatePicker requires DateTime?, but BenefitProgram.RenewalDate is already nullable â€” bridge via this
+    private DateTime? RenewalDateNullable
+    {
+        get => Working.RenewalDate;
+        set => Working.RenewalDate = value;
+    }
+
+    // MudDatePicker requires DateTime?, but BenefitProgram.EffectiveDate is non-nullable â€” bridge via this.
+    // A null pick falls back to today (program must have an effective date).
+    private DateTime? EffectiveDateNullable
+    {
+        get => Working.EffectiveDate;
+        set => Working.EffectiveDate = value ?? DateTime.Today;
+    }
+
+    protected override void OnInitialized()
+    {
+        if (Existing != null)
+        {
+            Working = Existing;
+            // Snapshot for Cancel
+            _snapshot = new BenefitProgram
+            {
+                Id = Existing.Id, Name = Existing.Name, Provider = Existing.Provider,
+                Category = Existing.Category, Description = Existing.Description,
+                IsActive = Existing.IsActive, IsMandatory = Existing.IsMandatory,
+                Eligibility = Existing.Eligibility,
+                EffectiveDate = Existing.EffectiveDate, RenewalDate = Existing.RenewalDate,
+                MonthlyCostPerEmployee = Existing.MonthlyCostPerEmployee,
+                EmployerShare = Existing.EmployerShare, EmployeeShare = Existing.EmployeeShare,
+                ShareIsPercent = Existing.ShareIsPercent,
+                Tiers = Existing.Tiers.ToList(),
+            };
+        }
+        else
+        {
+            Working = new BenefitProgram
+            {
+                Category = BenefitCategory.Health,
+                IsActive = true,
+                IsMandatory = false,
+                EffectiveDate = DateTime.Today,
+                MonthlyCostPerEmployee = 0m,
+                EmployerShare = 0m,
+                EmployeeShare = 0m,
+            };
+        }
+    }
+
+    private void Cancel()
+    {
+        // Restore snapshot if editing
+        if (IsEditing && _snapshot != null && Existing != null)
+        {
+            Existing.Name = _snapshot.Name;
+            Existing.Provider = _snapshot.Provider;
+            Existing.Category = _snapshot.Category;
+            Existing.Description = _snapshot.Description;
+            Existing.IsActive = _snapshot.IsActive;
+            Existing.IsMandatory = _snapshot.IsMandatory;
+            Existing.Eligibility = _snapshot.Eligibility;
+            Existing.EffectiveDate = _snapshot.EffectiveDate;
+            Existing.RenewalDate = _snapshot.RenewalDate;
+            Existing.MonthlyCostPerEmployee = _snapshot.MonthlyCostPerEmployee;
+            Existing.EmployerShare = _snapshot.EmployerShare;
+            Existing.EmployeeShare = _snapshot.EmployeeShare;
+        }
+        MudDialog.Cancel();
+    }
+
+    private void Save()
+    {
+        if (string.IsNullOrWhiteSpace(Working.Name)) { MudDialog.Cancel(); return; }
+        MudDialog.Close(DialogResult.Ok(Working));
+    }
+}

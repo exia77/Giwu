@@ -1,0 +1,322 @@
+.login-page {
+    min-height: 100vh;
+    display: flex;
+    align-items: stretch;
+    justify-content: stretch;
+    font-family: 'Segoe UI', Arial, sans-serif;
+    position: relative;
+    background: #f0f2f9;
+    --form-bg:       #ffffff;
+    --form-text:     #0f1117;
+    --form-sub:      #6b7280;
+    --form-border:   #e2e5ef;
+    --form-input-bg: #f8f9fc;
+    --form-hover:    #f0f2f9;
+    --page-bg:       #f0f2f9;
+    transition: background 0.25s;
+}
+
+.login-page.dark {
+    background: #0a0d14;
+    --form-bg:       #13161f;
+    --form-text:     #e8eaf6;
+    --form-sub:      #7c819a;
+    --form-border:   #252a3a;
+    --form-input-bg: #0f1219;
+    --form-hover:    #1a1e2e;
+    --page-bg:       #0a0d14;
+}
+
+/* ── Split layout ── */
+.login-split {
+    display: grid;
+    grid-template-columns: 25% 75%;
+    width: 100%;
+    min-height: 100vh;
+    animation: fadeIn 0.45s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+}
+
+/* ── Left brand panel ── */
+.brand-panel {
+    background: var(--primary);
+    color: #fff;
+    padding: 40px 32px 28px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    position: relative;
+    overflow: hidden;
+}
+
+.brand-top {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
+}
+
+.brand-mark {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.brand-mark-icon {
+    width: 44px;
+    height: 44px;
+    background: #fff;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+}
+
+.brand-wordmark {
+    font-size: 24px;
+    font-weight: 700;
+    letter-spacing: -0.5px;
+    color: #fff;
+}
+
+.brand-wordmark-accent {
+    font-weight: 800;
+    margin-left: 2px;
+}
+
+.brand-underline {
+    width: 180px;
+    height: 3px;
+    border-radius: 3px;
+    background: rgba(255,255,255,0.55);
+    margin-top: 8px;
+}
+
+.brand-copy {
+    margin-top: 56px;
+}
+
+.brand-headline {
+    font-size: 28px;
+    line-height: 1.1;
+    font-weight: 700;
+    letter-spacing: -0.6px;
+    color: #fff;
+    margin: 0 0 14px;
+}
+
+.brand-tagline {
+    font-size: 13.5px;
+    line-height: 1.55;
+    color: rgba(255,255,255,0.92);
+    max-width: 100%;
+    margin: 0;
+}
+
+/* Bottom hub block */
+.brand-foot {
+    margin-top: 24px;
+}
+
+.hub-mark {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 8px;
+}
+
+.hub-icon {
+    width: 44px;
+    height: 44px;
+    background: #fff;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.hub-text {
+    display: flex;
+    flex-direction: column;
+    line-height: 1.1;
+    color: #fff;
+}
+
+.hub-text strong {
+    font-size: 16px;
+    font-weight: 800;
+    letter-spacing: 0.4px;
+}
+
+.hub-text span {
+    font-size: 9px;
+    letter-spacing: 1px;
+    opacity: 0.85;
+    margin-top: 2px;
+}
+
+.hub-explore {
+    display: inline-block;
+    margin-top: 6px;
+    font-size: 14px;
+    font-weight: 600;
+    color: #fff;
+    text-decoration: none;
+    border-bottom: 1px solid rgba(255,255,255,0.4);
+    padding-bottom: 2px;
+}
+
+.hub-explore:hover { border-bottom-color: #fff; }
+
+.brand-copyright {
+    position: absolute;
+    bottom: 14px;
+    left: 32px;
+    right: 32px;
+    font-size: 11px;
+    color: rgba(255,255,255,0.7);
+}
+
+/* ── Right form panel ── */
+.form-panel {
+    background: var(--page-bg);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 48px 32px;
+}
+
+.form-shell {
+    width: 100%;
+    max-width: 420px;
+    background: var(--form-bg);
+    border-radius: 18px;
+    padding: 36px 36px 32px;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.04),
+                0 12px 40px rgba(0,0,0,0.06);
+}
+
+.login-page.dark .form-shell {
+    box-shadow: 0 4px 6px rgba(0,0,0,0.2),
+                0 12px 40px rgba(0,0,0,0.4);
+}
+
+/* ── Heading ── */
+.card-heading {
+    margin-bottom: 22px;
+}
+
+.card-heading h2 {
+    font-size: 26px;
+    font-weight: 700;
+    color: var(--form-text);
+    letter-spacing: -0.4px;
+    margin: 0 0 6px;
+}
+
+.card-heading p {
+    font-size: 14px;
+    color: var(--form-sub);
+    margin: 0;
+}
+
+/* ── Google button ── */
+.google-btn {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    padding: 12px 14px;
+    border-radius: 11px;
+    border: 1.5px solid var(--form-border);
+    background: var(--form-bg);
+    color: var(--form-text);
+    font-size: 14px;
+    font-weight: 600;
+    font-family: inherit;
+    cursor: pointer;
+    transition: background 0.18s, border-color 0.18s, box-shadow 0.18s;
+}
+
+.google-btn:hover {
+    background: var(--form-hover);
+    border-color: var(--primary);
+    box-shadow: 0 2px 10px rgba(0,0,0,0.04);
+}
+
+/* ── Divider ── */
+.divider {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin: 16px 0;
+    color: var(--form-sub);
+    font-size: 12px;
+}
+
+.divider::before,
+.divider::after {
+    content: "";
+    flex: 1;
+    height: 1px;
+    background: var(--form-border);
+}
+
+.divider span {
+    padding: 0 4px;
+}
+
+/* ── Options row ── */
+.form-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 22px;
+    margin-top: 4px;
+}
+
+.forgot-link {
+    font-size: 13px;
+    color: var(--primary);
+    text-decoration: none;
+    font-weight: 600;
+}
+
+.forgot-link:hover { text-decoration: underline; }
+
+/* .watermark-wrap moved to wwwroot/app.css (shared with DashboardLayout) */
+
+/* ── Responsive: collapse to single column on small screens ── */
+@media (max-width: 900px) {
+    .login-split {
+        grid-template-columns: 1fr;
+    }
+
+    .brand-panel {
+        padding: 36px 28px 28px;
+    }
+
+    .brand-copy {
+        margin-top: 28px;
+    }
+
+    .brand-headline {
+        font-size: 30px;
+    }
+
+    .brand-copyright {
+        position: static;
+        margin-top: 18px;
+        left: auto;
+    }
+
+    .form-panel {
+        padding: 28px 20px;
+    }
+}

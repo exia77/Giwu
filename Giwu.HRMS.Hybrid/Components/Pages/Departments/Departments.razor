@@ -1,0 +1,319 @@
+@page "/departments"
+@layout DashboardLayout
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+@inject IDepartmentsApi DepartmentsApi
+
+@using Giwu.Contracts.Departments
+@using Giwu.HRMS.Hybrid.Services.Departments
+@using Pages.Departments.Components
+
+@* ── Toolbar ── *@
+<div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;flex-wrap:wrap">
+    <MudTextField @bind-Value="_search"
+                  Placeholder="Search departments…"
+                  Adornment="Adornment.Start"
+                  AdornmentIcon="@Icons.Material.Outlined.Search"
+                  Variant="Variant.Outlined"
+                  Margin="Margin.Dense"
+                  Style="max-width:280px;flex:1"
+                  Immediate="true" />
+    <MudSpacer />
+    <MudButton Variant="Variant.Filled" Color="Color.Primary"
+               StartIcon="@Icons.Material.Outlined.Add"
+               Size="Size.Small"
+               Style="border-radius:8px;text-transform:none"
+               OnClick="OpenAddDialog">
+        New department
+    </MudButton>
+</div>
+
+@* ── Stat cards ── *@
+<MudGrid Spacing="2" Style="margin-bottom:20px">
+    @foreach (var s in _stats)
+    {
+        <MudItem xs="12" sm="6" md="3">
+            <MudPaper Elevation="0"
+                      Style="border:1px solid var(--mud-palette-divider);border-radius:10px;padding:16px">
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+                    <MudText Typo="Typo.caption" Style="opacity:.55">@s.Label</MudText>
+                </div>
+                <MudText Typo="Typo.h5" Style="font-weight:700;line-height:1">@s.Value</MudText>
+            </MudPaper>
+        </MudItem>
+    }
+</MudGrid>
+
+@if (_loading)
+{
+    <div style="padding:32px;display:flex;justify-content:center">
+        <MudProgressCircular Indeterminate="true" Size="Size.Medium" />
+    </div>
+}
+else if (_loadError is not null)
+{
+    <MudAlert Severity="Severity.Error" Variant="Variant.Outlined">@_loadError</MudAlert>
+}
+else
+{
+    <MudGrid Spacing="2">
+        @foreach (var d in FilteredDepts)
+        {
+            <MudItem xs="12" sm="6" md="4">
+                <MudPaper Elevation="0"
+                          Style="border:1px solid var(--mud-palette-divider);border-radius:10px;overflow:hidden;transition:box-shadow .15s"
+                          @onmouseenter="() => d.Hover = true"
+                          @onmouseleave="() => d.Hover = false">
+
+                    <div style="@($"height:4px;background:{d.Color}")"></div>
+
+                    <div style="padding:16px">
+                        <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:14px">
+                            <div style="display:flex;align-items:center;gap:10px">
+                                <div style="@($"width:38px;height:38px;border-radius:9px;background:{d.IconBg};display:flex;align-items:center;justify-content:center;flex-shrink:0;color:{d.Color};font-weight:700")">
+                                    @d.ShortCode
+                                </div>
+                                <div>
+                                    <MudText Typo="Typo.body1" Style="font-weight:700;line-height:1.2">@d.Name</MudText>
+                                    <MudText Typo="Typo.caption" Style="opacity:.45">@d.Code</MudText>
+                                </div>
+                            </div>
+                            <MudMenu Icon="@Icons.Material.Outlined.MoreVert" Size="Size.Small"
+                                     AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight" Dense="true">
+                                <MudMenuItem OnClick="() => OpenViewDialog(d)">
+                                    <div style="display:flex;align-items:center;gap:8px;font-size:13px">
+                                        <MudIcon Icon="@Icons.Material.Outlined.OpenInNew" Style="font-size:15px;opacity:.6" />
+                                        View members
+                                    </div>
+                                </MudMenuItem>
+                                <MudMenuItem OnClick="() => OpenEditDialog(d)">
+                                    <div style="display:flex;align-items:center;gap:8px;font-size:13px">
+                                        <MudIcon Icon="@Icons.Material.Outlined.Edit" Style="font-size:15px;opacity:.6" />
+                                        Edit
+                                    </div>
+                                </MudMenuItem>
+                                <MudDivider />
+                                <MudMenuItem OnClick="() => OpenDeleteDialog(d)">
+                                    <div style="display:flex;align-items:center;gap:8px;font-size:13px;color:#C62828">
+                                        <MudIcon Icon="@Icons.Material.Outlined.DeleteOutline" Style="font-size:15px;color:#C62828" />
+                                        Delete
+                                    </div>
+                                </MudMenuItem>
+                            </MudMenu>
+                        </div>
+
+                        <div style="display:flex;gap:6px;margin-bottom:14px">
+                            <div style="flex:1;padding:8px 10px;border-radius:8px;background:var(--mud-palette-background-grey);text-align:center">
+                                <MudText Typo="Typo.body2" Style="font-weight:700;line-height:1.1">@d.Headcount</MudText>
+                                <MudText Typo="Typo.caption" Style="opacity:.5;font-size:.65rem">Members</MudText>
+                            </div>
+                            <div style="flex:1;padding:8px 10px;border-radius:8px;background:var(--mud-palette-background-grey);text-align:center">
+                                <MudText Typo="Typo.body2" Style="font-weight:700;line-height:1.1">@d.CostCenter</MudText>
+                                <MudText Typo="Typo.caption" Style="opacity:.5;font-size:.65rem">Cost center</MudText>
+                            </div>
+                            <div style="flex:1;padding:8px 10px;border-radius:8px;background:var(--mud-palette-background-grey);text-align:center">
+                                <MudText Typo="Typo.body2" Style="font-weight:700;line-height:1.1">@(d.IsActive ? "Yes" : "No")</MudText>
+                                <MudText Typo="Typo.caption" Style="opacity:.5;font-size:.65rem">Active</MudText>
+                            </div>
+                        </div>
+                    </div>
+                </MudPaper>
+            </MudItem>
+        }
+    </MudGrid>
+}
+
+<div style="display:flex;justify-content:space-between;align-items:center;margin-top:16px;padding-bottom:60px">
+    <MudText Typo="Typo.caption" Style="opacity:.55">
+        Showing @FilteredDepts.Count() of @_departments.Count departments
+    </MudText>
+</div>
+
+@code {
+    string _search = "";
+    bool _loading = true;
+    string? _loadError;
+
+    public class Department
+    {
+        public Guid    Id           { get; set; }
+        public string  Name         { get; set; } = "";
+        public string  Code         { get; set; } = "";
+        public string  ShortCode    { get; set; } = "";
+        public string  CostCenter   { get; set; } = "";
+        public Guid?   ParentId     { get; set; }
+        public Guid?   HeadEmployeeId { get; set; }
+        public bool    IsActive     { get; set; }
+        public int     Headcount    { get; set; }
+        public string  Color        { get; set; } = "";
+        public string  IconBg       { get; set; } = "";
+        public bool    Hover        { get; set; }
+    }
+
+    record StatItem(string Label, string Value);
+    StatItem[] _stats = Array.Empty<StatItem>();
+    readonly List<Department> _departments = new();
+
+    IEnumerable<Department> FilteredDepts => _departments.Where(d =>
+        string.IsNullOrEmpty(_search) ||
+        d.Name.Contains(_search, StringComparison.OrdinalIgnoreCase) ||
+        d.Code.Contains(_search, StringComparison.OrdinalIgnoreCase));
+
+    static readonly DialogOptions _dialogOptions = new()
+    {
+        MaxWidth = MaxWidth.Small, FullWidth = true,
+        CloseButton = true, BackdropClick = false, CloseOnEscapeKey = true,
+    };
+
+    static readonly DialogOptions _deleteOptions = new()
+    {
+        MaxWidth = MaxWidth.ExtraSmall, FullWidth = true,
+        CloseButton = true, BackdropClick = false, CloseOnEscapeKey = true,
+    };
+
+    protected override async Task OnInitializedAsync() => await ReloadAsync();
+
+    async Task ReloadAsync()
+    {
+        _loading = true;
+        _loadError = null;
+        StateHasChanged();
+
+        var result = await DepartmentsApi.ListAsync(includeInactive: true);
+        _loading = false;
+
+        if (!result.Success || result.Value is null)
+        {
+            _loadError = result.ErrorMessage ?? "Failed to load departments";
+            return;
+        }
+
+        _departments.Clear();
+        foreach (var dto in result.Value) _departments.Add(MapToUi(dto));
+
+        _stats = new[]
+        {
+            new StatItem("Total departments", _departments.Count.ToString()),
+            new StatItem("Total headcount",   _departments.Sum(d => d.Headcount).ToString()),
+            new StatItem("Active",            _departments.Count(d => d.IsActive).ToString()),
+            new StatItem("Avg team size",     _departments.Count == 0 ? "0" : ((int)Math.Round(_departments.Average(d => d.Headcount))).ToString()),
+        };
+    }
+
+    static Department MapToUi(DepartmentDto dto)
+    {
+        var (bg, fg) = Palette(dto.Id);
+        return new Department
+        {
+            Id = dto.Id,
+            Name = dto.Name,
+            Code = dto.Code,
+            ShortCode = string.IsNullOrEmpty(dto.Code) ? "·" : dto.Code.Substring(0, Math.Min(3, dto.Code.Length)).ToUpperInvariant(),
+            CostCenter = string.IsNullOrEmpty(dto.CostCenter) ? "—" : dto.CostCenter,
+            ParentId = dto.ParentDepartmentId,
+            HeadEmployeeId = dto.HeadEmployeeId,
+            IsActive = dto.IsActive,
+            Headcount = dto.EmployeeCount,
+            Color = fg,
+            IconBg = bg,
+        };
+    }
+
+    static readonly (string Bg, string Fg)[] _palette =
+    {
+        ("#E6F1FB", "#185FA5"),
+        ("#EEEDFE", "#3C3489"),
+        ("#E1F5EE", "#085041"),
+        ("#FAEEDA", "#633806"),
+        ("#FCEBEB", "#791F1F"),
+        ("#EAF3DE", "#3B6D11"),
+    };
+
+    static (string Bg, string Fg) Palette(Guid id) =>
+        _palette[Math.Abs(id.GetHashCode()) % _palette.Length];
+
+    // ── Dialog handlers ─────────────────────────────────────────────────────
+    async Task OpenAddDialog()
+    {
+        var dialog = await DialogService.ShowAsync<AddDepartmentDialog>(string.Empty, _dialogOptions);
+        var result = await dialog.Result;
+        if (result is not { Canceled: false, Data: AddDepartmentDialog.DeptForm form }) return;
+
+        var req = new CreateDepartmentRequest(
+            Name: form.Name,
+            Code: form.Code,
+            ParentDepartmentId: null,
+            HeadEmployeeId: null,
+            CostCenter: form.CostCenter);
+
+        var apiResult = await DepartmentsApi.CreateAsync(req);
+        if (apiResult.Success)
+        {
+            Snackbar.Add("Department created successfully.", Severity.Success);
+            await ReloadAsync();
+        }
+        else
+        {
+            Snackbar.Add(apiResult.ErrorMessage ?? "Failed to create department.", Severity.Error);
+        }
+    }
+
+    async Task OpenViewDialog(Department d)
+    {
+        var p = new DialogParameters<ViewDepartmentDialog> { { x => x.Department, d } };
+        await DialogService.ShowAsync<ViewDepartmentDialog>(string.Empty, p, _dialogOptions);
+    }
+
+    async Task OpenEditDialog(Department d)
+    {
+        var p = new DialogParameters<EditDepartmentDialog> { { x => x.Department, d } };
+        var dialog = await DialogService.ShowAsync<EditDepartmentDialog>(string.Empty, p, _dialogOptions);
+        var result = await dialog.Result;
+        if (result is not { Canceled: false, Data: EditDepartmentDialog.EditForm form }) return;
+
+        var req = new UpdateDepartmentRequest(
+            Name: form.Name,
+            Code: form.Code,
+            ParentDepartmentId: d.ParentId,
+            HeadEmployeeId: d.HeadEmployeeId,
+            CostCenter: form.CostCenter,
+            IsActive: form.IsActive);
+
+        var apiResult = await DepartmentsApi.UpdateAsync(d.Id, req);
+        if (apiResult.Success)
+        {
+            Snackbar.Add("Department updated.", Severity.Success);
+            await ReloadAsync();
+        }
+        else
+        {
+            Snackbar.Add(apiResult.ErrorMessage ?? "Failed to update department.", Severity.Error);
+        }
+    }
+
+    async Task OpenDeleteDialog(Department d)
+    {
+        var p = new DialogParameters<DeleteDepartmentDialog>
+        {
+            { x => x.DeptName,  d.Name      },
+            { x => x.Headcount, d.Headcount },
+            { x => x.Color,     d.Color     },
+            { x => x.IconBg,    d.IconBg    },
+            { x => x.Icon,      ""          },
+        };
+        var dialog = await DialogService.ShowAsync<DeleteDepartmentDialog>(string.Empty, p, _deleteOptions);
+        var result = await dialog.Result;
+        if (result is not { Canceled: false }) return;
+
+        var apiResult = await DepartmentsApi.DeleteAsync(d.Id);
+        if (apiResult.Success)
+        {
+            Snackbar.Add($"{d.Name} department removed.", Severity.Error);
+            await ReloadAsync();
+        }
+        else
+        {
+            Snackbar.Add(apiResult.ErrorMessage ?? "Failed to delete department.", Severity.Error);
+        }
+    }
+}

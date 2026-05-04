@@ -1,0 +1,83 @@
+# ── Build outputs ──────────────────────────────────────────────────────────
+bin/
+obj/
+out/
+publish/
+[Dd]ebug/
+[Rr]elease/
+[Xx]64/
+[Xx]86/
+[Aa][Rr][Mm]/
+[Aa][Rr][Mm]64/
+*.dll
+*.exe
+*.pdb
+
+# ── IDE / editor ───────────────────────────────────────────────────────────
+.vs/
+.vscode/
+.idea/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+*.csproj.user
+
+# ── .NET ───────────────────────────────────────────────────────────────────
+*.cache
+project.lock.json
+project.fragment.lock.json
+artifacts/
+TestResults/
+*.coverage
+*.coveragexml
+*.lock
+
+# ── EF Core ────────────────────────────────────────────────────────────────
+# (migrations themselves should be committed)
+
+# ── MAUI / Mobile ──────────────────────────────────────────────────────────
+*.apk
+*.aab
+*.ipa
+*.app/
+*.appx
+*.appxbundle
+*.msix
+*.msixbundle
+
+# ── Secrets / certificates (NEVER commit) ──────────────────────────────────
+*.pfx
+*.snk
+*.p12
+*.key
+appsettings.*.local.json
+secrets.json
+.env
+.env.local
+.env.*.local
+
+# ── Logs ───────────────────────────────────────────────────────────────────
+*.log
+logs/
+
+# ── OS noise ───────────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ── NuGet ──────────────────────────────────────────────────────────────────
+*.nupkg
+*.snupkg
+.nuget/
+packages/
+!packages/build/
+**/[Pp]ackages/*
+!**/[Pp]ackages/build/
+
+# ── Visual Studio Code coverage / Roslyn workspace ─────────────────────────
+.vs/
+*.GhostDoc.xml
+
+# ── Hangfire dashboard cache ───────────────────────────────────────────────
+hangfire-data/

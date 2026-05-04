@@ -1,0 +1,83 @@
+﻿@using static Giwu.HRMS.Hybrid.Models.AttendanceFormatting
+
+<MudDialog>
+    <DialogContent>
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px">
+            <MudAvatar Style="@($"width:42px;height:42px;font-size:13px;{AvatarStyle(Emp.Av)}")">@Emp.Init</MudAvatar>
+            <div>
+                <MudText Typo="Typo.subtitle2" Class="fw-medium">@Emp.Name</MudText>
+                <MudText Typo="Typo.caption" Style="opacity:.55">@Emp.Role Â· @Emp.Dept</MudText>
+            </div>
+        </div>
+
+        <MudDivider Class="mb-2" />
+
+        <div class="att-info-table">
+            <div class="att-info-row">
+                <span class="att-info-key">Status</span>
+                <span class="@($"att-badge {BadgeClass(Emp.Status)}")">@Emp.Status</span>
+            </div>
+            <div class="att-info-row">
+                <span class="att-info-key">Time In</span>
+                <span>@FmtTime(Emp.Tin)</span>
+            </div>
+            <div class="att-info-row">
+                <span class="att-info-key">Time Out</span>
+                <span>@FmtTime(Emp.Tout)</span>
+            </div>
+            <div class="att-info-row">
+                <span class="att-info-key">Hours Worked</span>
+                <span>@FmtHours(HoursWorked(Emp.Tin, Emp.Tout))</span>
+            </div>
+            <div class="att-info-row">
+                <span class="att-info-key">Reason</span>
+                <span>@(string.IsNullOrEmpty(Emp.Reason) ? "â€”" : Emp.Reason)</span>
+            </div>
+            <div class="att-info-row">
+                <span class="att-info-key">Pending Approval</span>
+                @if (Emp.Pending)
+                {
+                    <span class="att-badge badge-absent">Yes</span>
+                }
+                else
+                {
+                    <span>No</span>
+                }
+            </div>
+        </div>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Close">Close</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" DisableElevation="true" OnClick="EditClicked">
+            Edit Record
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+<style>
+    .att-info-table { width: 100%; }
+    .att-info-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 8px 0;
+        border-bottom: 0.5px solid var(--mud-palette-divider);
+        font-size: 13px;
+    }
+    .att-info-row:last-child { border-bottom: none; }
+    .att-info-key { opacity: .55; }
+</style>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = default!;
+    [Parameter] public AttendanceEmployee Emp { get; set; } = default!;
+    [Parameter] public EventCallback OnEdit { get; set; }
+
+    private void Close() => MudDialog.Close();
+
+    private async Task EditClicked()
+    {
+        MudDialog.Close();
+        await OnEdit.InvokeAsync();
+    }
+}
