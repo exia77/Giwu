@@ -3,6 +3,7 @@ using System;
 using Giwu.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Giwu.Infrastructure.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260506071721_Add_Tenant_Settings_Owned_Types")]
+    partial class Add_Tenant_Settings_Owned_Types
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -1978,40 +1981,6 @@ namespace Giwu.Infrastructure.Migrations
 
             modelBuilder.Entity("Giwu.Domain.Tenancy.Tenant", b =>
                 {
-                    b.OwnsOne("Giwu.Domain.Tenancy.BrandingSettings", "Branding", b1 =>
-                        {
-                            b1.Property<Guid>("TenantId")
-                                .HasColumnType("uuid");
-
-                            b1.Property<string>("AccentColor")
-                                .IsRequired()
-                                .HasMaxLength(16)
-                                .HasColumnType("character varying(16)")
-                                .HasColumnName("Brand_AccentColor");
-
-                            b1.Property<string>("CompanyName")
-                                .IsRequired()
-                                .HasMaxLength(256)
-                                .HasColumnType("character varying(256)")
-                                .HasColumnName("Brand_CompanyName");
-
-                            b1.Property<bool>("IsDark")
-                                .HasColumnType("boolean")
-                                .HasColumnName("Brand_IsDark");
-
-                            b1.Property<string>("LogoDataUrl")
-                                .IsRequired()
-                                .HasColumnType("text")
-                                .HasColumnName("Brand_LogoDataUrl");
-
-                            b1.HasKey("TenantId");
-
-                            b1.ToTable("tenants");
-
-                            b1.WithOwner()
-                                .HasForeignKey("TenantId");
-                        });
-
                     b.OwnsOne("Giwu.Domain.Tenancy.LocalizationSettings", "Localization", b1 =>
                         {
                             b1.Property<Guid>("TenantId")
@@ -2223,9 +2192,6 @@ namespace Giwu.Infrastructure.Migrations
                             b1.WithOwner()
                                 .HasForeignKey("TenantId");
                         });
-
-                    b.Navigation("Branding")
-                        .IsRequired();
 
                     b.Navigation("Localization")
                         .IsRequired();

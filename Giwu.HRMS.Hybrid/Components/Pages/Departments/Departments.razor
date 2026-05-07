@@ -8,6 +8,8 @@
 @using Giwu.HRMS.Hybrid.Services.Departments
 @using Pages.Departments.Components
 
+<RoleGuard NavKey="@NavKeys.Departments" />
+
 @* ── Toolbar ── *@
 <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;flex-wrap:wrap">
     <MudTextField @bind-Value="_search"

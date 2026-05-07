@@ -9,6 +9,9 @@
 @inject IAttendanceApi AttendanceApi
 
 @using Pages.Attendances.Components
+
+<RoleGuard NavKey="@NavKeys.Attendance" />
+
 <PageTitle>Attendance</PageTitle>
 
 <MudGrid Spacing="3" Class="mb-4">

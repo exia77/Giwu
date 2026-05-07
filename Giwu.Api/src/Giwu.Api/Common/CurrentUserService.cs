@@ -20,7 +20,7 @@ public sealed class CurrentUserService(IHttpContextAccessor accessor) : ICurrent
         }
     }
 
-    public string Email => Principal?.FindFirstValue(ClaimTypes.Email) ?? "";
+    public string Email => Principal?.FindFirstValue("email") ?? "";
     public string DisplayName => Principal?.FindFirstValue("name") ?? "";
 
     public IReadOnlyCollection<string> Roles =>

@@ -1,5 +1,6 @@
 <Solution>
   <Folder Name="/Backend/">
+    <File Path="Giwu.Api/src/Giwu.Api/Dockerfile" />
     <Project Path="Giwu.Api/src/Giwu.Api/Giwu.Api.csproj" />
     <Project Path="Giwu.Api/src/Giwu.Application/Giwu.Application.csproj" />
     <Project Path="Giwu.Api/src/Giwu.Contracts/Giwu.Contracts.csproj" />

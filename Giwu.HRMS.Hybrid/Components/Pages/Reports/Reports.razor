@@ -1,11 +1,85 @@
 ﻿@page "/reports"
 @using static Giwu.HRMS.Hybrid.Models.ReportsFormatting
+@using Giwu.Contracts.Reports
+@using Giwu.HRMS.Hybrid.Services.Reports
 @inject ISnackbar Snackbar
 @inject IDialogService DialogService
+@inject IReportsApi ReportsApi
 
 @using Pages.Reports.Components
 
+<RoleGuard NavKey="@NavKeys.Reports" />
+
 <PageTitle>Reports</PageTitle>
+
+@* Live HR Snapshot — backed by /api/reports/* *@
+<MudPaper Class="rep-card mb-4" Elevation="0">
+    <div class="rep-card-header">
+        <div>
+            <MudText Typo="Typo.subtitle2" Class="fw-medium">Live HR Snapshot</MudText>
+            <MudText Typo="Typo.caption" Style="opacity:.55">
+                @if (LiveLoading)
+                {
+                    <span>Loading from API…</span>
+                }
+                else if (!string.IsNullOrEmpty(LiveError))
+                {
+                    <span style="color:var(--rep-amber)">@LiveError</span>
+                }
+                else
+                {
+                    <span>Refreshed @RelativeTime(LiveLoadedAt)</span>
+                }
+            </MudText>
+        </div>
+        <MudIconButton Icon="@Icons.Material.Outlined.Refresh" Size="Size.Small"
+                       Title="Refresh" Disabled="LiveLoading"
+                       OnClick="LoadLiveSnapshotAsync" />
+    </div>
+    <MudGrid Spacing="3" Class="px-3 pb-3">
+        <MudItem xs="12" sm="6" md="3">
+            <div class="kpi-label">Headcount</div>
+            <div class="kpi-value">@(Headcount?.TotalEmployees.ToString("N0") ?? "—")</div>
+            <div class="kpi-sub">
+                <span class="kpi-dot" style="background:var(--rep-green)"></span>
+                <span>@(Headcount is null ? "" : $"{Headcount.Active} active · {Headcount.Departments} depts")</span>
+            </div>
+        </MudItem>
+        <MudItem xs="12" sm="6" md="3">
+            <div class="kpi-label">Attendance (last 30d)</div>
+            <div class="kpi-value">@(Attendance?.Present.ToString("N0") ?? "—")</div>
+            <div class="kpi-sub">
+                <span class="kpi-dot" style="background:var(--rep-blue)"></span>
+                <span>
+                    @(Attendance is null ? "" :
+                        $"{Attendance.Late} late · {Attendance.Absent} absent · {Attendance.AverageHoursPerDay:0.0}h/day")
+                </span>
+            </div>
+        </MudItem>
+        <MudItem xs="12" sm="6" md="3">
+            <div class="kpi-label">Leave Requests</div>
+            <div class="kpi-value">@(Leave?.TotalRequests.ToString("N0") ?? "—")</div>
+            <div class="kpi-sub">
+                <span class="kpi-dot" style="background:var(--rep-purple)"></span>
+                <span>
+                    @(Leave is null ? "" :
+                        $"{Leave.Pending} pending · {Leave.Approved} approved · {Leave.DaysApprovedThisMonth:0.#}d this mo")
+                </span>
+            </div>
+        </MudItem>
+        <MudItem xs="12" sm="6" md="3">
+            <div class="kpi-label">Payroll (YTD)</div>
+            <div class="kpi-value">@(Payroll is null ? "—" : Payroll.TotalNet.ToString("C0"))</div>
+            <div class="kpi-sub">
+                <span class="kpi-dot" style="background:var(--rep-amber)"></span>
+                <span>
+                    @(Payroll is null ? "" :
+                        $"{Payroll.PayPeriods} periods · {Payroll.Payslips} payslips")
+                </span>
+            </div>
+        </MudItem>
+    </MudGrid>
+</MudPaper>
 
 @* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
    KPI STRIP
@@ -952,10 +1026,62 @@
     private List<ReportRun> Runs { get; set; } = new();
     private List<ComplianceDeadline> ComplianceDeadlines { get; set; } = SeedComplianceDeadlines();
 
-    protected override void OnInitialized()
+    // ─── Live snapshot (API-backed) ───────────────────────────────────
+    private HeadcountSummaryDto? Headcount;
+    private AttendanceSummaryDto? Attendance;
+    private LeaveSummaryDto? Leave;
+    private PayrollSummaryDto? Payroll;
+    private bool LiveLoading;
+    private string? LiveError;
+    private DateTime LiveLoadedAt = DateTime.Now;
+
+    protected override async Task OnInitializedAsync()
     {
         SeedSchedules();
         SeedRuns();
+        await LoadLiveSnapshotAsync();
+    }
+
+    private async Task LoadLiveSnapshotAsync()
+    {
+        LiveLoading = true;
+        LiveError = null;
+        StateHasChanged();
+        try
+        {
+            var headTask = ReportsApi.HeadcountAsync();
+            var attTask  = ReportsApi.AttendanceAsync();
+            var lvTask   = ReportsApi.LeaveAsync();
+            var payTask  = ReportsApi.PayrollAsync();
+            await Task.WhenAll(headTask, attTask, lvTask, payTask);
+
+            var head = headTask.Result;
+            var att  = attTask.Result;
+            var lv   = lvTask.Result;
+            var pay  = payTask.Result;
+
+            Headcount  = head.Success ? head.Value  : null;
+            Attendance = att.Success  ? att.Value   : null;
+            Leave      = lv.Success   ? lv.Value    : null;
+            Payroll    = pay.Success  ? pay.Value   : null;
+
+            var failures = new[] { head.ErrorMessage, att.ErrorMessage, lv.ErrorMessage, pay.ErrorMessage }
+                .Where(e => !string.IsNullOrEmpty(e))
+                .Distinct()
+                .ToList();
+            if (failures.Count > 0) LiveError = string.Join(" · ", failures!);
+
+            LiveLoadedAt = DateTime.Now;
+        }
+        catch (Exception ex)
+        {
+            LiveError = ex.Message;
+        }
+        finally
+        {
+            LiveLoading = false;
+            StateHasChanged();
+        }
     }
 
     private static List<ReportDefinition> SeedDefinitions() => new()

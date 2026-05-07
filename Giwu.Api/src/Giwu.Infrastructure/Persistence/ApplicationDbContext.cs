@@ -58,6 +58,86 @@ public sealed class ApplicationDbContext(
             e.ToTable("tenants");
             e.HasIndex(x => x.Name);
             e.HasQueryFilter(x => x.DeletedAt == null);
+
+            e.Property(x => x.Name).HasMaxLength(256);
+            e.Property(x => x.LegalName).HasMaxLength(256);
+            e.Property(x => x.TradeName).HasMaxLength(256);
+            e.Property(x => x.Address).HasMaxLength(512);
+            e.Property(x => x.City).HasMaxLength(128);
+            e.Property(x => x.Province).HasMaxLength(128);
+            e.Property(x => x.PostalCode).HasMaxLength(16);
+            e.Property(x => x.Phone).HasMaxLength(64);
+            e.Property(x => x.Email).HasMaxLength(256);
+            e.Property(x => x.Website).HasMaxLength(256);
+            e.Property(x => x.Tin).HasMaxLength(32);
+            e.Property(x => x.RdoCode).HasMaxLength(8);
+            e.Property(x => x.SssEmployerNumber).HasMaxLength(32);
+            e.Property(x => x.PhilHealthEmployerNumber).HasMaxLength(32);
+            e.Property(x => x.PagibigEmployerNumber).HasMaxLength(32);
+            e.Property(x => x.DoleEstablishmentNumber).HasMaxLength(64);
+            e.Property(x => x.DefaultCurrency).HasMaxLength(8);
+            e.Property(x => x.DefaultTimeZone).HasMaxLength(64);
+
+            e.OwnsOne(x => x.Branding, br =>
+            {
+                br.Property(p => p.CompanyName).HasColumnName("Brand_CompanyName").HasMaxLength(256);
+                br.Property(p => p.LogoDataUrl).HasColumnName("Brand_LogoDataUrl").HasColumnType("text");
+                br.Property(p => p.IsDark).HasColumnName("Brand_IsDark");
+                br.Property(p => p.AccentColor).HasColumnName("Brand_AccentColor").HasMaxLength(16);
+            });
+
+            e.OwnsOne(x => x.Localization, lo =>
+            {
+                lo.Property(p => p.Timezone).HasColumnName("Loc_Timezone").HasMaxLength(64);
+                lo.Property(p => p.DateFormat).HasColumnName("Loc_DateFormat");
+                lo.Property(p => p.CurrencyCode).HasColumnName("Loc_CurrencyCode").HasMaxLength(8);
+                lo.Property(p => p.CurrencySymbol).HasColumnName("Loc_CurrencySymbol").HasMaxLength(8);
+                lo.Property(p => p.WeekStart).HasColumnName("Loc_WeekStart");
+                lo.Property(p => p.FiscalYearStartMonth).HasColumnName("Loc_FiscalYearStartMonth");
+            });
+
+            e.OwnsOne(x => x.Payroll, pr =>
+            {
+                pr.Property(p => p.PayFrequency).HasColumnName("Pay_Frequency");
+                pr.Property(p => p.FirstCutoffDay).HasColumnName("Pay_FirstCutoffDay");
+                pr.Property(p => p.SecondCutoffDay).HasColumnName("Pay_SecondCutoffDay");
+                pr.Property(p => p.RegularOvertimeRate).HasColumnName("Pay_RegularOvertimeRate").HasPrecision(6, 4);
+                pr.Property(p => p.RestDayOvertimeRate).HasColumnName("Pay_RestDayOvertimeRate").HasPrecision(6, 4);
+                pr.Property(p => p.HolidayOvertimeRate).HasColumnName("Pay_HolidayOvertimeRate").HasPrecision(6, 4);
+                pr.Property(p => p.NightDifferentialRate).HasColumnName("Pay_NightDifferentialRate").HasPrecision(6, 4);
+                pr.Property(p => p.IncludeAllowanceIn13thMonth).HasColumnName("Pay_IncludeAllowanceIn13thMonth");
+                pr.Property(p => p.IncludeOtIn13thMonth).HasColumnName("Pay_IncludeOtIn13thMonth");
+                pr.Property(p => p.RoundStatutoryDeductions).HasColumnName("Pay_RoundStatutoryDeductions");
+            });
+
+            e.OwnsOne(x => x.Notifications, n =>
+            {
+                n.Property(p => p.NewLeaveRequest).HasColumnName("Notif_NewLeaveRequest");
+                n.Property(p => p.LeaveApproved).HasColumnName("Notif_LeaveApproved");
+                n.Property(p => p.LeaveRejected).HasColumnName("Notif_LeaveRejected");
+                n.Property(p => p.PayrollGenerated).HasColumnName("Notif_PayrollGenerated");
+                n.Property(p => p.PayslipReleased).HasColumnName("Notif_PayslipReleased");
+                n.Property(p => p.ContractExpiring).HasColumnName("Notif_ContractExpiring");
+                n.Property(p => p.BirthdayReminder).HasColumnName("Notif_BirthdayReminder");
+                n.Property(p => p.ComplianceDeadline).HasColumnName("Notif_ComplianceDeadline");
+                n.Property(p => p.BenefitsRenewal).HasColumnName("Notif_BenefitsRenewal");
+                n.Property(p => p.NewHireOnboarding).HasColumnName("Notif_NewHireOnboarding");
+            });
+
+            e.OwnsOne(x => x.Security, s =>
+            {
+                s.Property(p => p.RequireMfa).HasColumnName("Sec_RequireMfa");
+                s.Property(p => p.MinPasswordLength).HasColumnName("Sec_MinPasswordLength");
+                s.Property(p => p.RequireUppercase).HasColumnName("Sec_RequireUppercase");
+                s.Property(p => p.RequireLowercase).HasColumnName("Sec_RequireLowercase");
+                s.Property(p => p.RequireNumber).HasColumnName("Sec_RequireNumber");
+                s.Property(p => p.RequireSpecial).HasColumnName("Sec_RequireSpecial");
+                s.Property(p => p.PasswordExpiryDays).HasColumnName("Sec_PasswordExpiryDays");
+                s.Property(p => p.SessionTimeout).HasColumnName("Sec_SessionTimeout");
+                s.Property(p => p.MaxFailedLoginAttempts).HasColumnName("Sec_MaxFailedLoginAttempts");
+                s.Property(p => p.IpWhitelistEnabled).HasColumnName("Sec_IpWhitelistEnabled");
+                s.Property(p => p.IpWhitelist).HasColumnName("Sec_IpWhitelist").HasMaxLength(2048);
+            });
         });
 
         // ── Identity ─────────────────────────────────────────────────────────

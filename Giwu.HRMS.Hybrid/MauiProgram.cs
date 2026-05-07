@@ -9,6 +9,7 @@ using Giwu.HRMS.Hybrid.Services.Leaves;
 using Giwu.HRMS.Hybrid.Services.Payroll;
 using Giwu.HRMS.Hybrid.Services.Recruitment;
 using Giwu.HRMS.Hybrid.Services.Reports;
+using Giwu.HRMS.Hybrid.Services.Settings;
 using Giwu.HRMS.Hybrid.Services.Tenancy;
 using Microsoft.Extensions.Logging;
 using MudBlazor.Services;
@@ -75,6 +76,7 @@ namespace Giwu.HRMS.Hybrid
             builder.Services.AddHttpClient<IPayrollApi,     PayrollApiClient>(ConfigureApiClient).AddHttpMessageHandler<AuthBearerHandler>();
             builder.Services.AddHttpClient<IBenefitsApi,    BenefitsApiClient>(ConfigureApiClient).AddHttpMessageHandler<AuthBearerHandler>();
             builder.Services.AddHttpClient<IReportsApi,     ReportsApiClient>(ConfigureApiClient).AddHttpMessageHandler<AuthBearerHandler>();
+            builder.Services.AddHttpClient<ISettingsApi,    SettingsApiClient>(ConfigureApiClient).AddHttpMessageHandler<AuthBearerHandler>();
 
             builder.Services.AddSingleton<AuthService>();
             builder.Services.AddSingleton<IAuthService>(sp => sp.GetRequiredService<AuthService>());

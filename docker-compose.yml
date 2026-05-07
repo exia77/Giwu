@@ -1,0 +1,62 @@
+name: giwu-dev
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    container_name: giwu-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-giwu}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-giwu_dev_pw}
+      POSTGRES_DB: giwu
+    ports:
+      - "5432:5432"
+    volumes:
+      - giwu_pgdata:/var/lib/postgresql/data
+      - ./deploy/postgres/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-giwu} -d giwu"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: giwu-pgadmin
+    restart: unless-stopped
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_EMAIL:-admin@example.com}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_PASSWORD:-admin}
+      PGADMIN_CONFIG_SERVER_MODE: "False"
+    ports:
+      - "5050:80"
+    volumes:
+      - giwu_pgadmin:/var/lib/pgadmin
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  api:
+    build:
+      context: ./Giwu.Api
+      dockerfile: Dockerfile
+    container_name: giwu-api
+    restart: unless-stopped
+    ports:
+      - "5080:5080"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_URLS=http://+:5080
+      - ConnectionStrings__Db=Host=postgres;Port=5432;Database=giwu;Username=giwu;Password=giwu_dev_pw
+      - ConnectionStrings__Hangfire=Host=postgres;Port=5432;Database=giwu_hangfire;Username=giwu;Password=giwu_dev_pw
+      - Auth__Issuer=giwu-hrms
+      - Auth__Audience=giwu-hrms-clients
+      - Auth__Key=a84fb8b9bb84774a55564b1c614265b536ddcf91193a8abe2f4ae5a36b8c1862
+      - Auth__AccessTokenMinutes=15
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+volumes:
+  giwu_pgdata:
+  giwu_pgadmin:

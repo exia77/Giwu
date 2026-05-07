@@ -1,6 +1,10 @@
 ﻿@page "/settings"
 @using Giwu.HRMS.Hybrid.Services;
+@using Giwu.HRMS.Hybrid.Services.Tenancy
+@using Giwu.HRMS.Hybrid.Services.Settings
 @using Giwu.HRMS.Hybrid.Components.Pages.Settings.Components
+@using Giwu.Contracts.Tenancy
+@using Giwu.Contracts.Settings
 @using static Giwu.HRMS.Hybrid.Models.SettingsFormatting
 @inject ThemeService Theme
 @inject SettingsService SettingsService
@@ -9,7 +13,11 @@
 @inject ISnackbar Snackbar
 @inject IDialogService DialogService
 @inject IJSRuntime JS
+@inject ITenancyApi TenancyApi
+@inject ISettingsApi SettingsApi
 @implements IDisposable
+
+<RoleGuard NavKey="@NavKeys.Settings" />
 
 <PageTitle>Settings</PageTitle>
 
@@ -36,6 +44,18 @@
                     <span class="settings-dirty-dot" title="Unsaved changes"></span>
                 }
                 @if (sec.Id == "localization" && LocaleDirty)
+                {
+                    <span class="settings-dirty-dot" title="Unsaved changes"></span>
+                }
+                @if (sec.Id == "payroll" && PayrollDirty)
+                {
+                    <span class="settings-dirty-dot" title="Unsaved changes"></span>
+                }
+                @if (sec.Id == "notifications" && NotificationsDirty)
+                {
+                    <span class="settings-dirty-dot" title="Unsaved changes"></span>
+                }
+                @if (sec.Id == "security" && SecurityDirty)
                 {
                     <span class="settings-dirty-dot" title="Unsaved changes"></span>
                 }
@@ -169,6 +189,66 @@
                 Dirty="@OrgDirty"
                 OnSave="@SaveOrganization"
                 OnReset="@RevertOrganization" />
+
+            @* Live tenant banner — sourced from /api/tenants/me *@
+            <div class="settings-card" style="border-left:3px solid var(--mud-palette-primary)">
+                <div class="settings-card-header" style="display:flex;align-items:center;justify-content:space-between">
+                    <div>
+                        <MudText Typo="Typo.subtitle2" Class="fw-medium">Connected Tenant</MudText>
+                        <MudText Typo="Typo.caption" Style="opacity:.55">
+                            @if (TenantLoading)
+                            {
+                                <span>Loading from API…</span>
+                            }
+                            else if (Tenant is null)
+                            {
+                                <span style="color:var(--mud-palette-warning)">@(TenantError ?? "Not signed in")</span>
+                            }
+                            else
+                            {
+                                <span>Live from <code>/api/tenants/me</code></span>
+                            }
+                        </MudText>
+                    </div>
+                    <MudIconButton Icon="@Icons.Material.Outlined.Refresh" Size="Size.Small"
+                                   Title="Refresh" Disabled="TenantLoading"
+                                   OnClick="LoadTenantAsync" />
+                </div>
+                @if (Tenant is not null)
+                {
+                    <div class="settings-card-body">
+                        <MudGrid Spacing="2">
+                            <MudItem xs="12" sm="6">
+                                <div class="settings-field-label">Tenant</div>
+                                <MudText Typo="Typo.body2" Class="fw-medium">@Tenant.Name</MudText>
+                            </MudItem>
+                            <MudItem xs="12" sm="6">
+                                <div class="settings-field-label">Legal name</div>
+                                <MudText Typo="Typo.body2">@Tenant.LegalName</MudText>
+                            </MudItem>
+                            <MudItem xs="12" sm="4">
+                                <div class="settings-field-label">TIN</div>
+                                <MudText Typo="Typo.body2">@Tenant.Tin</MudText>
+                            </MudItem>
+                            <MudItem xs="12" sm="4">
+                                <div class="settings-field-label">Currency</div>
+                                <MudText Typo="Typo.body2">@Tenant.DefaultCurrency</MudText>
+                            </MudItem>
+                            <MudItem xs="12" sm="4">
+                                <div class="settings-field-label">Timezone</div>
+                                <MudText Typo="Typo.body2">@Tenant.DefaultTimeZone</MudText>
+                            </MudItem>
+                            <MudItem xs="12">
+                                <MudChip T="string" Size="Size.Small"
+                                         Color="@(Tenant.IsActive ? Color.Success : Color.Default)"
+                                         Variant="Variant.Outlined">
+                                    @(Tenant.IsActive ? "Active" : "Inactive")
+                                </MudChip>
+                            </MudItem>
+                        </MudGrid>
+                    </div>
+                }
+            </div>
 
             <div class="settings-card">
                 <div class="settings-card-header">
@@ -331,8 +411,9 @@
             <SettingsSectionHeader
                 Title="Payroll Defaults"
                 Description="Default values used when creating new pay runs. Individual runs can override these."
-                Dirty="false"
-                OnSave="@SavePayroll" />
+                Dirty="@PayrollDirty"
+                OnSave="@SavePayroll"
+                OnReset="@RevertPayroll" />
 
             <div class="settings-card">
                 <div class="settings-card-header">
@@ -341,7 +422,7 @@
                 <div class="settings-card-body">
                     <MudGrid Spacing="2">
                         <MudItem xs="12" sm="6">
-                            <MudSelect T="PayFrequency" Label="Pay frequency" @bind-Value="SettingsService.Payroll.PayFrequency"
+                            <MudSelect T="PayFrequency" Label="Pay frequency" @bind-Value="DraftPayroll.PayFrequency"
                                        Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true">
                                 @foreach (var f in Enum.GetValues<PayFrequency>())
                                 {
@@ -349,15 +430,15 @@
                                 }
                             </MudSelect>
                         </MudItem>
-                        @if (SettingsService.Payroll.PayFrequency == PayFrequency.SemiMonthly)
+                        @if (DraftPayroll.PayFrequency == PayFrequency.SemiMonthly)
                         {
                             <MudItem xs="6" sm="3">
-                                <MudNumericField T="int" Label="First cutoff day" @bind-Value="SettingsService.Payroll.FirstCutoffDay"
+                                <MudNumericField T="int" Label="First cutoff day" @bind-Value="DraftPayroll.FirstCutoffDay"
                                                  Min="1" Max="28"
                                                  Variant="Variant.Outlined" Margin="Margin.Dense" />
                             </MudItem>
                             <MudItem xs="6" sm="3">
-                                <MudNumericField T="int" Label="Second cutoff day" @bind-Value="SettingsService.Payroll.SecondCutoffDay"
+                                <MudNumericField T="int" Label="Second cutoff day" @bind-Value="DraftPayroll.SecondCutoffDay"
                                                  Min="1" Max="31"
                                                  Variant="Variant.Outlined" Margin="Margin.Dense" />
                             </MudItem>
@@ -373,22 +454,22 @@
                 <div class="settings-card-body">
                     <MudGrid Spacing="2">
                         <MudItem xs="6" sm="3">
-                            <MudNumericField T="decimal" Label="Regular OT" @bind-Value="SettingsService.Payroll.RegularOvertimeRate"
+                            <MudNumericField T="decimal" Label="Regular OT" @bind-Value="DraftPayroll.RegularOvertimeRate"
                                              HelperText="Ã— hourly rate" Step="0.05M"
                                              Variant="Variant.Outlined" Margin="Margin.Dense" />
                         </MudItem>
                         <MudItem xs="6" sm="3">
-                            <MudNumericField T="decimal" Label="Rest day OT" @bind-Value="SettingsService.Payroll.RestDayOvertimeRate"
+                            <MudNumericField T="decimal" Label="Rest day OT" @bind-Value="DraftPayroll.RestDayOvertimeRate"
                                              HelperText="Ã— hourly rate" Step="0.05M"
                                              Variant="Variant.Outlined" Margin="Margin.Dense" />
                         </MudItem>
                         <MudItem xs="6" sm="3">
-                            <MudNumericField T="decimal" Label="Holiday OT" @bind-Value="SettingsService.Payroll.HolidayOvertimeRate"
+                            <MudNumericField T="decimal" Label="Holiday OT" @bind-Value="DraftPayroll.HolidayOvertimeRate"
                                              HelperText="Ã— hourly rate" Step="0.05M"
                                              Variant="Variant.Outlined" Margin="Margin.Dense" />
                         </MudItem>
                         <MudItem xs="6" sm="3">
-                            <MudNumericField T="decimal" Label="Night diff" @bind-Value="SettingsService.Payroll.NightDifferentialRate"
+                            <MudNumericField T="decimal" Label="Night diff" @bind-Value="DraftPayroll.NightDifferentialRate"
                                              HelperText="Ã— hourly rate" Step="0.05M"
                                              Variant="Variant.Outlined" Margin="Margin.Dense" />
                         </MudItem>
@@ -401,13 +482,13 @@
                     <MudText Typo="Typo.subtitle2" Class="fw-medium">Computation Behavior</MudText>
                 </div>
                 <div class="settings-card-body">
-                    <MudCheckBox T="bool" @bind-Value="SettingsService.Payroll.IncludeAllowanceIn13thMonth" Dense="true">
+                    <MudCheckBox T="bool" @bind-Value="DraftPayroll.IncludeAllowanceIn13thMonth" Dense="true">
                         <MudText Typo="Typo.body2">Include allowances in 13th month pay basis</MudText>
                     </MudCheckBox>
-                    <MudCheckBox T="bool" @bind-Value="SettingsService.Payroll.IncludeOtIn13thMonth" Dense="true">
+                    <MudCheckBox T="bool" @bind-Value="DraftPayroll.IncludeOtIn13thMonth" Dense="true">
                         <MudText Typo="Typo.body2">Include overtime in 13th month pay basis</MudText>
                     </MudCheckBox>
-                    <MudCheckBox T="bool" @bind-Value="SettingsService.Payroll.RoundStatutoryDeductions" Dense="true">
+                    <MudCheckBox T="bool" @bind-Value="DraftPayroll.RoundStatutoryDeductions" Dense="true">
                         <MudText Typo="Typo.body2">Round statutory deductions to 2 decimal places</MudText>
                     </MudCheckBox>
                 </div>
@@ -420,8 +501,9 @@
             <SettingsSectionHeader
                 Title="Notifications"
                 Description="Choose how you're notified for each type of HR event."
-                Dirty="false"
-                OnSave="@SaveNotifications" />
+                Dirty="@NotificationsDirty"
+                OnSave="@SaveNotifications"
+                OnReset="@RevertNotifications" />
 
             <div class="settings-card">
                 <div class="settings-card-header">
@@ -433,44 +515,44 @@
                         {
                             ("New leave request",
                              "When an employee files a leave request that needs your approval.",
-                             () => SettingsService.Notifications.NewLeaveRequest,
-                             v => SettingsService.Notifications.NewLeaveRequest = v),
+                             () => DraftNotifications.NewLeaveRequest,
+                             v => DraftNotifications.NewLeaveRequest = v),
                             ("Leave approved",
                              "When a request you filed (or one in your team) is approved.",
-                             () => SettingsService.Notifications.LeaveApproved,
-                             v => SettingsService.Notifications.LeaveApproved = v),
+                             () => DraftNotifications.LeaveApproved,
+                             v => DraftNotifications.LeaveApproved = v),
                             ("Leave rejected",
                              "When a request you filed is rejected.",
-                             () => SettingsService.Notifications.LeaveRejected,
-                             v => SettingsService.Notifications.LeaveRejected = v),
+                             () => DraftNotifications.LeaveRejected,
+                             v => DraftNotifications.LeaveRejected = v),
                             ("Payroll generated",
                              "When a new pay run moves to Calculated state.",
-                             () => SettingsService.Notifications.PayrollGenerated,
-                             v => SettingsService.Notifications.PayrollGenerated = v),
+                             () => DraftNotifications.PayrollGenerated,
+                             v => DraftNotifications.PayrollGenerated = v),
                             ("Payslip released",
                              "When a payslip is released to an employee.",
-                             () => SettingsService.Notifications.PayslipReleased,
-                             v => SettingsService.Notifications.PayslipReleased = v),
+                             () => DraftNotifications.PayslipReleased,
+                             v => DraftNotifications.PayslipReleased = v),
                             ("Contract expiring",
                              "Alerts 30 days before a probationary or fixed-term contract ends.",
-                             () => SettingsService.Notifications.ContractExpiring,
-                             v => SettingsService.Notifications.ContractExpiring = v),
+                             () => DraftNotifications.ContractExpiring,
+                             v => DraftNotifications.ContractExpiring = v),
                             ("Birthday reminder",
                              "Daily roundup of upcoming employee birthdays.",
-                             () => SettingsService.Notifications.BirthdayReminder,
-                             v => SettingsService.Notifications.BirthdayReminder = v),
+                             () => DraftNotifications.BirthdayReminder,
+                             v => DraftNotifications.BirthdayReminder = v),
                             ("Compliance deadline",
                              "Alerts before BIR, SSS, PhilHealth, Pag-IBIG, or DOLE filings are due.",
-                             () => SettingsService.Notifications.ComplianceDeadline,
-                             v => SettingsService.Notifications.ComplianceDeadline = v),
+                             () => DraftNotifications.ComplianceDeadline,
+                             v => DraftNotifications.ComplianceDeadline = v),
                             ("Benefits renewal",
                              "When a benefit program is approaching its renewal date.",
-                             () => SettingsService.Notifications.BenefitsRenewal,
-                             v => SettingsService.Notifications.BenefitsRenewal = v),
+                             () => DraftNotifications.BenefitsRenewal,
+                             v => DraftNotifications.BenefitsRenewal = v),
                             ("New hire onboarding",
                              "Alerts on the first day of new hires for HR check-ins.",
-                             () => SettingsService.Notifications.NewHireOnboarding,
-                             v => SettingsService.Notifications.NewHireOnboarding = v),
+                             () => DraftNotifications.NewHireOnboarding,
+                             v => DraftNotifications.NewHireOnboarding = v),
                         };
                     }
                     @foreach (var n in notifs)
@@ -503,8 +585,9 @@
             <SettingsSectionHeader
                 Title="Security"
                 Description="Password policy, multi-factor authentication, and session controls."
-                Dirty="false"
-                OnSave="@SaveSecurity" />
+                Dirty="@SecurityDirty"
+                OnSave="@SaveSecurity"
+                OnReset="@RevertSecurity" />
 
             <div class="settings-card">
                 <div class="settings-card-header">
@@ -516,7 +599,7 @@
                             <div class="settings-field-label" style="margin-bottom:2px">Multi-factor authentication</div>
                             <div class="settings-helper" style="margin-top:0">Require a one-time code from an authenticator app at sign-in.</div>
                         </div>
-                        <MudSwitch T="bool" @bind-Value="SettingsService.Security.RequireMfa" Color="Color.Primary" />
+                        <MudSwitch T="bool" @bind-Value="DraftSecurity.RequireMfa" Color="Color.Primary" />
                     </div>
                 </div>
             </div>
@@ -528,27 +611,27 @@
                 <div class="settings-card-body">
                     <MudGrid Spacing="2">
                         <MudItem xs="12" sm="6">
-                            <MudNumericField T="int" Label="Minimum length" @bind-Value="SettingsService.Security.MinPasswordLength"
+                            <MudNumericField T="int" Label="Minimum length" @bind-Value="DraftSecurity.MinPasswordLength"
                                              Min="6" Max="64"
                                              Variant="Variant.Outlined" Margin="Margin.Dense" />
                         </MudItem>
                         <MudItem xs="12" sm="6">
-                            <MudNumericField T="int" Label="Expires after (days, 0 = never)" @bind-Value="SettingsService.Security.PasswordExpiryDays"
+                            <MudNumericField T="int" Label="Expires after (days, 0 = never)" @bind-Value="DraftSecurity.PasswordExpiryDays"
                                              Min="0" Max="365"
                                              Variant="Variant.Outlined" Margin="Margin.Dense" />
                         </MudItem>
                     </MudGrid>
                     <div class="settings-checkbox-grid">
-                        <MudCheckBox T="bool" @bind-Value="SettingsService.Security.RequireUppercase" Dense="true">
+                        <MudCheckBox T="bool" @bind-Value="DraftSecurity.RequireUppercase" Dense="true">
                             <MudText Typo="Typo.body2">Uppercase letter</MudText>
                         </MudCheckBox>
-                        <MudCheckBox T="bool" @bind-Value="SettingsService.Security.RequireLowercase" Dense="true">
+                        <MudCheckBox T="bool" @bind-Value="DraftSecurity.RequireLowercase" Dense="true">
                             <MudText Typo="Typo.body2">Lowercase letter</MudText>
                         </MudCheckBox>
-                        <MudCheckBox T="bool" @bind-Value="SettingsService.Security.RequireNumber" Dense="true">
+                        <MudCheckBox T="bool" @bind-Value="DraftSecurity.RequireNumber" Dense="true">
                             <MudText Typo="Typo.body2">Number</MudText>
                         </MudCheckBox>
-                        <MudCheckBox T="bool" @bind-Value="SettingsService.Security.RequireSpecial" Dense="true">
+                        <MudCheckBox T="bool" @bind-Value="DraftSecurity.RequireSpecial" Dense="true">
                             <MudText Typo="Typo.body2">Special character</MudText>
                         </MudCheckBox>
                     </div>
@@ -562,7 +645,7 @@
                 <div class="settings-card-body">
                     <MudGrid Spacing="2">
                         <MudItem xs="12" sm="6">
-                            <MudSelect T="SessionTimeout" Label="Idle timeout" @bind-Value="SettingsService.Security.SessionTimeout"
+                            <MudSelect T="SessionTimeout" Label="Idle timeout" @bind-Value="DraftSecurity.SessionTimeout"
                                        Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true">
                                 @foreach (var t in Enum.GetValues<SessionTimeout>())
                                 {
@@ -571,7 +654,7 @@
                             </MudSelect>
                         </MudItem>
                         <MudItem xs="12" sm="6">
-                            <MudNumericField T="int" Label="Max failed login attempts" @bind-Value="SettingsService.Security.MaxFailedLoginAttempts"
+                            <MudNumericField T="int" Label="Max failed login attempts" @bind-Value="DraftSecurity.MaxFailedLoginAttempts"
                                              Min="3" Max="10"
                                              Variant="Variant.Outlined" Margin="Margin.Dense" />
                         </MudItem>
@@ -1010,7 +1093,24 @@
     private LocalizationSettings DraftLocale { get; set; } = new();
     private bool LocaleDirty => !LocaleEquals(DraftLocale, SettingsService.Localization);
 
-    protected override void OnInitialized()
+    // ─── Payroll draft state ────────────────────────────────────────────
+    private PayrollDefaults DraftPayroll { get; set; } = new();
+    private bool PayrollDirty => !PayrollEquals(DraftPayroll, SettingsService.Payroll);
+
+    // ─── Notifications draft state ──────────────────────────────────────
+    private NotificationSettings DraftNotifications { get; set; } = new();
+    private bool NotificationsDirty => !NotificationsEquals(DraftNotifications, SettingsService.Notifications);
+
+    // ─── Security draft state ───────────────────────────────────────────
+    private SecuritySettings DraftSecurity { get; set; } = new();
+    private bool SecurityDirty => !SecurityEquals(DraftSecurity, SettingsService.Security);
+
+    // ─── Live tenant (API-backed) ─────────────────────────────────────
+    private TenantDto? Tenant;
+    private bool TenantLoading;
+    private string? TenantError;
+
+    protected override async Task OnInitializedAsync()
     {
         // Page-level guard: only roles whose permission matrix grants Settings can land here.
         if (!Roles.CanAccess(NavKeys.Settings))
@@ -1022,9 +1122,186 @@
         ResetBrandingDrafts();
         ResetOrgDrafts();
         ResetLocaleDrafts();
+        ResetPayrollDrafts();
+        ResetNotificationsDrafts();
+        ResetSecurityDrafts();
         Theme.OnChange += OnThemeChange;
         SettingsService.OnChange += StateHasChanged;
         Roles.OnChange += OnRolesChange;
+
+        await Task.WhenAll(
+            LoadTenantAsync(),
+            LoadBrandingAsync(),
+            LoadOrganizationAsync(),
+            LoadLocalizationAsync(),
+            LoadPayrollAsync(),
+            LoadNotificationsAsync(),
+            LoadSecurityAsync());
+    }
+
+    private async Task LoadBrandingAsync()
+    {
+        var res = await SettingsApi.GetBrandingAsync();
+        if (res.Success && res.Value is { } b)
+        {
+            Theme.SetCompanyName(b.CompanyName);
+            Theme.SetLogo(b.LogoDataUrl);
+            Theme.SetDark(b.IsDark);
+            SettingsService.AccentColor = b.AccentColor;
+            ResetBrandingDrafts();
+            try
+            {
+                await JS.InvokeVoidAsync("document.documentElement.setAttribute",
+                    "data-theme", b.IsDark ? "dark" : "light");
+            }
+            catch { /* JS may be unavailable in prerender */ }
+            StateHasChanged();
+        }
+    }
+
+    private async Task LoadLocalizationAsync()
+    {
+        var res = await SettingsApi.GetLocalizationAsync();
+        if (res.Success && res.Value is { } l)
+        {
+            var dst = SettingsService.Localization;
+            dst.Timezone             = l.Timezone;
+            dst.DateFormat           = (DateFormat)(int)l.DateFormat;
+            dst.CurrencyCode         = l.CurrencyCode;
+            dst.CurrencySymbol       = l.CurrencySymbol;
+            dst.WeekStart            = (WeekStart)(int)l.WeekStart;
+            dst.FiscalYearStartMonth = l.FiscalYearStartMonth;
+            ResetLocaleDrafts();
+            StateHasChanged();
+        }
+    }
+
+    private async Task LoadPayrollAsync()
+    {
+        var res = await SettingsApi.GetPayrollAsync();
+        if (res.Success && res.Value is { } p)
+        {
+            var dst = SettingsService.Payroll;
+            dst.PayFrequency                = (PayFrequency)(int)p.PayFrequency;
+            dst.FirstCutoffDay              = p.FirstCutoffDay;
+            dst.SecondCutoffDay             = p.SecondCutoffDay;
+            dst.RegularOvertimeRate         = p.RegularOvertimeRate;
+            dst.RestDayOvertimeRate         = p.RestDayOvertimeRate;
+            dst.HolidayOvertimeRate         = p.HolidayOvertimeRate;
+            dst.NightDifferentialRate       = p.NightDifferentialRate;
+            dst.IncludeAllowanceIn13thMonth = p.IncludeAllowanceIn13thMonth;
+            dst.IncludeOtIn13thMonth        = p.IncludeOtIn13thMonth;
+            dst.RoundStatutoryDeductions    = p.RoundStatutoryDeductions;
+            ResetPayrollDrafts();
+            StateHasChanged();
+        }
+    }
+
+    private async Task LoadNotificationsAsync()
+    {
+        var res = await SettingsApi.GetNotificationsAsync();
+        if (res.Success && res.Value is { } n)
+        {
+            var dst = SettingsService.Notifications;
+            dst.NewLeaveRequest    = (NotificationChannel)(int)n.NewLeaveRequest;
+            dst.LeaveApproved      = (NotificationChannel)(int)n.LeaveApproved;
+            dst.LeaveRejected      = (NotificationChannel)(int)n.LeaveRejected;
+            dst.PayrollGenerated   = (NotificationChannel)(int)n.PayrollGenerated;
+            dst.PayslipReleased    = (NotificationChannel)(int)n.PayslipReleased;
+            dst.ContractExpiring   = (NotificationChannel)(int)n.ContractExpiring;
+            dst.BirthdayReminder   = (NotificationChannel)(int)n.BirthdayReminder;
+            dst.ComplianceDeadline = (NotificationChannel)(int)n.ComplianceDeadline;
+            dst.BenefitsRenewal    = (NotificationChannel)(int)n.BenefitsRenewal;
+            dst.NewHireOnboarding  = (NotificationChannel)(int)n.NewHireOnboarding;
+            ResetNotificationsDrafts();
+            StateHasChanged();
+        }
+    }
+
+    private async Task LoadSecurityAsync()
+    {
+        var res = await SettingsApi.GetSecurityAsync();
+        if (res.Success && res.Value is { } s)
+        {
+            var dst = SettingsService.Security;
+            dst.RequireMfa             = s.RequireMfa;
+            dst.MinPasswordLength      = s.MinPasswordLength;
+            dst.RequireUppercase       = s.RequireUppercase;
+            dst.RequireLowercase       = s.RequireLowercase;
+            dst.RequireNumber          = s.RequireNumber;
+            dst.RequireSpecial         = s.RequireSpecial;
+            dst.PasswordExpiryDays     = s.PasswordExpiryDays;
+            dst.SessionTimeout         = (SessionTimeout)(int)s.SessionTimeout;
+            dst.MaxFailedLoginAttempts = s.MaxFailedLoginAttempts;
+            dst.IpWhitelistEnabled     = s.IpWhitelistEnabled;
+            dst.IpWhitelist            = s.IpWhitelist;
+            ResetSecurityDrafts();
+            StateHasChanged();
+        }
+    }
+
+    private async Task LoadOrganizationAsync()
+    {
+        var res = await SettingsApi.GetOrganizationAsync();
+        if (res.Success && res.Value is { } o)
+        {
+            ApplyOrgDtoToService(o);
+            ResetOrgDrafts();
+            StateHasChanged();
+        }
+        // If load fails (offline, not signed in, etc.) we silently keep the seeded
+        // local defaults so the UI stays usable. The user will see a toast on Save
+        // if the server is unreachable.
+    }
+
+    private void ApplyOrgDtoToService(OrganizationProfileDto o)
+    {
+        var t = SettingsService.Organization;
+        t.LegalName            = o.LegalName;
+        t.TradeName            = o.TradeName;
+        t.Address              = o.Address;
+        t.City                 = o.City;
+        t.Province             = o.Province;
+        t.PostalCode           = o.PostalCode;
+        t.Phone                = o.Phone;
+        t.Email                = o.Email;
+        t.Website              = o.Website;
+        t.Tin                  = o.Tin;
+        t.RdoCode              = o.RdoCode;
+        t.SssEmployerNo        = o.SssEmployerNo;
+        t.PhilHealthEmployerNo = o.PhilHealthEmployerNo;
+        t.PagibigEmployerNo    = o.PagibigEmployerNo;
+        t.DoleEstablishmentNo  = o.DoleEstablishmentNo;
+    }
+
+    private async Task LoadTenantAsync()
+    {
+        TenantLoading = true;
+        TenantError = null;
+        StateHasChanged();
+        try
+        {
+            var res = await TenancyApi.GetCurrentAsync();
+            if (res.Success)
+            {
+                Tenant = res.Value;
+            }
+            else
+            {
+                Tenant = null;
+                TenantError = res.ErrorMessage;
+            }
+        }
+        catch (Exception ex)
+        {
+            Tenant = null;
+            TenantError = ex.Message;
+        }
+        finally
+        {
+            TenantLoading = false;
+            StateHasChanged();
+        }
     }
 
     private void OnThemeChange()
@@ -1067,6 +1344,17 @@
 
     private async Task SaveBranding()
     {
+        var body = new UpdateBrandingSettingsRequest(
+            DraftCompanyName, DraftLogoDataUrl, DraftIsDark,
+            string.IsNullOrWhiteSpace(DraftAccent) ? "#1D9E75" : DraftAccent);
+
+        var res = await SettingsApi.UpdateBrandingAsync(body);
+        if (!res.Success)
+        {
+            Snackbar.Add($"Save failed: {res.ErrorMessage}", Severity.Error);
+            return;
+        }
+
         Theme.SetCompanyName(DraftCompanyName);
         Theme.SetLogo(DraftLogoDataUrl);
         Theme.SetDark(DraftIsDark);
@@ -1101,11 +1389,29 @@
     // â”€â”€â”€ Organization actions â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     private void ResetOrgDrafts() => CopyOrg(SettingsService.Organization, DraftOrg);
 
-    private void SaveOrganization()
+    private async Task SaveOrganization()
     {
+        var body = new UpdateOrganizationProfileRequest(
+            DraftOrg.LegalName, DraftOrg.TradeName,
+            DraftOrg.Address, DraftOrg.City, DraftOrg.Province, DraftOrg.PostalCode,
+            DraftOrg.Phone, DraftOrg.Email, DraftOrg.Website,
+            DraftOrg.Tin, DraftOrg.RdoCode,
+            DraftOrg.SssEmployerNo, DraftOrg.PhilHealthEmployerNo, DraftOrg.PagibigEmployerNo,
+            DraftOrg.DoleEstablishmentNo);
+
+        var res = await SettingsApi.UpdateOrganizationAsync(body);
+        if (!res.Success)
+        {
+            Snackbar.Add($"Save failed: {res.ErrorMessage}", Severity.Error);
+            return;
+        }
+
         CopyOrg(DraftOrg, SettingsService.Organization);
         SettingsService.NotifyChanged();
         Snackbar.Add("Organization details saved", Severity.Success);
+
+        // Refresh the live tenant banner so name/TIN updates show immediately.
+        await LoadTenantAsync();
     }
 
     private void RevertOrganization() => ResetOrgDrafts();
@@ -1113,8 +1419,23 @@
     // â”€â”€â”€ Localization actions â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     private void ResetLocaleDrafts() => CopyLocale(SettingsService.Localization, DraftLocale);
 
-    private void SaveLocalization()
+    private async Task SaveLocalization()
     {
+        var body = new UpdateLocalizationSettingsRequest(
+            DraftLocale.Timezone,
+            (Giwu.Domain.Tenancy.DateFormat)(int)DraftLocale.DateFormat,
+            DraftLocale.CurrencyCode,
+            DraftLocale.CurrencySymbol,
+            (Giwu.Domain.Tenancy.WeekStart)(int)DraftLocale.WeekStart,
+            DraftLocale.FiscalYearStartMonth);
+
+        var res = await SettingsApi.UpdateLocalizationAsync(body);
+        if (!res.Success)
+        {
+            Snackbar.Add($"Save failed: {res.ErrorMessage}", Severity.Error);
+            return;
+        }
+
         CopyLocale(DraftLocale, SettingsService.Localization);
         SettingsService.NotifyChanged();
         Snackbar.Add("Localization saved", Severity.Success);
@@ -1123,23 +1444,90 @@
     private void RevertLocalization() => ResetLocaleDrafts();
 
     // â”€â”€â”€ Other section save handlers (settings are bound directly) â”€â”€
-    private void SavePayroll()
+    private void ResetPayrollDrafts() => CopyPayroll(SettingsService.Payroll, DraftPayroll);
+
+    private async Task SavePayroll()
     {
+        var p = DraftPayroll;
+        var body = new UpdatePayrollDefaultsRequest(
+            (Giwu.Domain.Tenancy.PayFrequency)(int)p.PayFrequency,
+            p.FirstCutoffDay, p.SecondCutoffDay,
+            p.RegularOvertimeRate, p.RestDayOvertimeRate,
+            p.HolidayOvertimeRate, p.NightDifferentialRate,
+            p.IncludeAllowanceIn13thMonth, p.IncludeOtIn13thMonth,
+            p.RoundStatutoryDeductions);
+
+        var res = await SettingsApi.UpdatePayrollAsync(body);
+        if (!res.Success)
+        {
+            Snackbar.Add($"Save failed: {res.ErrorMessage}", Severity.Error);
+            return;
+        }
+
+        CopyPayroll(DraftPayroll, SettingsService.Payroll);
         SettingsService.NotifyChanged();
         Snackbar.Add("Payroll defaults saved", Severity.Success);
     }
 
-    private void SaveNotifications()
+    private void RevertPayroll() => ResetPayrollDrafts();
+
+    private void ResetNotificationsDrafts() => CopyNotifications(SettingsService.Notifications, DraftNotifications);
+
+    private async Task SaveNotifications()
     {
+        var n = DraftNotifications;
+        var body = new UpdateNotificationSettingsRequest(
+            (Giwu.Domain.Tenancy.NotificationChannel)(int)n.NewLeaveRequest,
+            (Giwu.Domain.Tenancy.NotificationChannel)(int)n.LeaveApproved,
+            (Giwu.Domain.Tenancy.NotificationChannel)(int)n.LeaveRejected,
+            (Giwu.Domain.Tenancy.NotificationChannel)(int)n.PayrollGenerated,
+            (Giwu.Domain.Tenancy.NotificationChannel)(int)n.PayslipReleased,
+            (Giwu.Domain.Tenancy.NotificationChannel)(int)n.ContractExpiring,
+            (Giwu.Domain.Tenancy.NotificationChannel)(int)n.BirthdayReminder,
+            (Giwu.Domain.Tenancy.NotificationChannel)(int)n.ComplianceDeadline,
+            (Giwu.Domain.Tenancy.NotificationChannel)(int)n.BenefitsRenewal,
+            (Giwu.Domain.Tenancy.NotificationChannel)(int)n.NewHireOnboarding);
+
+        var res = await SettingsApi.UpdateNotificationsAsync(body);
+        if (!res.Success)
+        {
+            Snackbar.Add($"Save failed: {res.ErrorMessage}", Severity.Error);
+            return;
+        }
+
+        CopyNotifications(DraftNotifications, SettingsService.Notifications);
         SettingsService.NotifyChanged();
         Snackbar.Add("Notification preferences saved", Severity.Success);
     }
 
-    private void SaveSecurity()
+    private void RevertNotifications() => ResetNotificationsDrafts();
+
+    private void ResetSecurityDrafts() => CopySecurity(SettingsService.Security, DraftSecurity);
+
+    private async Task SaveSecurity()
     {
+        var s = DraftSecurity;
+        var body = new UpdateSecuritySettingsRequest(
+            s.RequireMfa, s.MinPasswordLength,
+            s.RequireUppercase, s.RequireLowercase, s.RequireNumber, s.RequireSpecial,
+            s.PasswordExpiryDays,
+            (Giwu.Domain.Tenancy.SessionTimeout)(int)s.SessionTimeout,
+            s.MaxFailedLoginAttempts,
+            s.IpWhitelistEnabled, s.IpWhitelist);
+
+        var res = await SettingsApi.UpdateSecurityAsync(body);
+        if (!res.Success)
+        {
+            Snackbar.Add($"Save failed: {res.ErrorMessage}", Severity.Error);
+            return;
+        }
+
+        CopySecurity(DraftSecurity, SettingsService.Security);
         SettingsService.NotifyChanged();
         Snackbar.Add("Security settings saved", Severity.Success);
     }
+
+    private void RevertSecurity() => ResetSecurityDrafts();
 
     // â”€â”€â”€ Integration actions â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     private void ConnectIntegration(IntegrationStatus integ)
@@ -1162,17 +1550,31 @@
         var options = new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true };
         var dialog = await DialogService.ShowAsync<ResetSettingsDialog>("Reset Settings", new DialogParameters(), options);
         var result = await dialog.Result;
-        if (result is not null && !result.Canceled)
+        if (result is null || result.Canceled) return;
+
+        var res = await SettingsApi.ResetToDefaultsAsync();
+        if (!res.Success)
         {
-            SettingsService.ResetToDefaults();
-            Theme.SetCompanyName("Giwu HR");
-            Theme.SetLogo("");
-            Theme.SetDark(false);
-            ResetBrandingDrafts();
-            ResetOrgDrafts();
-            ResetLocaleDrafts();
-            Snackbar.Add("All settings reset to defaults", Severity.Warning);
+            Snackbar.Add($"Reset failed: {res.ErrorMessage}", Severity.Error);
+            return;
         }
+
+        // Refresh local state from the server's now-default values.
+        SettingsService.ResetToDefaults();
+        await Task.WhenAll(
+            LoadBrandingAsync(),
+            LoadLocalizationAsync(),
+            LoadPayrollAsync(),
+            LoadNotificationsAsync(),
+            LoadSecurityAsync());
+
+        ResetBrandingDrafts();
+        ResetOrgDrafts();
+        ResetLocaleDrafts();
+        ResetPayrollDrafts();
+        ResetNotificationsDrafts();
+        ResetSecurityDrafts();
+        Snackbar.Add("All settings reset to defaults", Severity.Warning);
     }
 
     // â”€â”€â”€ Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
@@ -1232,5 +1634,90 @@
         return a.Timezone == b.Timezone && a.DateFormat == b.DateFormat
             && a.CurrencyCode == b.CurrencyCode && a.CurrencySymbol == b.CurrencySymbol
             && a.WeekStart == b.WeekStart && a.FiscalYearStartMonth == b.FiscalYearStartMonth;
+    }
+
+    private static void CopyPayroll(PayrollDefaults from, PayrollDefaults to)
+    {
+        to.PayFrequency                = from.PayFrequency;
+        to.FirstCutoffDay              = from.FirstCutoffDay;
+        to.SecondCutoffDay             = from.SecondCutoffDay;
+        to.RegularOvertimeRate         = from.RegularOvertimeRate;
+        to.RestDayOvertimeRate         = from.RestDayOvertimeRate;
+        to.HolidayOvertimeRate         = from.HolidayOvertimeRate;
+        to.NightDifferentialRate       = from.NightDifferentialRate;
+        to.IncludeAllowanceIn13thMonth = from.IncludeAllowanceIn13thMonth;
+        to.IncludeOtIn13thMonth        = from.IncludeOtIn13thMonth;
+        to.RoundStatutoryDeductions    = from.RoundStatutoryDeductions;
+    }
+
+    private static bool PayrollEquals(PayrollDefaults a, PayrollDefaults b)
+    {
+        return a.PayFrequency == b.PayFrequency
+            && a.FirstCutoffDay == b.FirstCutoffDay && a.SecondCutoffDay == b.SecondCutoffDay
+            && a.RegularOvertimeRate == b.RegularOvertimeRate
+            && a.RestDayOvertimeRate == b.RestDayOvertimeRate
+            && a.HolidayOvertimeRate == b.HolidayOvertimeRate
+            && a.NightDifferentialRate == b.NightDifferentialRate
+            && a.IncludeAllowanceIn13thMonth == b.IncludeAllowanceIn13thMonth
+            && a.IncludeOtIn13thMonth == b.IncludeOtIn13thMonth
+            && a.RoundStatutoryDeductions == b.RoundStatutoryDeductions;
+    }
+
+    private static void CopyNotifications(NotificationSettings from, NotificationSettings to)
+    {
+        to.NewLeaveRequest    = from.NewLeaveRequest;
+        to.LeaveApproved      = from.LeaveApproved;
+        to.LeaveRejected      = from.LeaveRejected;
+        to.PayrollGenerated   = from.PayrollGenerated;
+        to.PayslipReleased    = from.PayslipReleased;
+        to.ContractExpiring   = from.ContractExpiring;
+        to.BirthdayReminder   = from.BirthdayReminder;
+        to.ComplianceDeadline = from.ComplianceDeadline;
+        to.BenefitsRenewal    = from.BenefitsRenewal;
+        to.NewHireOnboarding  = from.NewHireOnboarding;
+    }
+
+    private static bool NotificationsEquals(NotificationSettings a, NotificationSettings b)
+    {
+        return a.NewLeaveRequest    == b.NewLeaveRequest
+            && a.LeaveApproved      == b.LeaveApproved
+            && a.LeaveRejected      == b.LeaveRejected
+            && a.PayrollGenerated   == b.PayrollGenerated
+            && a.PayslipReleased    == b.PayslipReleased
+            && a.ContractExpiring   == b.ContractExpiring
+            && a.BirthdayReminder   == b.BirthdayReminder
+            && a.ComplianceDeadline == b.ComplianceDeadline
+            && a.BenefitsRenewal    == b.BenefitsRenewal
+            && a.NewHireOnboarding  == b.NewHireOnboarding;
+    }
+
+    private static void CopySecurity(SecuritySettings from, SecuritySettings to)
+    {
+        to.RequireMfa             = from.RequireMfa;
+        to.MinPasswordLength      = from.MinPasswordLength;
+        to.RequireUppercase       = from.RequireUppercase;
+        to.RequireLowercase       = from.RequireLowercase;
+        to.RequireNumber          = from.RequireNumber;
+        to.RequireSpecial         = from.RequireSpecial;
+        to.PasswordExpiryDays     = from.PasswordExpiryDays;
+        to.SessionTimeout         = from.SessionTimeout;
+        to.MaxFailedLoginAttempts = from.MaxFailedLoginAttempts;
+        to.IpWhitelistEnabled     = from.IpWhitelistEnabled;
+        to.IpWhitelist            = from.IpWhitelist;
+    }
+
+    private static bool SecurityEquals(SecuritySettings a, SecuritySettings b)
+    {
+        return a.RequireMfa == b.RequireMfa
+            && a.MinPasswordLength == b.MinPasswordLength
+            && a.RequireUppercase == b.RequireUppercase
+            && a.RequireLowercase == b.RequireLowercase
+            && a.RequireNumber == b.RequireNumber
+            && a.RequireSpecial == b.RequireSpecial
+            && a.PasswordExpiryDays == b.PasswordExpiryDays
+            && a.SessionTimeout == b.SessionTimeout
+            && a.MaxFailedLoginAttempts == b.MaxFailedLoginAttempts
+            && a.IpWhitelistEnabled == b.IpWhitelistEnabled
+            && a.IpWhitelist == b.IpWhitelist;
     }
 }
