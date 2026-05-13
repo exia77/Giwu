@@ -1,7 +1,10 @@
 using FluentValidation;
 using Giwu.Application.Common;
+using Giwu.Application.Notifications;
 using Giwu.Contracts.Leaves;
+using Giwu.Domain.Identity;
 using Giwu.Domain.Leaves;
+using Giwu.Domain.Notifications;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 
@@ -26,7 +29,8 @@ public sealed class FileLeaveRequestValidator : AbstractValidator<FileLeaveReque
 
 internal sealed class FileLeaveRequestHandler(
     IApplicationDbContext db,
-    ICurrentUser user)
+    ICurrentUser user,
+    INotificationDispatcher notifications)
     : IRequestHandler<FileLeaveRequestCommand, Result<LeaveRequestDto>>
 {
     public async Task<Result<LeaveRequestDto>> Handle(FileLeaveRequestCommand cmd, CancellationToken ct)
@@ -81,6 +85,17 @@ internal sealed class FileLeaveRequestHandler(
         };
         db.LeaveRequests.Add(req);
         balance.Pending += days;
+
+        // Notify HR Admins so they can review/approve. Staged on the same
+        // DbContext; SaveChanges below commits everything atomically.
+        await notifications.NotifyRoleAsync(
+            roleName: SystemRoles.HrAdmin,
+            type:     NotificationType.LeaveFiled,
+            title:    $"Leave request from {emp.FullName}",
+            body:     $"{type.Code} · {req.StartDate:MMM d} – {req.EndDate:MMM d} ({req.DaysRequested}d)",
+            relatedEntityId:   req.Id,
+            relatedEntityType: "LeaveRequest",
+            ct: ct);
 
         await db.SaveChangesAsync(ct);
 

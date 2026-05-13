@@ -58,6 +58,28 @@ public sealed class GetTodayAttendanceEndpoint : IEndpoint
         (await m.Send(new GetTodayAttendanceQuery(employeeId), ct)).ToHttp();
 }
 
+public sealed class UpdateAttendanceEndpoint : IEndpoint
+{
+    public void Map(IEndpointRouteBuilder app) =>
+        app.MapPut("/api/attendance/{id:guid}", Handle)
+           .RequireAuthorization(Permissions.Attendance.Manage)
+           .WithTags("Attendance");
+
+    private static async Task<IResult> Handle(Guid id, UpdateAttendanceRequest body, IMediator m, CancellationToken ct) =>
+        (await m.Send(new UpdateAttendanceCommand(id, body), ct)).ToHttp();
+}
+
+public sealed class ManualAttendanceEntryEndpoint : IEndpoint
+{
+    public void Map(IEndpointRouteBuilder app) =>
+        app.MapPost("/api/attendance/manual", Handle)
+           .RequireAuthorization(Permissions.Attendance.Manage)
+           .WithTags("Attendance");
+
+    private static async Task<IResult> Handle(ManualAttendanceEntryRequest body, IMediator m, CancellationToken ct) =>
+        (await m.Send(new ManualAttendanceEntryCommand(body), ct)).ToHttp();
+}
+
 // ── Overtime ────────────────────────────────────────────────────────────────
 public sealed class ListOvertimeRequestsEndpoint : IEndpoint
 {

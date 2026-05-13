@@ -39,7 +39,7 @@
 
     private void Confirm()
     {
-        var fullReason = string.IsNullOrWhiteSpace(Notes) ? Reason : $"{Reason} â€” {Notes}";
+        var fullReason = string.IsNullOrWhiteSpace(Notes) ? Reason : $"{Reason} — {Notes}";
         MudDialog.Close(DialogResult.Ok<string>(fullReason));
     }
 }

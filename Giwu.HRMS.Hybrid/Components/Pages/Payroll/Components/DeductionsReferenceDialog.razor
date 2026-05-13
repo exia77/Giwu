@@ -10,7 +10,7 @@
                     <span>
                         @if (!string.IsNullOrEmpty(HighlightLabel))
                         {
-                            <span><strong>@HighlightLabel</strong> Â· </span>
+                            <span><strong>@HighlightLabel</strong> · </span>
                         }
                         Showing brackets that apply to a basic salary of <strong>@Money(HighlightSalary.Value)</strong>.
                     </span>
@@ -21,25 +21,25 @@
         <MudTabs Elevation="0" Rounded="false" ApplyEffectsToContainer="false"
                  PanelClass="ref-tab-panel" TabPanelClass="ref-tab-item">
 
-            @* â•â• SSS TAB â•â• *@
+            @* ══ SSS TAB ══ *@
             <MudTabPanel Text="SSS" Icon="@Icons.Material.Outlined.AccountBalance">
                 <div class="ref-section">
                     <div class="ref-section-title">SSS Contribution Schedule</div>
                     <div class="ref-section-meta">
-                        Effective Jan 2025 Â· SSS Circular 2024-006 Â· Total rate 15% of MSC (employee 5% / employer 10%)
+                        Effective Jan 2025 · SSS Circular 2024-006 · Total rate 15% of MSC (employee 5% / employer 10%)
                     </div>
                     <div class="ref-rules">
                         <div class="ref-rule">
-                            <span class="ref-rule-key">Min MSC</span><span>â‚±5,000</span>
+                            <span class="ref-rule-key">Min MSC</span><span>₱5,000</span>
                         </div>
                         <div class="ref-rule">
-                            <span class="ref-rule-key">Max MSC</span><span>â‚±35,000</span>
+                            <span class="ref-rule-key">Max MSC</span><span>₱35,000</span>
                         </div>
                         <div class="ref-rule">
-                            <span class="ref-rule-key">Max employee share</span><span>â‚±1,750/mo</span>
+                            <span class="ref-rule-key">Max employee share</span><span>₱1,750/mo</span>
                         </div>
                         <div class="ref-rule">
-                            <span class="ref-rule-key">MPF (Pension Booster)</span><span>Applies to MSC excess over â‚±20,000</span>
+                            <span class="ref-rule-key">MPF (Pension Booster)</span><span>Applies to MSC excess over ₱20,000</span>
                         </div>
                     </div>
 
@@ -49,8 +49,8 @@
                                 <tr>
                                     <th>Compensation Range</th>
                                     <th class="num">MSC</th>
-                                    <th class="num">Reg. SS â€” EE</th>
-                                    <th class="num">MPF â€” EE</th>
+                                    <th class="num">Reg. SS — EE</th>
+                                    <th class="num">MPF — EE</th>
                                     <th class="num">EE Total</th>
                                     <th class="num">EC (ER)</th>
                                     <th class="num">ER Total</th>
@@ -67,7 +67,7 @@
                                         <td>@MoneyRange(b.RangeFrom, b.RangeTo)</td>
                                         <td class="num">@Money(b.Msc)</td>
                                         <td class="num">@Money(b.RegularSsEmployee)</td>
-                                        <td class="num">@(b.MpfEmployee > 0 ? Money(b.MpfEmployee) : "â€”")</td>
+                                        <td class="num">@(b.MpfEmployee > 0 ? Money(b.MpfEmployee) : "—")</td>
                                         <td class="num bold">@Money(b.TotalEmployee)</td>
                                         <td class="num">@Money(b.Ec)</td>
                                         <td class="num">@Money(b.TotalEmployer)</td>
@@ -78,32 +78,32 @@
                     </div>
 
                     <div class="ref-footnote">
-                        <strong>Notes:</strong> Reg. SS = Regular Social Security (5% EE / 10% ER, applied to MSC up to â‚±20,000).
-                        MPF = Mandatory Provident Fund / WISP Plus (same 5% EE / 10% ER split on the MSC portion above â‚±20,000, credited to the member's pension booster account).
-                        EC = Employees' Compensation, paid by employer only (â‚±10 if MSC â‰¤ â‚±14,500, otherwise â‚±30).
+                        <strong>Notes:</strong> Reg. SS = Regular Social Security (5% EE / 10% ER, applied to MSC up to ₱20,000).
+                        MPF = Mandatory Provident Fund / WISP Plus (same 5% EE / 10% ER split on the MSC portion above ₱20,000, credited to the member's pension booster account).
+                        EC = Employees' Compensation, paid by employer only (₱10 if MSC ≤ ₱14,500, otherwise ₱30).
                     </div>
                 </div>
             </MudTabPanel>
 
-            @* â•â• PHILHEALTH TAB â•â• *@
+            @* ══ PHILHEALTH TAB ══ *@
             <MudTabPanel Text="PhilHealth" Icon="@Icons.Material.Outlined.HealthAndSafety">
                 <div class="ref-section">
                     <div class="ref-section-title">PhilHealth Premium Schedule</div>
                     <div class="ref-section-meta">
-                        Effective 2024+ Â· PhilHealth Circular 2019-0009 (UHC Act) Â· Premium rate 5% of monthly basic salary
+                        Effective 2024+ · PhilHealth Circular 2019-0009 (UHC Act) · Premium rate 5% of monthly basic salary
                     </div>
                     <div class="ref-rules">
                         <div class="ref-rule">
-                            <span class="ref-rule-key">Salary floor</span><span>â‚±10,000</span>
+                            <span class="ref-rule-key">Salary floor</span><span>₱10,000</span>
                         </div>
                         <div class="ref-rule">
-                            <span class="ref-rule-key">Salary ceiling</span><span>â‚±100,000</span>
+                            <span class="ref-rule-key">Salary ceiling</span><span>₱100,000</span>
                         </div>
                         <div class="ref-rule">
                             <span class="ref-rule-key">Split</span><span>50% employee / 50% employer</span>
                         </div>
                         <div class="ref-rule">
-                            <span class="ref-rule-key">Employee share range</span><span>â‚±250 â€“ â‚±2,500</span>
+                            <span class="ref-rule-key">Employee share range</span><span>₱250 – ₱2,500</span>
                         </div>
                     </div>
 
@@ -145,7 +145,7 @@
                                     }
 
                                     <tr class="@(isActive ? "ref-row-active" : "")">
-                                        <td>@(idx == 1 ? "â‚±10,000.01 â€“ â‚±99,999.99" : MoneyRange(b.RangeFrom, b.RangeTo))</td>
+                                        <td>@(idx == 1 ? "₱10,000.01 – ₱99,999.99" : MoneyRange(b.RangeFrom, b.RangeTo))</td>
                                         <td>@b.RateDisplay</td>
                                         <td class="num">@(totalPrem > 0 ? Money(totalPrem) : "5% of basic")</td>
                                         <td class="num bold">@(eeShare > 0 ? Money(eeShare) : "2.5% of basic")</td>
@@ -157,25 +157,25 @@
                     </div>
 
                     <div class="ref-footnote">
-                        <strong>How it's computed:</strong> Total premium = monthly basic salary Ã— 5%, with the salary clamped between â‚±10,000 and â‚±100,000.
-                        Employee and employer each pay half. Allowances, overtime, and bonuses are <em>not</em> included in the basis â€” only the fixed monthly basic salary.
+                        <strong>How it's computed:</strong> Total premium = monthly basic salary × 5%, with the salary clamped between ₱10,000 and ₱100,000.
+                        Employee and employer each pay half. Allowances, overtime, and bonuses are <em>not</em> included in the basis — only the fixed monthly basic salary.
                     </div>
                 </div>
             </MudTabPanel>
 
-            @* â•â• PAG-IBIG TAB â•â• *@
+            @* ══ PAG-IBIG TAB ══ *@
             <MudTabPanel Text="Pag-IBIG" Icon="@Icons.Material.Outlined.Home">
                 <div class="ref-section">
                     <div class="ref-section-title">Pag-IBIG (HDMF) Contribution Schedule</div>
                     <div class="ref-section-meta">
-                        Effective Feb 2024+ Â· HDMF Circular 460 Â· Maximum Fund Salary (MFS) capped at â‚±10,000
+                        Effective Feb 2024+ · HDMF Circular 460 · Maximum Fund Salary (MFS) capped at ₱10,000
                     </div>
                     <div class="ref-rules">
                         <div class="ref-rule">
-                            <span class="ref-rule-key">MFS cap</span><span>â‚±10,000</span>
+                            <span class="ref-rule-key">MFS cap</span><span>₱10,000</span>
                         </div>
                         <div class="ref-rule">
-                            <span class="ref-rule-key">Max contribution</span><span>â‚±200 each (employee + employer)</span>
+                            <span class="ref-rule-key">Max contribution</span><span>₱200 each (employee + employer)</span>
                         </div>
                         <div class="ref-rule">
                             <span class="ref-rule-key">Two-tier rate</span><span>1% / 2% based on MFS</span>
@@ -215,29 +215,29 @@
                     </div>
 
                     <div class="ref-footnote">
-                        <strong>How it's computed:</strong> The Monthly Fund Salary (MFS) used as the basis is capped at â‚±10,000 â€” even if the employee earns more, only the first â‚±10,000 is used.
-                        For MFS at or below â‚±1,500, the employee pays 1% and the employer pays 2%. Above that threshold, both pay 2% of the MFS.
-                        The maximum employee contribution is therefore â‚±200 per month.
+                        <strong>How it's computed:</strong> The Monthly Fund Salary (MFS) used as the basis is capped at ₱10,000 — even if the employee earns more, only the first ₱10,000 is used.
+                        For MFS at or below ₱1,500, the employee pays 1% and the employer pays 2%. Above that threshold, both pay 2% of the MFS.
+                        The maximum employee contribution is therefore ₱200 per month.
                     </div>
                 </div>
             </MudTabPanel>
 
-            @* â•â• BIR TAB â•â• *@
+            @* ══ BIR TAB ══ *@
             <MudTabPanel Text="BIR (WHT)" Icon="@Icons.Material.Outlined.AccountBalanceWallet">
                 <div class="ref-section">
                     <div class="ref-section-title">BIR Withholding Tax on Compensation</div>
                     <div class="ref-section-meta">
-                        TRAIN Law (RA 10963) Â· Revised schedule effective Jan 1, 2023 onward
+                        TRAIN Law (RA 10963) · Revised schedule effective Jan 1, 2023 onward
                     </div>
                     <div class="ref-rules">
                         <div class="ref-rule">
-                            <span class="ref-rule-key">Tax-exempt</span><span>â‰¤ â‚±250,000 annual / â‰¤ â‚±20,833 monthly</span>
+                            <span class="ref-rule-key">Tax-exempt</span><span>≤ ₱250,000 annual / ≤ ₱20,833 monthly</span>
                         </div>
                         <div class="ref-rule">
-                            <span class="ref-rule-key">Top rate</span><span>35% (above â‚±8M annual / â‚±666,667 monthly)</span>
+                            <span class="ref-rule-key">Top rate</span><span>35% (above ₱8M annual / ₱666,667 monthly)</span>
                         </div>
                         <div class="ref-rule">
-                            <span class="ref-rule-key">Taxable income</span><span>Gross âˆ’ (SSS + PhilHealth + Pag-IBIG)</span>
+                            <span class="ref-rule-key">Taxable income</span><span>Gross − (SSS + PhilHealth + Pag-IBIG)</span>
                         </div>
                     </div>
 
@@ -256,7 +256,7 @@
                                     BirBracket? birActive = null;
                                     if (HighlightSalary.HasValue)
                                     {
-                                        // Approximate the taxable: gross âˆ’ all statutory employee shares
+                                        // Approximate the taxable: gross − all statutory employee shares
                                         var s = HighlightSalary.Value;
                                         var sss = PhPayrollCalculator.CalculateSss(s);
                                         var ph  = PhPayrollCalculator.CalculatePhilHealth(s);
@@ -272,29 +272,29 @@
                                         <td>
                                             @if (b.AnnualTo == decimal.MaxValue)
                                             {
-                                                <span>Over â‚±8,000,000</span>
+                                                <span>Over ₱8,000,000</span>
                                             }
                                             else if (b.AnnualFrom == 0m)
                                             {
-                                                <span>Up to â‚±250,000</span>
+                                                <span>Up to ₱250,000</span>
                                             }
                                             else
                                             {
-                                                <span>â‚±@($"{b.AnnualFrom:N0}") â€“ â‚±@($"{b.AnnualTo:N0}")</span>
+                                                <span>₱@($"{b.AnnualFrom:N0}") – ₱@($"{b.AnnualTo:N0}")</span>
                                             }
                                         </td>
                                         <td>
                                             @if (b.MonthlyTo == decimal.MaxValue)
                                             {
-                                                <span>Over â‚±666,667</span>
+                                                <span>Over ₱666,667</span>
                                             }
                                             else if (b.MonthlyFrom == 0m)
                                             {
-                                                <span>Up to â‚±20,833</span>
+                                                <span>Up to ₱20,833</span>
                                             }
                                             else
                                             {
-                                                <span>â‚±@($"{b.MonthlyFrom:N0}") â€“ â‚±@($"{b.MonthlyTo:N0}")</span>
+                                                <span>₱@($"{b.MonthlyFrom:N0}") – ₱@($"{b.MonthlyTo:N0}")</span>
                                             }
                                         </td>
                                         <td>@b.RateDisplay</td>
@@ -308,7 +308,7 @@
                     <div class="ref-footnote">
                         <strong>Notes:</strong> The withholding tax brackets above are based on <em>monthly</em> taxable compensation income.
                         Compute taxable income by subtracting the employee's mandatory contributions (SSS, PhilHealth, Pag-IBIG) from gross compensation.
-                        De minimis benefits, the first â‚±90,000 of 13th-month pay and other benefits, and minimum-wage compensation are <em>not</em> taxable and should be excluded before applying the table.
+                        De minimis benefits, the first ₱90,000 of 13th-month pay and other benefits, and minimum-wage compensation are <em>not</em> taxable and should be excluded before applying the table.
                         Annual reconciliation (BIR Form 2316) at year-end may produce a refund or additional tax.
                     </div>
                 </div>

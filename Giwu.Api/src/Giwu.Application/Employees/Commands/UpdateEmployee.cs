@@ -21,10 +21,17 @@ public sealed class UpdateEmployeeValidator : AbstractValidator<UpdateEmployeeCo
         RuleFor(x => x.Request.JobTitle).NotEmpty().MaximumLength(128);
         RuleFor(x => x.Request.DepartmentId).NotEmpty();
         RuleFor(x => x.Request.MonthlyBaseSalary).GreaterThanOrEqualTo(0);
+        RuleFor(x => x.Request.Status).IsInEnum();
+        RuleFor(x => x.Request.EmploymentType).IsInEnum();
+        RuleFor(x => x.Request.Gender).IsInEnum();
+        RuleFor(x => x.Request.Phone).MaximumLength(32);
+        RuleFor(x => x.Request.AddressLine).MaximumLength(256);
+        RuleFor(x => x.Request.City).MaximumLength(128);
+        RuleFor(x => x.Request.Province).MaximumLength(128);
     }
 }
 
-internal sealed class UpdateEmployeeHandler(IApplicationDbContext db)
+internal sealed class UpdateEmployeeHandler(IApplicationDbContext db, TimeProvider clock)
     : IRequestHandler<UpdateEmployeeCommand, Result<EmployeeDto>>
 {
     public async Task<Result<EmployeeDto>> Handle(UpdateEmployeeCommand cmd, CancellationToken ct)
@@ -42,13 +49,34 @@ internal sealed class UpdateEmployeeHandler(IApplicationDbContext db)
         emp.JobTitle          = r.JobTitle;
         emp.DepartmentId      = r.DepartmentId;
         emp.MonthlyBaseSalary = r.MonthlyBaseSalary;
+        emp.EmploymentType    = r.EmploymentType;
+        emp.Phone             = r.Phone;
+        emp.BirthDate         = r.BirthDate;
+        emp.Gender            = r.Gender;
+        if (r.HireDate is { } hire) emp.HireDate = hire;
+
+        emp.PermanentAddress ??= new Domain.Common.Address();
+        emp.PermanentAddress.Line1    = r.AddressLine;
+        emp.PermanentAddress.City     = r.City;
+        emp.PermanentAddress.Province = r.Province;
+
+        if (emp.Status != r.Status)
+        {
+            emp.Status = r.Status;
+            var today = DateOnly.FromDateTime(clock.GetUtcNow().UtcDateTime);
+            emp.SeparationDate = r.Status is EmploymentStatus.Terminated or EmploymentStatus.Resigned
+                ? today
+                : null;
+        }
 
         await db.SaveChangesAsync(ct);
 
         return Result<EmployeeDto>.Success(new EmployeeDto(
             emp.Id, emp.EmployeeNumber, emp.FirstName, emp.LastName, emp.Email,
             emp.JobTitle, emp.DepartmentId, dept.Name,
-            emp.Status, emp.EmploymentType, emp.HireDate));
+            emp.Status, emp.EmploymentType, emp.HireDate,
+            emp.Phone, emp.BirthDate, emp.Gender, emp.MonthlyBaseSalary,
+            emp.PermanentAddress.Line1, emp.PermanentAddress.City, emp.PermanentAddress.Province));
     }
 }
 

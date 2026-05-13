@@ -1,6 +1,8 @@
 using FluentValidation;
 using Giwu.Application.Common;
+using Giwu.Application.Notifications;
 using Giwu.Domain.Leaves;
+using Giwu.Domain.Notifications;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 
@@ -21,7 +23,8 @@ public sealed class RejectLeaveRequestValidator : AbstractValidator<RejectLeaveR
 internal sealed class RejectLeaveRequestHandler(
     IApplicationDbContext db,
     ICurrentUser user,
-    TimeProvider clock)
+    TimeProvider clock,
+    INotificationDispatcher notifications)
     : IRequestHandler<RejectLeaveRequestCommand, Result>
 {
     public async Task<Result> Handle(RejectLeaveRequestCommand cmd, CancellationToken ct)
@@ -45,6 +48,24 @@ internal sealed class RejectLeaveRequestHandler(
         req.ResolvedById   = user.Id;
         req.ResolvedAt     = clock.GetUtcNow();
         req.ResolutionNote = cmd.Note;
+
+        var filerUserId = await db.Users
+            .Where(u => u.EmployeeId == req.EmployeeId)
+            .Select(u => (Guid?)u.Id)
+            .FirstOrDefaultAsync(ct);
+        if (filerUserId is { } uid)
+        {
+            await notifications.NotifyUserAsync(
+                recipientUserId:   uid,
+                type:              NotificationType.LeaveRejected,
+                title:             "Leave rejected",
+                body:              string.IsNullOrWhiteSpace(cmd.Note)
+                                       ? $"Your leave for {req.StartDate:MMM d} – {req.EndDate:MMM d} was rejected."
+                                       : $"Rejected: {cmd.Note}",
+                relatedEntityId:   req.Id,
+                relatedEntityType: "LeaveRequest",
+                ct: ct);
+        }
 
         await db.SaveChangesAsync(ct);
         return Result.Success();

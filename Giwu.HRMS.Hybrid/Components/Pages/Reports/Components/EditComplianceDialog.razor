@@ -1,0 +1,114 @@
+@inject ISnackbar Snackbar
+@using Giwu.HRMS.Hybrid.Components.Pages.Reports
+
+<MudDialog>
+    <DialogContent>
+        @if (!string.IsNullOrEmpty(_error))
+        {
+            <MudAlert Severity="Severity.Warning" Dense="true" Class="mb-3">@_error</MudAlert>
+        }
+
+        <MudStack Spacing="3">
+            <MudGrid Spacing="2">
+                <MudItem xs="6">
+                    <MudSelect T="string" Label="Agency" @bind-Value="Working.Agency"
+                               Variant="Variant.Outlined" Margin="Margin.Dense" Required="true">
+                        <MudSelectItem Value="@("BIR")">BIR</MudSelectItem>
+                        <MudSelectItem Value="@("SSS")">SSS</MudSelectItem>
+                        <MudSelectItem Value="@("PhilHealth")">PhilHealth</MudSelectItem>
+                        <MudSelectItem Value="@("Pag-IBIG")">Pag-IBIG</MudSelectItem>
+                        <MudSelectItem Value="@("DOLE")">DOLE</MudSelectItem>
+                    </MudSelect>
+                </MudItem>
+                <MudItem xs="6">
+                    <MudTextField T="string" Label="Form code" @bind-Value="Working.FormCode"
+                                  Placeholder="e.g. 1601-C, R-3, RF-1"
+                                  Variant="Variant.Outlined" Margin="Margin.Dense"
+                                  Immediate="true" Required="true" />
+                </MudItem>
+            </MudGrid>
+
+            <MudTextField T="string" Label="Name" @bind-Value="Working.Name"
+                          Placeholder="e.g. Monthly Withholding Tax"
+                          Variant="Variant.Outlined" Margin="Margin.Dense"
+                          Immediate="true" Required="true" />
+
+            <MudTextField T="string" Label="Description" @bind-Value="Working.Description"
+                          Variant="Variant.Outlined" Lines="2" Margin="Margin.Dense" Immediate="true" />
+
+            <MudGrid Spacing="2">
+                <MudItem xs="6">
+                    <MudDatePicker Label="Due date" @bind-Date="_dueDate"
+                                   Variant="Variant.Outlined" Margin="Margin.Dense" Required="true" />
+                </MudItem>
+                <MudItem xs="6">
+                    <MudTextField T="string" Label="Period covered" @bind-Value="Working.PeriodCovered"
+                                  Placeholder="e.g. March 2026, Q1 2026"
+                                  Variant="Variant.Outlined" Margin="Margin.Dense" Immediate="true" />
+                </MudItem>
+            </MudGrid>
+
+            <MudTextField T="string" Label="Related report code (optional)" @bind-Value="Working.RelatedReportId"
+                          HelperText="Internal code linking this deadline to a runnable report (e.g. 'PH-1601C')."
+                          Variant="Variant.Outlined" Margin="Margin.Dense" Immediate="true" />
+        </MudStack>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" DisableElevation="true" OnClick="Save">
+            @(IsEditing ? "Save changes" : "Add deadline")
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = default!;
+
+    /// <summary>If passed, the dialog renders in edit mode (pre-filled). Null = create.</summary>
+    [Parameter] public ComplianceDeadline? Existing { get; set; }
+
+    private ComplianceDeadline Working { get; set; } = new();
+    private DateTime? _dueDate;
+    private string? _error;
+    private bool IsEditing => Existing != null;
+
+    protected override void OnInitialized()
+    {
+        if (Existing != null)
+        {
+            Working = new ComplianceDeadline
+            {
+                Id              = Existing.Id,
+                Agency          = Existing.Agency,
+                FormCode        = Existing.FormCode,
+                Name            = Existing.Name,
+                Description     = Existing.Description,
+                DueDate         = Existing.DueDate,
+                PeriodCovered   = Existing.PeriodCovered,
+                IsFiled         = Existing.IsFiled,
+                FiledOn         = Existing.FiledOn,
+                RelatedReportId = Existing.RelatedReportId,
+            };
+            _dueDate = Existing.DueDate;
+        }
+        else
+        {
+            _dueDate = DateTime.Today.AddDays(15);
+            Working.Agency = "BIR";
+        }
+    }
+
+    private void Cancel() => MudDialog.Cancel();
+
+    private void Save()
+    {
+        _error = null;
+        if (string.IsNullOrWhiteSpace(Working.Agency))   { _error = "Agency is required.";   return; }
+        if (string.IsNullOrWhiteSpace(Working.FormCode)) { _error = "Form code is required."; return; }
+        if (string.IsNullOrWhiteSpace(Working.Name))     { _error = "Name is required.";     return; }
+        if (_dueDate is null)                            { _error = "Due date is required."; return; }
+
+        Working.DueDate = _dueDate.Value;
+        MudDialog.Close(DialogResult.Ok(Working));
+    }
+}

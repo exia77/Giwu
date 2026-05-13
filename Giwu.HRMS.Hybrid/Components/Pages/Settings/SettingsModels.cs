@@ -1,6 +1,6 @@
 ﻿namespace Giwu.HRMS.Hybrid.Models;
 
-// â”€â”€â”€ Enums â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Enums ──────────────────────────────────────────────────────
 
 public enum WeekStart { Sunday, Monday }
 
@@ -17,7 +17,7 @@ public enum PayFrequency
 {
     Weekly,
     BiWeekly,           // every other week
-    SemiMonthly,        // 15th and 30th â€” most common in PH
+    SemiMonthly,        // 15th and 30th — most common in PH
     Monthly,
 }
 
@@ -39,7 +39,7 @@ public enum SessionTimeout
     Hours24    = 1440,
 }
 
-// â”€â”€â”€ Composite settings record â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Composite settings record ──────────────────────────────────
 
 public class OrganizationProfile
 {
@@ -67,7 +67,7 @@ public class LocalizationSettings
     public string Timezone { get; set; } = "Asia/Manila";
     public DateFormat DateFormat { get; set; } = DateFormat.UsLong;
     public string CurrencyCode { get; set; } = "PHP";
-    public string CurrencySymbol { get; set; } = "â‚±";
+    public string CurrencySymbol { get; set; } = "₱";
     public WeekStart WeekStart { get; set; } = WeekStart.Sunday;
     public int FiscalYearStartMonth { get; set; } = 1;          // January
 }
@@ -126,7 +126,7 @@ public class IntegrationStatus
     public string Category { get; set; } = "";  // Time, Accounting, Email, Identity, Storage
 }
 
-// â”€â”€â”€ Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Helpers ────────────────────────────────────────────────────
 
 public static class SettingsFormatting
 {
@@ -137,7 +137,7 @@ public static class SettingsFormatting
         DateFormat.PhLong  => "26 April 2026",
         DateFormat.PhShort => "26/04/2026",
         DateFormat.Iso     => "2026-04-26 (ISO)",
-        _ => "â€”"
+        _ => "—"
     };
 
     public static string PayFrequencyLabel(PayFrequency f) => f switch
@@ -146,7 +146,7 @@ public static class SettingsFormatting
         PayFrequency.BiWeekly     => "Bi-weekly (every 2 weeks)",
         PayFrequency.SemiMonthly  => "Semi-monthly (15th and 30th)",
         PayFrequency.Monthly      => "Monthly",
-        _ => "â€”"
+        _ => "—"
     };
 
     public static string SessionTimeoutLabel(SessionTimeout t) => t switch
@@ -157,7 +157,7 @@ public static class SettingsFormatting
         SessionTimeout.Hours4    => "4 hours",
         SessionTimeout.Hours8    => "8 hours (work day)",
         SessionTimeout.Hours24   => "24 hours",
-        _ => "â€”"
+        _ => "—"
     };
 
     public static string NotificationChannelLabel(NotificationChannel c) => c switch
@@ -166,7 +166,7 @@ public static class SettingsFormatting
         NotificationChannel.InApp => "In-app only",
         NotificationChannel.Both  => "Email + In-app",
         NotificationChannel.Off   => "Off",
-        _ => "â€”"
+        _ => "—"
     };
 
     public static string MonthName(int month) => month switch
@@ -174,7 +174,7 @@ public static class SettingsFormatting
         1  => "January", 2  => "February", 3  => "March",      4 => "April",
         5  => "May",     6  => "June",     7  => "July",       8 => "August",
         9  => "September", 10 => "October", 11 => "November", 12 => "December",
-        _ => "â€”"
+        _ => "—"
     };
 
     public static List<string> CommonTimezones() => new()

@@ -10,20 +10,20 @@
             <div style="flex:1;min-width:0">
                 <MudText Typo="Typo.subtitle1" Class="fw-medium">@Employee.Name</MudText>
                 <MudText Typo="Typo.caption" Style="opacity:.55">
-                    @Employee.Role Â· @Employee.Dept Â· Hired @FmtDate(Employee.HireDate)
+                    @Employee.Role · @Employee.Dept · Hired @FmtDate(Employee.HireDate)
                 </MudText>
             </div>
         </div>
 
         <MudTabs Elevation="0" Rounded="false" PanelClass="emp-tab-panel" TabPanelClass="emp-tab-item">
 
-            @* â”€â”€ BALANCES â”€â”€ *@
+            @* ── BALANCES ── *@
             <MudTabPanel Text="@($"Balances ({Employee.Balances.Count})")"
                          Icon="@Icons.Material.Outlined.AccountBalance">
                 @if (Employee.Balances.Count == 0)
                 {
                     <div class="leave-empty">
-                        <div class="leave-empty-icon">â€”</div>
+                        <div class="leave-empty-icon">—</div>
                         <MudText Typo="Typo.body2">No balances on record yet.</MudText>
                     </div>
                 }
@@ -54,15 +54,15 @@
                                         <span><strong>@bal.Used.ToString("F1")</strong> used</span>
                                         @if (bal.Pending > 0)
                                         {
-                                            <span> Â· <strong>@bal.Pending.ToString("F1")</strong> pending</span>
+                                            <span> · <strong>@bal.Pending.ToString("F1")</strong> pending</span>
                                         }
                                         @if (bal.CarryOver > 0)
                                         {
-                                            <span> Â· <strong>@bal.CarryOver.ToString("F1")</strong> carryover</span>
+                                            <span> · <strong>@bal.CarryOver.ToString("F1")</strong> carryover</span>
                                         }
                                         @if (bal.LastTakenOn.HasValue)
                                         {
-                                            <span> Â· last @RelativeTime(bal.LastTakenOn.Value)</span>
+                                            <span> · last @RelativeTime(bal.LastTakenOn.Value)</span>
                                         }
                                     </div>
                                 </div>
@@ -72,13 +72,13 @@
                 }
             </MudTabPanel>
 
-            @* â”€â”€ REQUEST HISTORY â”€â”€ *@
+            @* ── REQUEST HISTORY ── *@
             <MudTabPanel Text="@($"Requests ({Employee.Requests.Count})")"
                          Icon="@Icons.Material.Outlined.History">
                 @if (Employee.Requests.Count == 0)
                 {
                     <div class="leave-empty">
-                        <div class="leave-empty-icon">â€”</div>
+                        <div class="leave-empty-icon">—</div>
                         <MudText Typo="Typo.body2">No leave history.</MudText>
                     </div>
                 }
@@ -104,10 +104,10 @@
                                 @if (req.ResolvedOn.HasValue)
                                 {
                                     <div class="emp-req-resolution">
-                                        @StatusLabel(req.Status) by @req.ResolvedBy Â· @RelativeTime(req.ResolvedOn.Value)
+                                        @StatusLabel(req.Status) by @req.ResolvedBy · @RelativeTime(req.ResolvedOn.Value)
                                         @if (!string.IsNullOrEmpty(req.ResolutionNote))
                                         {
-                                            <span> â€” @req.ResolutionNote</span>
+                                            <span> — @req.ResolutionNote</span>
                                         }
                                     </div>
                                 }
@@ -143,7 +143,7 @@
     .emp-tab-panel { padding: 14px 4px 4px !important; }
     .emp-tab-item { min-width: unset !important; text-transform: none !important; font-size: 13px !important; }
 
-    /* â”€â”€ Balance cards â”€â”€ */
+    /* ── Balance cards ── */
     .bal-card {
         border: 0.5px solid var(--mud-palette-divider);
         border-radius: 8px;
@@ -179,7 +179,7 @@
     }
     .bal-card-meta { font-size: 10.5px; opacity: .65; }
 
-    /* â”€â”€ Request rows â”€â”€ */
+    /* ── Request rows ── */
     .emp-req-row {
         display: flex;
         gap: 12px;
@@ -237,7 +237,7 @@
     [Parameter] public EventCallback<string> OnApprove { get; set; }
     [Parameter] public EventCallback<string> OnReject { get; set; }
 
-    /// <summary>Sort order for balance cards â€” VL first, then SL, EL, SIL, then alphabetical.</summary>
+    /// <summary>Sort order for balance cards — VL first, then SL, EL, SIL, then alphabetical.</summary>
     private int SortOrder(string leaveTypeId) => leaveTypeId switch
     {
         "LT-VL" => 0,

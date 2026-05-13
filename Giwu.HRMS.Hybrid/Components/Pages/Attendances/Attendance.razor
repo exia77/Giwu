@@ -3,10 +3,12 @@
 @using Giwu.Contracts.Attendance
 @using Giwu.Domain.Attendance
 @using Giwu.HRMS.Hybrid.Services.Attendance
+@using Giwu.HRMS.Hybrid.Services.Employees
 @inject ISnackbar Snackbar
 @inject IDialogService DialogService
 @inject IJSRuntime JS
 @inject IAttendanceApi AttendanceApi
+@inject IEmployeesApi EmployeesApi
 
 @using Pages.Attendances.Components
 
@@ -70,6 +72,15 @@
             <MudButton Variant="Variant.Outlined" Size="Size.Small"
                        StartIcon="@Icons.Material.Outlined.FileDownload"
                        OnClick="ExportCsv">Export CSV</MudButton>
+            <MudButton Variant="Variant.Outlined" Size="Size.Small"
+                       StartIcon="@Icons.Material.Outlined.QueryStats"
+                       OnClick="OpenAnalyticsDialog">Analytics</MudButton>
+            <MudButton Variant="Variant.Outlined" Size="Size.Small"
+                       StartIcon="@Icons.Material.Outlined.AccessTime"
+                       OnClick="OpenOvertimeDialog">Overtime</MudButton>
+            <MudButton Variant="Variant.Outlined" Size="Size.Small"
+                       StartIcon="@Icons.Material.Outlined.PersonAdd"
+                       OnClick="OpenManualEntryDialog">Add Entry</MudButton>
             <MudButton Variant="Variant.Filled" Color="Color.Primary" Size="Size.Small"
                        StartIcon="@Icons.Material.Outlined.Login" DisableElevation="true"
                        OnClick="ClockInSelf">Clock In</MudButton>
@@ -252,6 +263,11 @@
         await ReloadAsync();
     }
 
+    // Looked up once per reload to enrich attendance rows with Role + Dept.
+    // AttendanceRecordDto only carries EmployeeName; everything else has to be
+    // joined client-side against the Employees list.
+    private Dictionary<Guid, (string Role, string Dept)> _empInfo = new();
+
     private async Task ReloadAsync()
     {
         _loading = true;
@@ -259,32 +275,48 @@
         StateHasChanged();
 
         var today = DateOnly.FromDateTime(DateTime.Today);
-        var result = await AttendanceApi.ListAsync(from: today, to: today, page: 1, pageSize: 100);
+
+        // Fetch attendance + employees in parallel.
+        var attTask = AttendanceApi.ListAsync(from: today, to: today, page: 1, pageSize: 200);
+        var empTask = EmployeesApi.ListAsync(page: 1, pageSize: 500);
+        await Task.WhenAll(attTask, empTask);
         _loading = false;
 
-        if (!result.Success || result.Value is null)
+        if (!attTask.Result.Success || attTask.Result.Value is null)
         {
-            _loadError = result.ErrorMessage ?? "Failed to load attendance";
+            _loadError = attTask.Result.ErrorMessage ?? "Failed to load attendance";
             return;
         }
 
-        Employees = result.Value.Items.Select(MapToUi).ToList();
+        _empInfo = empTask.Result.Success && empTask.Result.Value is not null
+            ? empTask.Result.Value.Items.ToDictionary(
+                e => e.Id,
+                e => (Role: e.JobTitle ?? "", Dept: e.DepartmentName ?? ""))
+            : new();
+
+        Employees = attTask.Result.Value.Items.Select(MapToUi).ToList();
     }
 
-    private static AttendanceEmployee MapToUi(AttendanceRecordDto dto) => new()
+    private AttendanceEmployee MapToUi(AttendanceRecordDto dto)
     {
-        Id = dto.Id.ToString(),
-        Name = dto.EmployeeName,
-        Init = MakeInitials(dto.EmployeeName),
-        Av = AvatarTone(dto.EmployeeId),
-        Role = "",
-        Dept = "",
-        Status = StatusToLabel(dto.Status),
-        Tin = dto.ClockIn?.LocalDateTime.ToString("HH:mm") ?? "",
-        Tout = dto.ClockOut?.LocalDateTime.ToString("HH:mm") ?? "",
-        Reason = dto.Notes ?? "",
-        Pending = false,
-    };
+        var (role, dept) = _empInfo.TryGetValue(dto.EmployeeId, out var info)
+            ? info
+            : ("", "");
+        return new AttendanceEmployee
+        {
+            Id = dto.Id.ToString(),
+            Name = dto.EmployeeName,
+            Init = MakeInitials(dto.EmployeeName),
+            Av = AvatarTone(dto.EmployeeId),
+            Role = role,
+            Dept = dept,
+            Status = StatusToLabel(dto.Status),
+            Tin = dto.ClockIn?.LocalDateTime.ToString("HH:mm") ?? "",
+            Tout = dto.ClockOut?.LocalDateTime.ToString("HH:mm") ?? "",
+            Reason = dto.Notes ?? "",
+            Pending = false,
+        };
+    }
 
     private static string MakeInitials(string name)
     {
@@ -349,10 +381,129 @@
         var parameters = new DialogParameters
         {
             ["Emp"] = emp,
-            ["OnEdit"] = EventCallback.Factory.Create(this, () => Task.CompletedTask)
+            ["OnEdit"] = EventCallback.Factory.Create(this, () => OpenEditDialog(emp))
         };
         var options = new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true };
         await DialogService.ShowAsync<AttendanceDetailDialog>("Attendance Detail", parameters, options);
+    }
+
+    private async Task OpenEditDialog(AttendanceEmployee emp)
+    {
+        var parameters = new DialogParameters { ["Emp"] = emp };
+        var options = new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true };
+        var dialog = await DialogService.ShowAsync<EditAttendanceDialog>($"Edit {emp.Name}", parameters, options);
+        var result = await dialog.Result;
+        if (result is null || result.Canceled) return;
+
+        if (!Guid.TryParse(emp.Id, out var recordId))
+        {
+            Snackbar.Add("Cannot save: invalid attendance record id.", Severity.Error);
+            return;
+        }
+
+        var req = new UpdateAttendanceRequest(
+            Status:        ParseAttendanceStatus(emp.Status),
+            ClockInTime:   ParseTime(emp.Tin),
+            ClockOutTime:  ParseTime(emp.Tout),
+            Notes:         emp.Reason ?? "");
+
+        var apiResult = await AttendanceApi.UpdateAsync(recordId, req);
+        if (apiResult.Success)
+        {
+            Snackbar.Add($"{emp.Name}'s record updated.", Severity.Success);
+            await ReloadAsync();
+        }
+        else
+        {
+            Snackbar.Add(apiResult.ErrorMessage ?? "Failed to save changes.", Severity.Error);
+        }
+    }
+
+    // The dialog's "WFH" option has no matching API enum value, so it persists
+    // as Present (the dialog UI itself should drop WFH once the API gains it).
+    private static AttendanceStatus ParseAttendanceStatus(string s) => s switch
+    {
+        "Present" => AttendanceStatus.Present,
+        "Absent"  => AttendanceStatus.Absent,
+        "Late"    => AttendanceStatus.Late,
+        "Leave"   => AttendanceStatus.OnLeave,
+        "WFH"     => AttendanceStatus.Present,
+        _         => AttendanceStatus.Present,
+    };
+
+    private static TimeOnly? ParseTime(string hhmm)
+    {
+        if (string.IsNullOrWhiteSpace(hhmm)) return null;
+        return TimeOnly.TryParse(hhmm, out var t) ? t : null;
+    }
+
+    private async Task OpenAnalyticsDialog()
+    {
+        var parameters = new DialogParameters { ["Employees"] = Employees };
+        var options = new DialogOptions { MaxWidth = MaxWidth.Medium, FullWidth = true };
+        await DialogService.ShowAsync<AttendanceAnalyticsDialog>("Attendance Analytics", parameters, options);
+    }
+
+    private async Task OpenManualEntryDialog()
+    {
+        // Picker must be keyed by real Employee.Id (not by today's
+        // attendance-row id), so the EmployeeId returned by the dialog matches
+        // a valid employee in the manual-entry API call. Also lets HR back-fill
+        // for an employee who hasn't clocked in today.
+        var empRes = await EmployeesApi.ListAsync(page: 1, pageSize: 500);
+        if (!empRes.Success || empRes.Value is null || empRes.Value.Items.Count == 0)
+        {
+            Snackbar.Add(empRes.ErrorMessage ?? "No employees yet. Add an employee first.", Severity.Warning);
+            return;
+        }
+
+        var candidates = empRes.Value.Items.Select(e => new AttendanceEmployee
+        {
+            Id   = e.Id.ToString(),
+            Name = $"{e.FirstName} {e.LastName}".Trim(),
+            Dept = e.DepartmentName ?? "",
+            Role = e.JobTitle ?? "",
+            Init = MakeInitials($"{e.FirstName} {e.LastName}"),
+            Av   = AvatarTone(e.Id),
+        }).ToList();
+
+        var parameters = new DialogParameters { ["Candidates"] = candidates };
+        var options = new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true };
+        var dialog = await DialogService.ShowAsync<ClockInDialog>("Manual Attendance Entry", parameters, options);
+        var result = await dialog.Result;
+        if (result is null || result.Canceled) return;
+        if (result.Data is not ClockInResult res) return;
+
+        if (!Guid.TryParse(res.EmployeeId, out var empId))
+        {
+            Snackbar.Add("Invalid employee selection.", Severity.Error);
+            return;
+        }
+
+        var req = new ManualAttendanceEntryRequest(
+            EmployeeId:   empId,
+            Date:         DateOnly.FromDateTime(DateTime.Now),
+            Status:       ParseAttendanceStatus(res.Status),
+            ClockInTime:  ParseTime(res.Time),
+            ClockOutTime: null,
+            Notes:        $"Manual entry by HR ({res.Status})");
+
+        var apiResult = await AttendanceApi.CreateManualAsync(req);
+        if (apiResult.Success)
+        {
+            Snackbar.Add("Entry added.", Severity.Success);
+            await ReloadAsync();
+        }
+        else
+        {
+            Snackbar.Add(apiResult.ErrorMessage ?? "Failed to create entry.", Severity.Error);
+        }
+    }
+
+    private async Task OpenOvertimeDialog()
+    {
+        var options = new DialogOptions { MaxWidth = MaxWidth.Medium, FullWidth = true };
+        await DialogService.ShowAsync<OvertimeRequestsDialog>("Overtime Requests", new DialogParameters(), options);
     }
 
     private async Task ExportCsv()

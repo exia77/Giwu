@@ -23,7 +23,7 @@
 
 <div class="settings-shell">
 
-    @* â”€â”€ Left section nav â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ *@
+    @* ── Left section nav ──────────────────────────────────── *@
     <aside class="settings-nav">
         <div class="settings-nav-header">
             <MudText Typo="Typo.overline" Style="opacity:.5;letter-spacing:.08em">Settings</MudText>
@@ -63,12 +63,12 @@
         }
     </aside>
 
-    @* â”€â”€ Right content panel â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ *@
+    @* ── Right content panel ───────────────────────────────── *@
     <div class="settings-content">
 
         @if (ActiveSection == "branding")
         {
-            @* â•â• BRANDING â•â• *@
+            @* ══ BRANDING ══ *@
             <SettingsSectionHeader
                 Title="Branding"
                 Description="Company name, logo, and theme. Changes here update the sidebar and topbar in real time."
@@ -127,8 +127,8 @@
                     <div class="settings-field-label">Mode</div>
                     <div class="settings-theme-row">
                         <button type="button"
-                                class="@($"settings-theme-card {(!DraftIsDark ? "active" : "")}")"
-                                @onclick="@(() => DraftIsDark = false)">
+                                class="@($"settings-theme-card {(!Theme.IsDark ? "active" : "")}")"
+                                @onclick="@(async () => await SetThemeMode(false))">
                             <div class="settings-theme-preview settings-theme-light">
                                 <span class="settings-theme-bar"></span>
                                 <span class="settings-theme-block"></span>
@@ -140,8 +140,8 @@
                             </div>
                         </button>
                         <button type="button"
-                                class="@($"settings-theme-card {(DraftIsDark ? "active" : "")}")"
-                                @onclick="@(() => DraftIsDark = true)">
+                                class="@($"settings-theme-card {(Theme.IsDark ? "active" : "")}")"
+                                @onclick="@(async () => await SetThemeMode(true))">
                             <div class="settings-theme-preview settings-theme-dark">
                                 <span class="settings-theme-bar"></span>
                                 <span class="settings-theme-block"></span>
@@ -162,7 +162,7 @@
                                     class="@($"settings-accent-swatch {(DraftAccent == preset ? "active" : "")}")"
                                     style="@($"background:{preset}")"
                                     title="@preset"
-                                    @onclick="@(() => DraftAccent = preset)">
+                                    @onclick="@(async () => { DraftAccent = preset; await ApplyAccentAsync(preset); })">
                                 @if (DraftAccent == preset)
                                 {
                                     <MudIcon Icon="@Icons.Material.Filled.Check" Size="Size.Small" Style="color:white" />
@@ -170,7 +170,7 @@
                             </button>
                         }
                         <MudTextField T="string" Value="@DraftAccent"
-                                      ValueChanged="@(v => { DraftAccent = v ?? ""; })"
+                                      ValueChanged="@(async v => { DraftAccent = v ?? ""; await ApplyAccentAsync(DraftAccent); })"
                                       Variant="Variant.Outlined" Margin="Margin.Dense"
                                       Class="settings-accent-input"
                                       Placeholder="#1D9E75" />
@@ -182,7 +182,7 @@
 
         else if (ActiveSection == "organization")
         {
-            @* â•â• ORGANIZATION â•â• *@
+            @* ══ ORGANIZATION ══ *@
             <SettingsSectionHeader
                 Title="Organization"
                 Description="Legal entity details, address, and PH employer registration numbers used on statutory filings."
@@ -341,7 +341,7 @@
 
         else if (ActiveSection == "localization")
         {
-            @* â•â• LOCALIZATION â•â• *@
+            @* ══ LOCALIZATION ══ *@
             <SettingsSectionHeader
                 Title="Localization"
                 Description="Timezone, date format, currency, and fiscal year."
@@ -407,7 +407,7 @@
 
         else if (ActiveSection == "payroll")
         {
-            @* â•â• PAYROLL DEFAULTS â•â• *@
+            @* ══ PAYROLL DEFAULTS ══ *@
             <SettingsSectionHeader
                 Title="Payroll Defaults"
                 Description="Default values used when creating new pay runs. Individual runs can override these."
@@ -455,22 +455,22 @@
                     <MudGrid Spacing="2">
                         <MudItem xs="6" sm="3">
                             <MudNumericField T="decimal" Label="Regular OT" @bind-Value="DraftPayroll.RegularOvertimeRate"
-                                             HelperText="Ã— hourly rate" Step="0.05M"
+                                             HelperText="× hourly rate" Step="0.05M"
                                              Variant="Variant.Outlined" Margin="Margin.Dense" />
                         </MudItem>
                         <MudItem xs="6" sm="3">
                             <MudNumericField T="decimal" Label="Rest day OT" @bind-Value="DraftPayroll.RestDayOvertimeRate"
-                                             HelperText="Ã— hourly rate" Step="0.05M"
+                                             HelperText="× hourly rate" Step="0.05M"
                                              Variant="Variant.Outlined" Margin="Margin.Dense" />
                         </MudItem>
                         <MudItem xs="6" sm="3">
                             <MudNumericField T="decimal" Label="Holiday OT" @bind-Value="DraftPayroll.HolidayOvertimeRate"
-                                             HelperText="Ã— hourly rate" Step="0.05M"
+                                             HelperText="× hourly rate" Step="0.05M"
                                              Variant="Variant.Outlined" Margin="Margin.Dense" />
                         </MudItem>
                         <MudItem xs="6" sm="3">
                             <MudNumericField T="decimal" Label="Night diff" @bind-Value="DraftPayroll.NightDifferentialRate"
-                                             HelperText="Ã— hourly rate" Step="0.05M"
+                                             HelperText="× hourly rate" Step="0.05M"
                                              Variant="Variant.Outlined" Margin="Margin.Dense" />
                         </MudItem>
                     </MudGrid>
@@ -497,7 +497,7 @@
 
         else if (ActiveSection == "notifications")
         {
-            @* â•â• NOTIFICATIONS â•â• *@
+            @* ══ NOTIFICATIONS ══ *@
             <SettingsSectionHeader
                 Title="Notifications"
                 Description="Choose how you're notified for each type of HR event."
@@ -581,7 +581,7 @@
 
         else if (ActiveSection == "security")
         {
-            @* â•â• SECURITY â•â• *@
+            @* ══ SECURITY ══ *@
             <SettingsSectionHeader
                 Title="Security"
                 Description="Password policy, multi-factor authentication, and session controls."
@@ -663,57 +663,9 @@
             </div>
         }
 
-        else if (ActiveSection == "integrations")
-        {
-            @* â•â• INTEGRATIONS â•â• *@
-            <SettingsSectionHeader
-                Title="Integrations"
-                Description="External services connected to your HR system."
-                Dirty="false" />
-
-            <div class="settings-card">
-                <div class="settings-integrations-list">
-                    @foreach (var integ in SettingsService.Integrations)
-                    {
-                        <div class="settings-integ-row">
-                            <div class="settings-integ-icon">
-                                <MudIcon Icon="@IntegrationIcon(integ.Icon)" Size="Size.Medium" Style="opacity:.7" />
-                            </div>
-                            <div class="settings-integ-meta">
-                                <div class="settings-integ-name">
-                                    <span class="fw-medium">@integ.Name</span>
-                                    <span class="settings-integ-provider">via @integ.Provider</span>
-                                </div>
-                                <div class="settings-integ-desc">@integ.Description</div>
-                                @if (integ.IsConnected && integ.ConnectedOn.HasValue)
-                                {
-                                    <div class="settings-integ-since">
-                                        Connected since @integ.ConnectedOn.Value.ToString("MMM yyyy")
-                                    </div>
-                                }
-                            </div>
-                            <div class="settings-integ-action">
-                                @if (integ.IsConnected)
-                                {
-                                    <span class="settings-integ-status-pill connected">Connected</span>
-                                    <MudButton Variant="Variant.Outlined" Color="Color.Error" Size="Size.Small"
-                                               OnClick="@(() => DisconnectIntegration(integ))">Disconnect</MudButton>
-                                }
-                                else
-                                {
-                                    <MudButton Variant="Variant.Filled" Color="Color.Primary" DisableElevation="true" Size="Size.Small"
-                                               OnClick="@(() => ConnectIntegration(integ))">Connect</MudButton>
-                                }
-                            </div>
-                        </div>
-                    }
-                </div>
-            </div>
-        }
-
         else if (ActiveSection == "roles" && IsAdmin)
         {
-            @* â•â• ROLES & PERMISSIONS â•â• *@
+            @* ══ ROLES & PERMISSIONS ══ *@
             <SettingsSectionHeader
                 Title="Roles & Permissions"
                 Description="Control which sidebar items each role can see. Only HR Admins can edit this matrix."
@@ -722,37 +674,12 @@
             <RolesPermissionsSection />
         }
 
-        else if (ActiveSection == "danger")
-        {
-            @* â•â• DANGER ZONE â•â• *@
-            <SettingsSectionHeader
-                Title="Danger Zone"
-                Description="Irreversible operations. Use with care."
-                Dirty="false" />
-
-            <div class="settings-card settings-card-danger">
-                <div class="settings-card-header settings-card-header-danger">
-                    <div>
-                        <MudText Typo="Typo.subtitle2" Class="fw-medium" Style="color:var(--mud-palette-error-text, #791F1F)">
-                            Reset all settings to defaults
-                        </MudText>
-                        <MudText Typo="Typo.caption" Style="opacity:.7">
-                            Restores Branding, Organization, and Localization to factory defaults.
-                            Does not affect employee data or run history.
-                        </MudText>
-                    </div>
-                    <MudButton Variant="Variant.Filled" Color="Color.Error" DisableElevation="true"
-                               StartIcon="@Icons.Material.Outlined.RestartAlt"
-                               OnClick="OpenResetDialog">Reset Settings</MudButton>
-                </div>
-            </div>
-        }
     </div>
 </div>
 
-@* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+@* ═══════════════════════════════════════════════════
    STYLES
-â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• *@
+═══════════════════════════════════════════════════ *@
 <style>
     :root {
         --set-green:        #1D9E75;
@@ -772,7 +699,7 @@
         align-items: flex-start;
     }
 
-    /* â”€â”€ Left nav â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+    /* ── Left nav ─────────────────────────────────────────── */
     .settings-nav {
         width: 220px;
         flex-shrink: 0;
@@ -819,7 +746,7 @@
         flex-shrink: 0;
     }
 
-    /* â”€â”€ Right content â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+    /* ── Right content ────────────────────────────────────── */
     .settings-content {
         flex: 1;
         min-width: 0;
@@ -869,7 +796,7 @@
         margin-top: 4px;
     }
 
-    /* â”€â”€ Logo upload â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+    /* ── Logo upload ──────────────────────────────────────── */
     .settings-logo-row {
         display: flex; gap: 12px; align-items: flex-start;
     }
@@ -893,7 +820,7 @@
         display: flex; flex-direction: column; gap: 6px;
     }
 
-    /* â”€â”€ Theme picker â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+    /* ── Theme picker ─────────────────────────────────────── */
     .settings-theme-row {
         display: flex; gap: 12px; flex-wrap: wrap;
     }
@@ -942,7 +869,7 @@
         font-size: 12.5px;
     }
 
-    /* â”€â”€ Accent picker â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+    /* ── Accent picker ────────────────────────────────────── */
     .settings-accent-row {
         display: flex; gap: 6px; align-items: center; flex-wrap: wrap;
     }
@@ -965,7 +892,7 @@
         margin-left: 6px;
     }
 
-    /* â”€â”€ Notifications list â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+    /* ── Notifications list ───────────────────────────────── */
     .settings-notif-list {
         display: flex; flex-direction: column;
     }
@@ -980,13 +907,13 @@
     .settings-notif-label { font-size: 13px; font-weight: 500; line-height: 1.3; }
     .settings-notif-desc { font-size: 11.5px; opacity: .6; margin-top: 3px; line-height: 1.5; }
 
-    /* â”€â”€ Toggle row â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+    /* ── Toggle row ───────────────────────────────────────── */
     .settings-toggle-row {
         display: flex; justify-content: space-between; align-items: center;
         gap: 16px;
     }
 
-    /* â”€â”€ Checkbox grid â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+    /* ── Checkbox grid ────────────────────────────────────── */
     .settings-checkbox-grid {
         display: grid;
         grid-template-columns: repeat(2, 1fr);
@@ -994,7 +921,7 @@
         margin-top: 12px;
     }
 
-    /* â”€â”€ Integrations â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+    /* ── Integrations ─────────────────────────────────────── */
     .settings-integrations-list {
         display: flex; flex-direction: column;
     }
@@ -1049,7 +976,7 @@
 </style>
 
 @code {
-    // â”€â”€â”€ Sections â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ─── Sections ──────────────────────────────────────────────
     private record Section(string Id, string Label, string Icon);
 
     private List<Section> Sections { get; } = new()
@@ -1061,8 +988,6 @@
         new("notifications", "Notifications",       MudBlazor.Icons.Material.Outlined.NotificationsNone),
         new("security",      "Security",            MudBlazor.Icons.Material.Outlined.Lock),
         new("roles",         "Roles & Permissions", MudBlazor.Icons.Material.Outlined.AdminPanelSettings),
-        new("integrations",  "Integrations",        MudBlazor.Icons.Material.Outlined.Extension),
-        new("danger",        "Danger Zone",         MudBlazor.Icons.Material.Outlined.Warning),
     };
 
     /// <summary>HR-Admin-only sections are filtered out for everyone else.</summary>
@@ -1073,7 +998,7 @@
 
     private string ActiveSection { get; set; } = "branding";
 
-    // â”€â”€â”€ Branding draft state â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ─── Branding draft state ──────────────────────────────────
     private string DraftCompanyName { get; set; } = "";
     private string DraftLogoDataUrl { get; set; } = "";
     private bool DraftIsDark { get; set; }
@@ -1085,11 +1010,11 @@
         || DraftIsDark != Theme.IsDark
         || DraftAccent != SettingsService.AccentColor;
 
-    // â”€â”€â”€ Organization draft state â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ─── Organization draft state ──────────────────────────────
     private OrganizationProfile DraftOrg { get; set; } = new();
     private bool OrgDirty => !OrgEquals(DraftOrg, SettingsService.Organization);
 
-    // â”€â”€â”€ Localization draft state â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ─── Localization draft state ──────────────────────────────
     private LocalizationSettings DraftLocale { get; set; } = new();
     private bool LocaleDirty => !LocaleEquals(DraftLocale, SettingsService.Localization);
 
@@ -1306,7 +1231,69 @@
 
     private void OnThemeChange()
     {
+        // Keep the draft in sync so that if the user flips the theme from the
+        // top-right toggle, the Light/Dark cards reflect the new state.
+        DraftIsDark = Theme.IsDark;
         InvokeAsync(StateHasChanged);
+    }
+
+    /// <summary>Applies an accent color override at runtime. Overrides two
+    /// families of CSS variables on document.body:
+    ///   • MudBlazor's --mud-palette-primary + variants — recolors any
+    ///     MudButton Color="Primary", primary MudChip, primary MudSwitch, etc.
+    ///   • The custom --set-green family — used by hardcoded page styles
+    ///     (KPI dots, active nav highlights, success-tinted backgrounds).
+    /// Inline style on body wins over both MudThemeProvider and :root
+    /// declarations, so this is the effective accent color app-wide.</summary>
+    private async Task ApplyAccentAsync(string hex)
+    {
+        if (string.IsNullOrWhiteSpace(hex)) hex = "#1D9E75";
+        var rgb = HexToRgb(hex);
+        try
+        {
+            await JS.InvokeVoidAsync("eval",
+                // MudBlazor primary palette
+                $"document.body.style.setProperty('--mud-palette-primary','{hex}');" +
+                $"document.body.style.setProperty('--mud-palette-primary-hover','{hex}');" +
+                $"document.body.style.setProperty('--mud-palette-primary-darken','{hex}');" +
+                $"document.body.style.setProperty('--mud-palette-primary-lighten','{hex}');" +
+                $"document.body.style.setProperty('--mud-palette-primary-rgb','{rgb}');" +
+                // Custom accent family (used throughout pages: KPIs, nav, badges)
+                $"document.body.style.setProperty('--set-green','{hex}');" +
+                $"document.body.style.setProperty('--set-green-light','rgba({rgb}, 0.14)');" +
+                $"document.body.style.setProperty('--set-green-text','{hex}');" +
+                // Recruitment / Benefits / Reports also use --rec-green / --kpi-green
+                $"document.body.style.setProperty('--rec-green','{hex}');" +
+                $"document.body.style.setProperty('--kpi-green','{hex}');");
+        }
+        catch { /* JS not available during prerender */ }
+    }
+
+    private static string HexToRgb(string hex)
+    {
+        if (string.IsNullOrWhiteSpace(hex) || !hex.StartsWith("#") || hex.Length != 7) return "29,158,117";
+        try
+        {
+            var r = Convert.ToInt32(hex.Substring(1, 2), 16);
+            var g = Convert.ToInt32(hex.Substring(3, 2), 16);
+            var b = Convert.ToInt32(hex.Substring(5, 2), 16);
+            return $"{r},{g},{b}";
+        }
+        catch { return "29,158,117"; }
+    }
+
+    /// <summary>Flips theme immediately AND updates the draft so the next
+    /// Save persists this choice to the backend. Mirrors GiwuThemeToggle.</summary>
+    private async Task SetThemeMode(bool isDark)
+    {
+        Theme.SetDark(isDark);
+        DraftIsDark = isDark;
+        try
+        {
+            await JS.InvokeVoidAsync("document.documentElement.setAttribute",
+                "data-theme", isDark ? "dark" : "light");
+        }
+        catch { /* JS may be unavailable during prerender */ }
     }
 
     private void OnRolesChange()
@@ -1333,7 +1320,7 @@
         Roles.OnChange -= OnRolesChange;
     }
 
-    // â”€â”€â”€ Branding actions â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ─── Branding actions ──────────────────────────────────────
     private void ResetBrandingDrafts()
     {
         DraftCompanyName = Theme.CompanyName;
@@ -1369,6 +1356,11 @@
         }
         catch { /* JS may be unavailable in prerender */ }
 
+        // Lock in the persisted accent color (in case it changed since the
+        // last preview). Belt-and-suspenders — clicking swatches already
+        // applies it live, but this guarantees state matches what was saved.
+        await ApplyAccentAsync(DraftAccent);
+
         Snackbar.Add("Branding updated", Severity.Success);
     }
 
@@ -1386,7 +1378,7 @@
         }
     }
 
-    // â”€â”€â”€ Organization actions â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ─── Organization actions ──────────────────────────────────
     private void ResetOrgDrafts() => CopyOrg(SettingsService.Organization, DraftOrg);
 
     private async Task SaveOrganization()
@@ -1416,7 +1408,7 @@
 
     private void RevertOrganization() => ResetOrgDrafts();
 
-    // â”€â”€â”€ Localization actions â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ─── Localization actions ──────────────────────────────────
     private void ResetLocaleDrafts() => CopyLocale(SettingsService.Localization, DraftLocale);
 
     private async Task SaveLocalization()
@@ -1443,7 +1435,7 @@
 
     private void RevertLocalization() => ResetLocaleDrafts();
 
-    // â”€â”€â”€ Other section save handlers (settings are bound directly) â”€â”€
+    // ─── Other section save handlers (settings are bound directly) ──
     private void ResetPayrollDrafts() => CopyPayroll(SettingsService.Payroll, DraftPayroll);
 
     private async Task SavePayroll()
@@ -1529,67 +1521,7 @@
 
     private void RevertSecurity() => ResetSecurityDrafts();
 
-    // â”€â”€â”€ Integration actions â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-    private void ConnectIntegration(IntegrationStatus integ)
-    {
-        integ.IsConnected = true;
-        integ.ConnectedOn = DateTime.Now;
-        Snackbar.Add($"Connected to {integ.Provider}", Severity.Success);
-    }
-
-    private void DisconnectIntegration(IntegrationStatus integ)
-    {
-        integ.IsConnected = false;
-        integ.ConnectedOn = null;
-        Snackbar.Add($"Disconnected from {integ.Provider}", Severity.Info);
-    }
-
-    // â”€â”€â”€ Danger zone â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-    private async Task OpenResetDialog()
-    {
-        var options = new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true };
-        var dialog = await DialogService.ShowAsync<ResetSettingsDialog>("Reset Settings", new DialogParameters(), options);
-        var result = await dialog.Result;
-        if (result is null || result.Canceled) return;
-
-        var res = await SettingsApi.ResetToDefaultsAsync();
-        if (!res.Success)
-        {
-            Snackbar.Add($"Reset failed: {res.ErrorMessage}", Severity.Error);
-            return;
-        }
-
-        // Refresh local state from the server's now-default values.
-        SettingsService.ResetToDefaults();
-        await Task.WhenAll(
-            LoadBrandingAsync(),
-            LoadLocalizationAsync(),
-            LoadPayrollAsync(),
-            LoadNotificationsAsync(),
-            LoadSecurityAsync());
-
-        ResetBrandingDrafts();
-        ResetOrgDrafts();
-        ResetLocaleDrafts();
-        ResetPayrollDrafts();
-        ResetNotificationsDrafts();
-        ResetSecurityDrafts();
-        Snackbar.Add("All settings reset to defaults", Severity.Warning);
-    }
-
-    // â”€â”€â”€ Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-    /// <summary>Maps the icon-name strings stored on IntegrationStatus to actual MudBlazor SVG path constants.</summary>
-    private static string IntegrationIcon(string name) => name switch
-    {
-        "Fingerprint" => MudBlazor.Icons.Material.Outlined.Fingerprint,
-        "Calculate"   => MudBlazor.Icons.Material.Outlined.Calculate,
-        "Email"       => MudBlazor.Icons.Material.Outlined.Email,
-        "Key"         => MudBlazor.Icons.Material.Outlined.Key,
-        "CloudQueue"  => MudBlazor.Icons.Material.Outlined.CloudQueue,
-        "Forum"       => MudBlazor.Icons.Material.Outlined.Forum,
-        _             => MudBlazor.Icons.Material.Outlined.Extension
-    };
-
+    // ─── Helpers ───────────────────────────────────────────────
     private static void CopyOrg(OrganizationProfile from, OrganizationProfile to)
     {
         to.LegalName = from.LegalName;

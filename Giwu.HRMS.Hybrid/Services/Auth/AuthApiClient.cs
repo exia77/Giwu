@@ -15,6 +15,12 @@ public interface IAuthApi
     Task<AuthCallResult<LoginResponse>> RefreshAsync(RefreshRequest request, CancellationToken ct = default);
     Task<AuthCallResult<UserMeDto>> MeAsync(CancellationToken ct = default);
     Task<AuthCallResult<bool>> LogoutAsync(LogoutRequest request, CancellationToken ct = default);
+
+    Task<AuthCallResult<bool>> ForgotPasswordAsync(ForgotPasswordRequest request, CancellationToken ct = default);
+    Task<AuthCallResult<bool>> ResetPasswordAsync(ResetPasswordRequest request, CancellationToken ct = default);
+
+    Task<AuthCallResult<LoginResponse>> GoogleSignInAsync(GoogleSignInRequest request, CancellationToken ct = default);
+    Task<AuthCallResult<GoogleConfigDto>> GoogleConfigAsync(CancellationToken ct = default);
 }
 
 public sealed record AuthCallResult<T>(bool Success, T? Value, string? ErrorMessage)
@@ -32,6 +38,72 @@ public sealed class AuthApiClient(HttpClient http) : IAuthApi
 
     public Task<AuthCallResult<LoginResponse>> RefreshAsync(RefreshRequest req, CancellationToken ct = default) =>
         PostAsync<RefreshRequest, LoginResponse>("/api/auth/refresh", req, ct);
+
+    public Task<AuthCallResult<LoginResponse>> GoogleSignInAsync(GoogleSignInRequest req, CancellationToken ct = default) =>
+        PostAsync<GoogleSignInRequest, LoginResponse>("/api/auth/google", req, ct);
+
+    public async Task<AuthCallResult<bool>> ForgotPasswordAsync(ForgotPasswordRequest req, CancellationToken ct = default)
+    {
+        try
+        {
+            var res = await http.PostAsJsonAsync("/api/auth/forgot-password", req, JsonOpts, ct);
+            return res.IsSuccessStatusCode
+                ? AuthCallResult<bool>.Ok(true)
+                : AuthCallResult<bool>.Fail($"HTTP {(int)res.StatusCode}");
+        }
+        catch (HttpRequestException)
+        {
+            return AuthCallResult<bool>.Fail("Cannot reach the server. Check your connection.");
+        }
+        catch (Exception ex)
+        {
+            return AuthCallResult<bool>.Fail(ex.Message);
+        }
+    }
+
+    public async Task<AuthCallResult<bool>> ResetPasswordAsync(ResetPasswordRequest req, CancellationToken ct = default)
+    {
+        try
+        {
+            var res = await http.PostAsJsonAsync("/api/auth/reset-password", req, JsonOpts, ct);
+            if (res.IsSuccessStatusCode) return AuthCallResult<bool>.Ok(true);
+
+            var msg = res.StatusCode switch
+            {
+                System.Net.HttpStatusCode.NotFound   => "Invalid or expired reset token",
+                System.Net.HttpStatusCode.BadRequest => await TryReadProblem(res, ct),
+                _                                    => $"HTTP {(int)res.StatusCode}",
+            };
+            return AuthCallResult<bool>.Fail(msg);
+        }
+        catch (HttpRequestException)
+        {
+            return AuthCallResult<bool>.Fail("Cannot reach the server. Check your connection.");
+        }
+        catch (Exception ex)
+        {
+            return AuthCallResult<bool>.Fail(ex.Message);
+        }
+    }
+
+    public async Task<AuthCallResult<GoogleConfigDto>> GoogleConfigAsync(CancellationToken ct = default)
+    {
+        try
+        {
+            var res = await http.GetAsync("/api/auth/google/config", ct);
+            if (!res.IsSuccessStatusCode)
+                return AuthCallResult<GoogleConfigDto>.Fail($"HTTP {(int)res.StatusCode}");
+
+            var dto = await res.Content.ReadFromJsonAsync<GoogleConfigDto>(JsonOpts, ct);
+            return dto is null
+                ? AuthCallResult<GoogleConfigDto>.Fail("Empty response body")
+                : AuthCallResult<GoogleConfigDto>.Ok(dto);
+        }
+        catch (Exception ex)
+        {
+            return AuthCallResult<GoogleConfigDto>.Fail(ex.Message);
+        }
+    }
 
     public async Task<AuthCallResult<UserMeDto>> MeAsync(CancellationToken ct = default)
     {

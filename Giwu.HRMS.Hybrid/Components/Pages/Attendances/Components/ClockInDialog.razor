@@ -1,4 +1,5 @@
-﻿
+﻿@inject ISnackbar Snackbar
+
 <MudDialog>
     <DialogContent>
         <MudStack Spacing="3">
@@ -47,7 +48,11 @@
 
     private void Confirm()
     {
-        if (string.IsNullOrEmpty(SelectedEmployeeId)) { MudDialog.Cancel(); return; }
+        if (string.IsNullOrEmpty(SelectedEmployeeId))
+        {
+            Snackbar.Add("Please pick an employee.", Severity.Warning);
+            return;
+        }
         MudDialog.Close(DialogResult.Ok(new ClockInResult(SelectedEmployeeId, SelectedStatus, SelectedTime)));
     }
 }

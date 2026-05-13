@@ -44,9 +44,9 @@ public static class AttendanceFormatting
 
     public static string FmtTime(string t)
     {
-        if (string.IsNullOrEmpty(t)) return "â€”";
+        if (string.IsNullOrEmpty(t)) return "—";
         var p = t.Split(':');
-        if (p.Length < 2 || !int.TryParse(p[0], out var h)) return "â€”";
+        if (p.Length < 2 || !int.TryParse(p[0], out var h)) return "—";
         var ampm = h >= 12 ? "PM" : "AM";
         var dispH = h % 12 == 0 ? 12 : h % 12;
         return $"{dispH}:{p[1]} {ampm}";
@@ -61,5 +61,5 @@ public static class AttendanceFormatting
         return ((b[0] - a[0]) * 60 + (b[1] - a[1])) / 60.0;
     }
 
-    public static string FmtHours(double? h) => h.HasValue ? $"{h.Value:F1}h" : "â€”";
+    public static string FmtHours(double? h) => h.HasValue ? $"{h.Value:F1}h" : "—";
 }

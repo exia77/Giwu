@@ -40,7 +40,7 @@
                     <span class="run-detail-key">Completed</span>
                     <span>
                         @Run.CompletedAt.Value.ToString("h:mm:ss tt")
-                        <span style="opacity:.55;font-size:11.5px"> Â·
+                        <span style="opacity:.55;font-size:11.5px"> ·
                             @(((int)(Run.CompletedAt.Value - Run.QueuedAt).TotalSeconds))s
                         </span>
                     </span>
@@ -63,8 +63,8 @@
                 <div class="run-detail-row">
                     <span class="run-detail-key">Period covered</span>
                     <span>
-                        @FmtDateShort(Run.PeriodStart.Value) â€“ @FmtDateShort(Run.PeriodEnd.Value)
-                        <span style="opacity:.55;font-size:11.5px"> Â·
+                        @FmtDateShort(Run.PeriodStart.Value) – @FmtDateShort(Run.PeriodEnd.Value)
+                        <span style="opacity:.55;font-size:11.5px"> ·
                             @((Run.PeriodEnd.Value - Run.PeriodStart.Value).Days + 1) days
                         </span>
                     </span>
@@ -184,7 +184,8 @@
 
     private void Download()
     {
-        Snackbar.Add($"Downloading {Run.FileName} ({FmtFileSize(Run.FileSizeBytes)})", Severity.Info);
-        MudDialog.Close();
+        // Hand control back to the parent page so it can stream the actual CSV
+        // through the JS Blob trick. Returning true is the "download requested" signal.
+        MudDialog.Close(DialogResult.Ok(true));
     }
 }

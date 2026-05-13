@@ -6,6 +6,7 @@ using Giwu.HRMS.Hybrid.Services.Benefits;
 using Giwu.HRMS.Hybrid.Services.Departments;
 using Giwu.HRMS.Hybrid.Services.Employees;
 using Giwu.HRMS.Hybrid.Services.Leaves;
+using Giwu.HRMS.Hybrid.Services.Notifications;
 using Giwu.HRMS.Hybrid.Services.Payroll;
 using Giwu.HRMS.Hybrid.Services.Recruitment;
 using Giwu.HRMS.Hybrid.Services.Reports;
@@ -49,6 +50,7 @@ namespace Giwu.HRMS.Hybrid
 
             // ── Auth + HTTP plumbing ───────────────────────────────────────
             builder.Services.AddSingleton<ITokenStorage, SecureTokenStorage>();
+            builder.Services.AddSingleton<SessionSignal>();
             builder.Services.AddTransient<AuthBearerHandler>();
 
             var apiBaseUrl = Environment.GetEnvironmentVariable("GIWU_API_BASE_URL") ?? DefaultApiBaseUrl;
@@ -77,6 +79,14 @@ namespace Giwu.HRMS.Hybrid
             builder.Services.AddHttpClient<IBenefitsApi,    BenefitsApiClient>(ConfigureApiClient).AddHttpMessageHandler<AuthBearerHandler>();
             builder.Services.AddHttpClient<IReportsApi,     ReportsApiClient>(ConfigureApiClient).AddHttpMessageHandler<AuthBearerHandler>();
             builder.Services.AddHttpClient<ISettingsApi,    SettingsApiClient>(ConfigureApiClient).AddHttpMessageHandler<AuthBearerHandler>();
+            builder.Services.AddHttpClient<INotificationsApi, NotificationsApiClient>(ConfigureApiClient).AddHttpMessageHandler<AuthBearerHandler>();
+
+            // SignalR client for real-time notification push. Singleton because
+            // we want one long-lived connection across the entire app lifetime.
+            builder.Services.AddSingleton(sp => new NotificationHubClient(
+                sp.GetRequiredService<ITokenStorage>(),
+                apiBaseUrl,
+                sp.GetRequiredService<Microsoft.Extensions.Logging.ILogger<NotificationHubClient>>()));
 
             builder.Services.AddSingleton<AuthService>();
             builder.Services.AddSingleton<IAuthService>(sp => sp.GetRequiredService<AuthService>());

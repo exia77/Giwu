@@ -74,7 +74,7 @@
                 </div>
             }
 
-            @* Status update controls â€” only for non-final states *@
+            @* Status update controls — only for non-final states *@
             @if (Working.Status != BenefitRequestStatus.Closed && Working.Status != BenefitRequestStatus.Rejected)
             {
                 <div class="req-actions-section">
@@ -160,7 +160,7 @@
                         <MudNumericField T="decimal" Label="Amount" @bind-Value="Working.Amount"
                                          Variant="Variant.Outlined" Margin="Margin.Dense"
                                          Min="0" Step="500"
-                                         Adornment="Adornment.Start" AdornmentText="â‚±" />
+                                         Adornment="Adornment.Start" AdornmentText="₱" />
                     </MudItem>
                     @if (Working.Type == BenefitRequestType.Loan)
                     {
@@ -335,7 +335,7 @@
 
     private void Cancel()
     {
-        // If viewing and we changed status, that's a real edit â€” leave as-is and close OK
+        // If viewing and we changed status, that's a real edit — leave as-is and close OK
         if (IsViewing && Existing != null && Working.Status != _origStatus)
         {
             MudDialog.Close(DialogResult.Ok(true));
@@ -349,9 +349,9 @@
     private void Submit()
     {
         // Validation:
-        //   â€¢ Employee must be selected
-        //   â€¢ For Loan and Reimbursement, amount must be > 0
-        //   â€¢ For Claim, amount can be 0 (e.g. counseling session usage tracking)
+        //   • Employee must be selected
+        //   • For Loan and Reimbursement, amount must be > 0
+        //   • For Claim, amount can be 0 (e.g. counseling session usage tracking)
         if (string.IsNullOrEmpty(SelectedEmployeeId)) return;
         if (Working.Type != BenefitRequestType.Claim && Working.Amount <= 0) return;
 

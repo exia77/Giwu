@@ -1,6 +1,6 @@
 ﻿namespace Giwu.HRMS.Hybrid.Models;
 
-// â”€â”€â”€ Categories & enums â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Categories & enums ─────────────────────────────────────────
 
 public enum ReportCategory
 {
@@ -33,13 +33,13 @@ public enum ScheduleFrequency
 {
     Daily,
     Weekly,
-    BiWeekly,       // 15th and 30th â€” common for PH payroll
+    BiWeekly,       // 15th and 30th — common for PH payroll
     Monthly,
     Quarterly,
     Yearly,
 }
 
-// â”€â”€â”€ Core entities â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Core entities ──────────────────────────────────────────────
 
 public class ReportDefinition
 {
@@ -113,7 +113,7 @@ public class ComplianceDeadline
     public string? RelatedReportId { get; set; }        // Report definition ID that produces this filing
 }
 
-// â”€â”€â”€ Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Helpers ────────────────────────────────────────────────────
 
 public static class ReportsFormatting
 {
@@ -161,7 +161,7 @@ public static class ReportsFormatting
         ReportFormat.Csv   => "CSV",
         ReportFormat.Excel => "Excel",
         ReportFormat.Pdf   => "PDF",
-        _ => "â€”"
+        _ => "—"
     };
 
     public static string FormatIcon(ReportFormat f) => f switch
@@ -188,7 +188,7 @@ public static class ReportsFormatting
         ScheduleFrequency.Monthly   => "Monthly",
         ScheduleFrequency.Quarterly => "Quarterly",
         ScheduleFrequency.Yearly    => "Yearly",
-        _ => "â€”"
+        _ => "—"
     };
 
     public static string StatusBadgeClass(ReportRunStatus s) => s switch
@@ -223,7 +223,7 @@ public static class ReportsFormatting
         _ => ""
     };
 
-    public static string FmtDate(DateTime? d) => d.HasValue ? d.Value.ToString("MMM d, yyyy") : "â€”";
+    public static string FmtDate(DateTime? d) => d.HasValue ? d.Value.ToString("MMM d, yyyy") : "—";
     public static string FmtDateShort(DateTime d) => d.ToString("MMM d");
 
     public static string RelativeTime(DateTime d)

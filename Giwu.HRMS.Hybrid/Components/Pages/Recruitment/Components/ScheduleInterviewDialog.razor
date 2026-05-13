@@ -1,4 +1,5 @@
-﻿
+﻿@inject ISnackbar Snackbar
+
 <MudDialog>
     <DialogContent>
         <MudStack Spacing="3">
@@ -74,7 +75,11 @@
 
     private void Confirm()
     {
-        if (!ScheduledDate.HasValue || !ScheduledTime.HasValue) { MudDialog.Cancel(); return; }
+        if (!ScheduledDate.HasValue || !ScheduledTime.HasValue)
+        {
+            Snackbar.Add("Please pick a date and time for the interview.", Severity.Warning);
+            return;
+        }
 
         var scheduledAt = ScheduledDate.Value.Date + ScheduledTime.Value;
         var parts = InterviewerName.Trim().Split(' ', StringSplitOptions.RemoveEmptyEntries);

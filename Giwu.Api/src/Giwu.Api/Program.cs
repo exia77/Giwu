@@ -3,6 +3,8 @@ using Giwu.Api.Common;
 using Giwu.Api.Hangfire;
 using Giwu.Api.Jobs;
 using Giwu.Api.Middleware;
+using Giwu.Api.Realtime;
+using Giwu.Application.Notifications;
 using Giwu.Application;
 using Giwu.Application.Common;
 using Giwu.Infrastructure;
@@ -52,6 +54,22 @@ builder.Services
             IssuerSigningKey         = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(auth.Key)),
             ClockSkew                = TimeSpan.FromSeconds(30),
         };
+
+        // SignalR sends the JWT via querystring (?access_token=...) when
+        // upgrading to WebSocket, because browsers won't let you set
+        // custom headers on the WS handshake. Pull it from the query
+        // string for the /hubs/* paths only.
+        o.Events = new JwtBearerEvents
+        {
+            OnMessageReceived = ctx =>
+            {
+                var token = ctx.Request.Query["access_token"];
+                var path  = ctx.HttpContext.Request.Path;
+                if (!string.IsNullOrEmpty(token) && path.StartsWithSegments("/hubs"))
+                    ctx.Token = token;
+                return Task.CompletedTask;
+            }
+        };
     });
 
 builder.Services.AddAuthorization(o => o.RegisterPermissionPolicies());
@@ -78,6 +96,11 @@ builder.Services.AddHealthChecks()
 
 // OpenAPI + Scalar UI
 builder.Services.AddOpenApi();
+
+// SignalR + the in-app notification realtime push
+builder.Services.AddSignalR();
+builder.Services.AddSingleton<Microsoft.AspNetCore.SignalR.IUserIdProvider, JwtUserIdProvider>();
+builder.Services.AddScoped<INotificationBroadcaster, SignalRNotificationBroadcaster>();
 
 // ── Pipeline ───────────────────────────────────────────────────────────────
 var app = builder.Build();
@@ -108,6 +131,10 @@ RecurringJob.AddOrUpdate<AttendanceRollupJob>(
 
 app.MapEndpoints();
 
+// Real-time notification hub. Clients connect with an access_token in
+// the query string (see JwtBearer.OnMessageReceived above).
+app.MapHub<NotificationsHub>("/hubs/notifications").RequireAuthorization();
+
 // ── DB migrate + seed on startup (DEV only) ────────────────────────────────
 if (app.Environment.IsDevelopment())
 {
@@ -117,6 +144,10 @@ if (app.Environment.IsDevelopment())
     var tenant  = scope.ServiceProvider.GetRequiredService<ITenantContext>();
     await db.Database.MigrateAsync();
     await Seeder.SeedAsync(db, hasher, tenant);
+
+    // Optional sample dataset for local dev. Idempotent — only runs on an
+    // empty DB. Comment out to keep the app starting empty.
+    await SampleDataSeeder.SeedAsync(db, hasher);
 }
 
 app.Run();

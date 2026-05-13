@@ -6,10 +6,10 @@
 /// </summary>
 public enum UserRole
 {
-    HrAdmin,        // Full access â€” owns Settings and the role/permission matrix
+    HrAdmin,        // Full access — owns Settings and the role/permission matrix
     HrSpecialist,   // Most HR pages, but read-only on Settings, no Security/Roles
     Manager,        // Team-level access: approve leave, view team attendance + people
-    Finance,        // Payroll, Reports, Compliance â€” no Recruitment or Benefits admin
+    Finance,        // Payroll, Reports, Compliance — no Recruitment or Benefits admin
     Employee,       // Self-service only: own payslips, balances, file requests
 }
 
@@ -71,7 +71,7 @@ public static class NavKeys
 
 /// <summary>
 /// Represents a user with a role assignment. In a production system this would be
-/// hydrated from your auth provider (Entra/Auth0/etc) â€” for the demo we keep it on
+/// hydrated from your auth provider (Entra/Auth0/etc) — for the demo we keep it on
 /// the service.
 /// </summary>
 public class UserSession
@@ -88,9 +88,9 @@ public class UserSession
 
 /// <summary>
 /// Central authority for role-based UI access. Inject as a singleton and call:
-///   â€¢ CanSee(NavKeys.Payroll) from the sidebar to filter links
-///   â€¢ CanAccess(navKey) from inside a page's OnInitialized to gate by URL
-///   â€¢ CurrentUser to render the user's identity in the footer / topbar
+///   • CanSee(NavKeys.Payroll) from the sidebar to filter links
+///   • CanAccess(navKey) from inside a page's OnInitialized to gate by URL
+///   • CurrentUser to render the user's identity in the footer / topbar
 ///
 /// The permission matrix can be edited at runtime through the Settings UI; OnChange
 /// fires whenever the matrix or the active user changes so subscribers can re-render.
@@ -101,7 +101,7 @@ public class UserSession
 public class RoleAuthService : IRoleAuthService
 {
     /// <summary>
-    /// Permission matrix: role â†’ set of nav keys that role can access.
+    /// Permission matrix: role → set of nav keys that role can access.
     /// Mutable so the Settings UI can update it. Defaults to the table below
     /// which encodes typical PH HR responsibilities.
     /// </summary>
@@ -216,7 +216,7 @@ public class RoleAuthService : IRoleAuthService
         UserRole.Manager       => "Manager",
         UserRole.Finance       => "Finance / Payroll",
         UserRole.Employee      => "Employee",
-        _ => "â€”"
+        _ => "—"
     };
 
     public static string RoleDescription(UserRole role) => role switch
@@ -240,15 +240,15 @@ public class RoleAuthService : IRoleAuthService
     };
 
     /// <summary>
-    /// Default permission matrix. This is the rule book â€” edit here to change
+    /// Default permission matrix. This is the rule book — edit here to change
     /// the baseline shipped configuration.
     /// </summary>
     private static Dictionary<UserRole, HashSet<string>> DefaultPermissions() => new()
     {
-        // HR Admin â€” everything
+        // HR Admin — everything
         [UserRole.HrAdmin] = new HashSet<string>(NavKeys.All),
 
-        // HR Specialist â€” everything except Settings (no permission to edit the org config or roles)
+        // HR Specialist — everything except Settings (no permission to edit the org config or roles)
         [UserRole.HrSpecialist] = new HashSet<string>
         {
             NavKeys.Dashboard, NavKeys.Employees, NavKeys.Departments,
@@ -256,20 +256,20 @@ public class RoleAuthService : IRoleAuthService
             NavKeys.Leave, NavKeys.Reports,
         },
 
-        // Manager â€” team-level visibility, leave approval, no Payroll/Settings/Recruitment
+        // Manager — team-level visibility, leave approval, no Payroll/Settings/Recruitment
         [UserRole.Manager] = new HashSet<string>
         {
             NavKeys.Dashboard, NavKeys.Employees,
             NavKeys.Attendance, NavKeys.Leave, NavKeys.Reports,
         },
 
-        // Finance â€” payroll-centric responsibilities
+        // Finance — payroll-centric responsibilities
         [UserRole.Finance] = new HashSet<string>
         {
             NavKeys.Dashboard, NavKeys.Payroll, NavKeys.Benefits, NavKeys.Reports,
         },
 
-        // Employee â€” self-service only. They land on Dashboard and use Leave to file requests.
+        // Employee — self-service only. They land on Dashboard and use Leave to file requests.
         [UserRole.Employee] = new HashSet<string>
         {
             NavKeys.Dashboard, NavKeys.Leave,

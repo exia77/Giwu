@@ -24,6 +24,8 @@ internal sealed class GetEmployeeHandler(IApplicationDbContext db)
         return Result<EmployeeDto>.Success(new EmployeeDto(
             row.e.Id, row.e.EmployeeNumber, row.e.FirstName, row.e.LastName, row.e.Email,
             row.e.JobTitle, row.e.DepartmentId, row.DeptName,
-            row.e.Status, row.e.EmploymentType, row.e.HireDate));
+            row.e.Status, row.e.EmploymentType, row.e.HireDate,
+            row.e.Phone, row.e.BirthDate, row.e.Gender, row.e.MonthlyBaseSalary,
+            row.e.PermanentAddress.Line1, row.e.PermanentAddress.City, row.e.PermanentAddress.Province));
     }
 }

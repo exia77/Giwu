@@ -5,10 +5,12 @@ using Giwu.Domain.Benefits;
 using Giwu.Domain.Common;
 using Giwu.Domain.Identity;
 using Giwu.Domain.Leaves;
+using Giwu.Domain.Notifications;
 using Giwu.Domain.Organization;
 using Giwu.Domain.Outbox;
 using Giwu.Domain.Payroll;
 using Giwu.Domain.Recruitment;
+using Giwu.Domain.Reports;
 using Giwu.Domain.Tenancy;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
@@ -49,6 +51,13 @@ public sealed class ApplicationDbContext(
     public DbSet<BenefitProgram>    BenefitPrograms    => Set<BenefitProgram>();
     public DbSet<BenefitEnrollment> BenefitEnrollments => Set<BenefitEnrollment>();
     public DbSet<BenefitRequest>    BenefitRequests    => Set<BenefitRequest>();
+
+    public DbSet<ReportDefinition>     ReportDefinitions   => Set<ReportDefinition>();
+    public DbSet<ReportSchedule>       ReportSchedules     => Set<ReportSchedule>();
+    public DbSet<ReportRun>            ReportRuns          => Set<ReportRun>();
+    public DbSet<ComplianceDeadline>   ComplianceDeadlines => Set<ComplianceDeadline>();
+
+    public DbSet<Notification>         Notifications       => Set<Notification>();
 
     protected override void OnModelCreating(ModelBuilder b)
     {
@@ -147,6 +156,7 @@ public sealed class ApplicationDbContext(
             e.HasIndex(x => x.Email).IsUnique();
             e.Property(x => x.Email).HasMaxLength(256).IsRequired();
             e.Property(x => x.DisplayName).HasMaxLength(128);
+            e.Property(x => x.PasswordResetTokenHash).HasMaxLength(128);
             e.HasMany(x => x.Roles).WithOne().HasForeignKey(r => r.UserId).OnDelete(DeleteBehavior.Cascade);
             ApplyTenantFilter(e);
         });
@@ -360,6 +370,61 @@ public sealed class ApplicationDbContext(
             ApplyTenantFilter(e);
         });
 
+        // ── Reports ─────────────────────────────────────────────────────────
+        b.Entity<ReportDefinition>(e =>
+        {
+            e.ToTable("report_definitions");
+            e.HasIndex(x => x.Code).IsUnique();
+            e.Property(x => x.Code).HasMaxLength(64);
+            e.Property(x => x.Name).HasMaxLength(128).IsRequired();
+            e.Property(x => x.ShortDescription).HasMaxLength(256);
+            e.Property(x => x.LongDescription).HasMaxLength(2048);
+            e.Property(x => x.SupportedFormatsCsv).HasMaxLength(64);
+            e.Property(x => x.ColumnsCsv).HasMaxLength(2048);
+            ApplyTenantFilter(e);
+        });
+
+        b.Entity<ReportSchedule>(e =>
+        {
+            e.ToTable("report_schedules");
+            e.HasIndex(x => x.DefinitionId);
+            e.HasIndex(x => x.IsActive);
+            e.Property(x => x.DefinitionId).HasMaxLength(64);
+            e.Property(x => x.DefinitionName).HasMaxLength(128);
+            e.Property(x => x.Cadence).HasMaxLength(128);
+            e.Property(x => x.RecipientsCsv).HasMaxLength(2048);
+            ApplyTenantFilter(e);
+        });
+
+        b.Entity<ReportRun>(e =>
+        {
+            e.ToTable("report_runs");
+            e.HasIndex(x => x.DefinitionId);
+            e.HasIndex(x => x.Status);
+            e.HasIndex(x => x.QueuedAt);
+            e.Property(x => x.DefinitionId).HasMaxLength(64);
+            e.Property(x => x.DefinitionName).HasMaxLength(128);
+            e.Property(x => x.RanByDisplay).HasMaxLength(128);
+            e.Property(x => x.DepartmentsCsv).HasMaxLength(1024);
+            e.Property(x => x.FileName).HasMaxLength(256);
+            e.Property(x => x.ErrorMessage).HasMaxLength(1024);
+            ApplyTenantFilter(e);
+        });
+
+        b.Entity<ComplianceDeadline>(e =>
+        {
+            e.ToTable("compliance_deadlines");
+            e.HasIndex(x => x.DueDate);
+            e.HasIndex(x => x.IsFiled);
+            e.Property(x => x.Agency).HasMaxLength(32);
+            e.Property(x => x.FormCode).HasMaxLength(32);
+            e.Property(x => x.Name).HasMaxLength(128).IsRequired();
+            e.Property(x => x.Description).HasMaxLength(512);
+            e.Property(x => x.PeriodCovered).HasMaxLength(64);
+            e.Property(x => x.RelatedReportCode).HasMaxLength(64);
+            ApplyTenantFilter(e);
+        });
+
         // ── Outbox / Audit ──────────────────────────────────────────────────
         b.Entity<OutboxMessage>(e =>
         {
@@ -372,6 +437,19 @@ public sealed class ApplicationDbContext(
         {
             e.ToTable("audit_events");
             e.HasIndex(x => new { x.EntityName, x.EntityId });
+            ApplyTenantFilter(e);
+        });
+
+        // ── Notifications ───────────────────────────────────────────────────
+        b.Entity<Notification>(e =>
+        {
+            e.ToTable("notifications");
+            e.Ignore(x => x.IsRead); // computed property, not persisted
+            e.Property(x => x.Title).HasMaxLength(200);
+            e.Property(x => x.Body).HasMaxLength(1000);
+            e.Property(x => x.RelatedEntityType).HasMaxLength(100);
+            e.HasIndex(x => new { x.RecipientUserId, x.ReadAt });
+            e.HasIndex(x => x.CreatedAt);
             ApplyTenantFilter(e);
         });
 

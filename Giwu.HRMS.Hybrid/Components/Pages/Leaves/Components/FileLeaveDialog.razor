@@ -19,7 +19,7 @@
                         @lt.Name
                         @if (lt.IsMandated)
                         {
-                            <span> Â·</span>
+                            <span> ·</span>
                             <span style="opacity:.55;font-size:11.5px"> @lt.LegalReference</span>
                         }
                     </MudSelectItem>
@@ -106,7 +106,7 @@
                         {
                             <div class="file-preview-warning">
                                 <MudIcon Icon="@Icons.Material.Outlined.Warning" Size="Size.Small" />
-                                <span>Insufficient balance â€” request exceeds available days.</span>
+                                <span>Insufficient balance — request exceeds available days.</span>
                             </div>
                         }
                     }
@@ -201,7 +201,7 @@
         AllLeaveTypes.FirstOrDefault(l => l.Id == SelectedLeaveTypeId);
 
     /// <summary>
-    /// Filters leave types based on employee gender â€” Maternity/Magna/VAWC only show for female,
+    /// Filters leave types based on employee gender — Maternity/Magna/VAWC only show for female,
     /// Paternity only for male. This matches PH-mandated eligibility.
     /// </summary>
     private List<LeaveType> AvailableLeaveTypes

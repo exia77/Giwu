@@ -1,4 +1,5 @@
 ﻿@using static Giwu.HRMS.Hybrid.Models.RecruitmentFormatting
+@inject ISnackbar Snackbar
 
 <MudDialog>
     <DialogContent>
@@ -56,7 +57,11 @@
 
     private void Confirm()
     {
-        if (string.IsNullOrEmpty(NewStage)) { MudDialog.Cancel(); return; }
+        if (string.IsNullOrEmpty(NewStage))
+        {
+            Snackbar.Add("Please pick a stage to advance to.", Severity.Warning);
+            return;
+        }
         var noteText = string.IsNullOrWhiteSpace(Note) ? $"Moved to {NewStage}" : Note;
         MudDialog.Close(DialogResult.Ok(new StageChangeResult(NewStage, noteText)));
     }

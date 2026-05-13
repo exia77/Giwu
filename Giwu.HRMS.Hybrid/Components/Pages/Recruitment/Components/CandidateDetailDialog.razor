@@ -10,7 +10,7 @@
             <div style="flex:1;min-width:0">
                 <MudText Typo="Typo.subtitle1" Class="fw-medium">@Candidate.Name</MudText>
                 <MudText Typo="Typo.caption" Style="opacity:.55">
-                    @(Job?.Title ?? "â€”") Â· Applied @RelativeTime(Candidate.AppliedOn)
+                    @(Job?.Title ?? "—") · Applied @RelativeTime(Candidate.AppliedOn)
                 </MudText>
             </div>
             <span class="@($"rec-badge {StageBadgeClass(Candidate.Stage)}")">@Candidate.Stage</span>
@@ -37,7 +37,7 @@
                 <div class="detail-val">
                     @for (int i = 1; i <= 5; i++)
                     {
-                        <span class="@(i <= Candidate.Rating ? "rec-star-filled" : "rec-star-empty")">â˜…</span>
+                        <span class="@(i <= Candidate.Rating ? "rec-star-filled" : "rec-star-empty")">★</span>
                     }
                 </div>
             </div>
@@ -76,9 +76,9 @@
                     <div class="iv-row">
                         <MudIcon Icon="@Icons.Material.Outlined.Event" Size="Size.Small" Style="opacity:.6" />
                         <div style="flex:1;min-width:0">
-                            <div style="font-size:13px">@iv.Kind Â· @FmtDateTime(iv.ScheduledAt)</div>
+                            <div style="font-size:13px">@iv.Kind · @FmtDateTime(iv.ScheduledAt)</div>
                             <div style="font-size:11px;opacity:.55">
-                                @iv.Interviewer Â· @iv.Location Â· @iv.DurationMinutes min
+                                @iv.Interviewer · @iv.Location · @iv.DurationMinutes min
                             </div>
                         </div>
                     </div>
@@ -109,10 +109,10 @@
                         <div class="timeline-content">
                             <div style="font-size:13px">
                                 <span class="fw-medium">@ev.Stage</span>
-                                <span style="opacity:.55">â€” @ev.Note</span>
+                                <span style="opacity:.55">— @ev.Note</span>
                             </div>
                             <div style="font-size:11px;opacity:.55">
-                                @ev.Actor Â· @RelativeTime(ev.When)
+                                @ev.Actor · @RelativeTime(ev.When)
                             </div>
                         </div>
                     </div>

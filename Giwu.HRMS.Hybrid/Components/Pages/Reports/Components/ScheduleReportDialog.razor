@@ -10,7 +10,7 @@
                 {
                     <MudSelectItem Value="@def.Id">
                         @def.Name
-                        <span style="opacity:.55;font-size:11px"> Â· @CategoryLabel(def.Category)</span>
+                        <span style="opacity:.55;font-size:11px"> · @CategoryLabel(def.Category)</span>
                     </MudSelectItem>
                 }
             </MudSelect>
@@ -42,7 +42,7 @@
                                 <MudIcon Icon="@Icons.Material.Outlined.Email" Size="Size.Small" Style="opacity:.6" />
                                 <span>@email</span>
                                 <button type="button" class="recipient-remove" title="Remove"
-                                        @onclick="@(() => RemoveRecipient(email))">Ã—</button>
+                                        @onclick="@(() => RemoveRecipient(email))">×</button>
                             </div>
                         }
                     </div>

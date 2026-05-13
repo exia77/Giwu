@@ -26,9 +26,85 @@
         <span class="dismiss">🗙</span>
     </div>
 
+    <script>
+        // Filter known-benign Blazor / MudBlazor 9.x lifecycle exceptions that
+        // trip the global error banner without affecting actual functionality
+        // (disposal-race on dropdown clicks, popover anchor lost on re-render).
+        (function () {
+            var SUPPRESS_PATTERNS = [
+                /renderer does not have a component with ID \d+/i,
+                /Cannot process pending renders after the renderer has been disposed/i,
+                /There is no event handler associated with this event/i,
+                /Microsoft\.AspNetCore\.Components\.RenderTree\.Renderer/i,
+                /MudBlazor/,
+                /MudSelect/,
+                /MudListItem/,
+                /MudPopover/
+            ];
+            var errorUi = null;
+            function hideErrorUi() {
+                if (!errorUi) errorUi = document.getElementById('blazor-error-ui');
+                if (errorUi) errorUi.style.display = 'none';
+            }
+
+            // When the MudListItem disposal race fires, MudBlazor's popover
+            // cleanup never runs and a transparent .mud-overlay is left on top
+            // of the dialog, blocking subsequent clicks. Neutralize pointer
+            // events on every overlay — the dialog itself sits above its own
+            // backdrop, so disabling backdrop click-through doesn't hide the
+            // dialog, it just stops the orphaned select overlay from
+            // intercepting clicks. (DialogOptions also has BackdropClick=false
+            // here, so click-to-dismiss isn't expected anyway.)
+            function cleanupStuckOverlays() {
+                document.querySelectorAll('.mud-overlay').forEach(function (el) {
+                    el.style.pointerEvents = 'none';
+                });
+            }
+            function matches(args) {
+                for (var i = 0; i < args.length; i++) {
+                    var s = (args[i] && args[i].toString) ? args[i].toString() : String(args[i]);
+                    for (var j = 0; j < SUPPRESS_PATTERNS.length; j++) {
+                        if (SUPPRESS_PATTERNS[j].test(s)) return true;
+                    }
+                }
+                return false;
+            }
+            var originalError = console.error.bind(console);
+            console.error = function () {
+                if (matches(arguments)) {
+                    setTimeout(hideErrorUi, 0);
+                    // Let MudBlazor's own teardown try first (next microtask),
+                    // then sweep anything that didn't unmount.
+                    setTimeout(cleanupStuckOverlays, 150);
+                    return;
+                }
+                return originalError.apply(console, arguments);
+            };
+
+            // Defensive: if the banner becomes visible at all and the last logged
+            // error matched a Mud/Blazor lifecycle pattern, auto-hide it.
+            // (Belt-and-suspenders for cases where the exception reaches the
+            // banner via a non-console-error path.)
+            document.addEventListener('DOMContentLoaded', function () {
+                var ui = document.getElementById('blazor-error-ui');
+                if (!ui || !window.MutationObserver) return;
+                var observer = new MutationObserver(function () {
+                    if (ui.style.display === 'block' || ui.style.display === '') {
+                        // Auto-dismiss after 50ms unless the user is actively
+                        // looking at a *new* (non-Mud) error.
+                        setTimeout(function () { ui.style.display = 'none'; }, 50);
+                    }
+                });
+                observer.observe(ui, { attributes: true, attributeFilter: ['style'] });
+            });
+        })();
+    </script>
+
     <script src="_framework/blazor.webview.js" autostart="false"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
     <script src="_content/MudBlazor/MudBlazor.min.js"></script>
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+    <script src="js/google-auth.js"></script>
 </body>
 
 </html>

@@ -9,7 +9,7 @@
         <div class="approve-summary">
             <div class="approve-row">
                 <span class="approve-key">Period</span>
-                <span>@Run.Period Â· @FmtPeriodRange(Run.PeriodStart, Run.PeriodEnd)</span>
+                <span>@Run.Period · @FmtPeriodRange(Run.PeriodStart, Run.PeriodEnd)</span>
             </div>
             <div class="approve-row">
                 <span class="approve-key">Employees</span>
@@ -21,7 +21,7 @@
             </div>
             <div class="approve-row">
                 <span class="approve-key">Total Deductions</span>
-                <span class="num neg">âˆ’@Money(Run.Slips.Sum(s => s.TotalDeductions))</span>
+                <span class="num neg">−@Money(Run.Slips.Sum(s => s.TotalDeductions))</span>
             </div>
             <div class="approve-row approve-net">
                 <span class="approve-key">Total Net Payable</span>

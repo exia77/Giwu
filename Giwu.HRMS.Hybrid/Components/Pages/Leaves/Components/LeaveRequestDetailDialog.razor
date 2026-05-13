@@ -10,7 +10,7 @@
             <div style="flex:1;min-width:0">
                 <MudText Typo="Typo.subtitle1" Class="fw-medium">@Request.EmployeeName</MudText>
                 <MudText Typo="Typo.caption" Style="opacity:.55">
-                    @Request.Dept Â· Filed @RelativeTime(Request.FiledOn)
+                    @Request.Dept · Filed @RelativeTime(Request.FiledOn)
                 </MudText>
             </div>
             <span class="@($"leave-status {StatusBadgeClass(Request.Status)}")">@StatusLabel(Request.Status)</span>
@@ -30,7 +30,7 @@
             </div>
         </div>
 
-        @* Day-by-day breakdown â€” for short ranges show each day, for long ranges show summary *@
+        @* Day-by-day breakdown — for short ranges show each day, for long ranges show summary *@
         @if (Request.DaysRequested <= 14)
         {
             <div class="detail-section-header">Day-by-day</div>
@@ -53,7 +53,7 @@
                         }
                         else if (Request.IsHalfDay && d == Request.StartDate.Date)
                         {
-                            <div class="detail-day-tag">Â½ @Request.HalfDaySession</div>
+                            <div class="detail-day-tag">½ @Request.HalfDaySession</div>
                         }
                         else
                         {

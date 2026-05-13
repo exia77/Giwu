@@ -20,7 +20,7 @@
         <Nullable>enable</Nullable>
 
         <!-- Display name -->
-        <ApplicationTitle>Giwu.HRMS.Hybrid</ApplicationTitle>
+        <ApplicationTitle>Manna HRIS</ApplicationTitle>
 
         <!-- App Identifier -->
         <ApplicationId>com.companyname.giwu.hrms.hybrid</ApplicationId>
@@ -71,7 +71,8 @@
         <PackageReference Include="Microsoft.AspNetCore.Components.WebView.Maui" Version="$(MauiVersion)" />
         <PackageReference Include="Microsoft.Extensions.Http" Version="10.0.0" />
         <PackageReference Include="Microsoft.Extensions.Logging.Debug" Version="10.0.0" />
-        <PackageReference Include="MudBlazor" Version="9.3.0" />
+        <PackageReference Include="Microsoft.AspNetCore.SignalR.Client" Version="10.0.0" />
+        <PackageReference Include="MudBlazor" Version="9.*" />
     </ItemGroup>
 
     <ItemGroup>

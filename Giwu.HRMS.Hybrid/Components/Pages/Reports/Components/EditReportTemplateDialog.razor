@@ -47,7 +47,7 @@
                             <button type="button" class="custom-col-chip custom-col-chip-active"
                                     @onclick="@(() => RemoveColumn(col))">
                                 @col
-                                <span style="opacity:.6;margin-left:4px">Ã—</span>
+                                <span style="opacity:.6;margin-left:4px">×</span>
                             </button>
                         }
                     </div>
@@ -189,7 +189,12 @@
 @code {
     [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = default!;
 
+    /// <summary>If passed, the dialog pre-populates with this definition's
+    /// values and Save returns an updated copy. Null = create-new mode.</summary>
+    [Parameter] public ReportDefinition? Existing { get; set; }
+
     private ReportDefinition Working { get; set; } = new();
+    private bool IsEditing => Existing != null;
 
     private bool CanSave =>
         !string.IsNullOrWhiteSpace(Working.Name)
@@ -198,14 +203,35 @@
 
     protected override void OnInitialized()
     {
-        Working = new ReportDefinition
+        if (Existing != null)
         {
-            Category = ReportCategory.People,
-            IsCustom = true,
-            RequiresDateRange = false,
-            SupportedFormats = new() { ReportFormat.Csv, ReportFormat.Excel },
-            Columns = new(),
-        };
+            // Edit mode: deep-copy so cancel doesn't mutate the caller's instance.
+            Working = new ReportDefinition
+            {
+                Id = Existing.Id,
+                Name = Existing.Name,
+                ShortDescription = Existing.ShortDescription,
+                LongDescription = Existing.LongDescription,
+                Category = Existing.Category,
+                RequiresDateRange = Existing.RequiresDateRange,
+                RequiresDepartmentFilter = Existing.RequiresDepartmentFilter,
+                IsCustom = Existing.IsCustom,
+                IsCompliance = Existing.IsCompliance,
+                SupportedFormats = new(Existing.SupportedFormats),
+                Columns = new(Existing.Columns),
+            };
+        }
+        else
+        {
+            Working = new ReportDefinition
+            {
+                Category = ReportCategory.People,
+                IsCustom = true,
+                RequiresDateRange = false,
+                SupportedFormats = new() { ReportFormat.Csv, ReportFormat.Excel },
+                Columns = new(),
+            };
+        }
     }
 
     /// <summary>

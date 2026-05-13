@@ -197,6 +197,13 @@
         public string JoinDate  { get; set; } = "";
         public DateOnly HireDate { get; set; }
         public EmploymentType EmploymentType { get; set; }
+        public string Phone     { get; set; } = "";
+        public DateOnly? BirthDate { get; set; }
+        public Gender Gender    { get; set; }
+        public decimal Salary   { get; set; }
+        public string AddressLine { get; set; } = "";
+        public string City      { get; set; } = "";
+        public string Province  { get; set; } = "";
     }
 
     record SummaryChip(string Label, int Count, string Dot, string Bg);
@@ -290,6 +297,13 @@
             JoinDate  = dto.HireDate.ToString("MMM d, yyyy"),
             HireDate  = dto.HireDate,
             EmploymentType = dto.EmploymentType,
+            Phone     = dto.Phone,
+            BirthDate = dto.BirthDate,
+            Gender    = dto.Gender,
+            Salary    = dto.MonthlyBaseSalary,
+            AddressLine = dto.AddressLine,
+            City      = dto.City,
+            Province  = dto.Province,
         };
     }
 
@@ -354,7 +368,13 @@
             DepartmentId:   deptId,
             HireDate:       DateOnly.FromDateTime(form.StartDate ?? DateTime.Today),
             MonthlyBaseSalary: form.Salary,
-            EmploymentType: ParseEmploymentType(form.EmploymentType));
+            EmploymentType: ParseEmploymentType(form.EmploymentType),
+            Phone:          form.Phone,
+            BirthDate:      form.BirthDate is { } bd ? DateOnly.FromDateTime(bd) : null,
+            Gender:         ParseGender(form.Gender),
+            AddressLine:    form.Address,
+            City:           form.City,
+            Province:       form.Province);
 
         var apiResult = await EmployeesApi.CreateAsync(req);
         if (apiResult.Success)
@@ -370,6 +390,39 @@
 
     static EmploymentType ParseEmploymentType(string s) =>
         Enum.TryParse<EmploymentType>(s, true, out var v) ? v : EmploymentType.Regular;
+
+    static EmploymentStatus ParseStatus(string label) => label switch
+    {
+        "Active"     => EmploymentStatus.Active,
+        "On Leave"   => EmploymentStatus.OnLeave,
+        "Suspended"  => EmploymentStatus.Suspended,
+        "Terminated" => EmploymentStatus.Terminated,
+        "Resigned"   => EmploymentStatus.Resigned,
+        _            => EmploymentStatus.Active,
+    };
+
+    static Gender ParseGender(string label) => label switch
+    {
+        "Male"   => Gender.Male,
+        "Female" => Gender.Female,
+        "Other"  => Gender.Other,
+        _        => Gender.PreferNotToSay,
+    };
+
+    static string GenderToLabel(Gender g) => g switch
+    {
+        Gender.Male   => "Male",
+        Gender.Female => "Female",
+        Gender.Other  => "Other",
+        _             => "Prefer not to say",
+    };
+
+    static string FormatAddress(string line, string city, string province)
+    {
+        var parts = new[] { line, city, province }.Where(s => !string.IsNullOrWhiteSpace(s));
+        var joined = string.Join(", ", parts);
+        return string.IsNullOrWhiteSpace(joined) ? "—" : joined;
+    }
 
     // ════════════════════════════════════════════════════════════════════════
     // VIEW
@@ -387,13 +440,13 @@
             Status = e.Status,
             ChipColor = e.ChipColor,
             Email = e.Email,
-            Phone = "—",
+            Phone = string.IsNullOrWhiteSpace(e.Phone) ? "—" : e.Phone,
             JoinDate = e.JoinDate,
             EmploymentType = e.EmploymentType.ToString(),
-            Salary = "—",
-            Address = "—",
-            BirthDate = "—",
-            Gender = "—",
+            Salary = e.Salary > 0 ? $"₱{e.Salary:N2}" : "—",
+            Address = FormatAddress(e.AddressLine, e.City, e.Province),
+            BirthDate = e.BirthDate?.ToString("MMM d, yyyy") ?? "—",
+            Gender = GenderToLabel(e.Gender),
         };
 
         var parameters = new DialogParameters<ViewEmployeeDialog> { { x => x.Employee, profile } };
@@ -418,12 +471,17 @@
             FirstName = e.FirstName,
             LastName = e.LastName,
             Email = e.Email,
-            Phone = "",
+            Phone = e.Phone,
+            BirthDate = e.BirthDate?.ToDateTime(TimeOnly.MinValue),
+            Gender = GenderToLabel(e.Gender),
+            Address = e.AddressLine,
+            City = e.City,
+            Province = e.Province,
             Department = e.Dept,
             Role = e.Role,
             Status = e.Status,
             EmploymentType = e.EmploymentType.ToString(),
-            Salary = 0m,
+            Salary = e.Salary,
             StartDate = e.HireDate.ToDateTime(TimeOnly.MinValue),
         };
 
@@ -445,7 +503,16 @@
             Email:     m.Email,
             JobTitle:  m.Role,
             DepartmentId: deptId,
-            MonthlyBaseSalary: m.Salary);
+            MonthlyBaseSalary: m.Salary,
+            Status:    ParseStatus(m.Status),
+            EmploymentType: ParseEmploymentType(m.EmploymentType),
+            HireDate:  m.StartDate is { } sd ? DateOnly.FromDateTime(sd) : null,
+            Phone:     m.Phone,
+            BirthDate: m.BirthDate is { } bd ? DateOnly.FromDateTime(bd) : null,
+            Gender:    ParseGender(m.Gender),
+            AddressLine: m.Address,
+            City:      m.City,
+            Province:  m.Province);
 
         var apiResult = await EmployeesApi.UpdateAsync(e.Id, req);
         if (apiResult.Success)

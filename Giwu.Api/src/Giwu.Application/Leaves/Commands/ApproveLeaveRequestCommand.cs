@@ -1,6 +1,8 @@
 using FluentValidation;
 using Giwu.Application.Common;
+using Giwu.Application.Notifications;
 using Giwu.Domain.Leaves;
+using Giwu.Domain.Notifications;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 
@@ -20,7 +22,8 @@ public sealed class ApproveLeaveRequestValidator : AbstractValidator<ApproveLeav
 internal sealed class ApproveLeaveRequestHandler(
     IApplicationDbContext db,
     ICurrentUser user,
-    TimeProvider clock)
+    TimeProvider clock,
+    INotificationDispatcher notifications)
     : IRequestHandler<ApproveLeaveRequestCommand, Result>
 {
     public async Task<Result> Handle(ApproveLeaveRequestCommand cmd, CancellationToken ct)
@@ -39,12 +42,19 @@ internal sealed class ApproveLeaveRequestHandler(
         if (balance is null)
             return Result.Invalid("balance", "Leave balance row missing.");
 
-        if (balance.Pending < req.DaysRequested)
-            return Result.Invalid("balance", "Pending balance is out of sync — refile required.");
+        // The real invariant we care about is "enough remaining entitlement"
+        // (Entitlement + CarryOver − Used ≥ DaysRequested). Pending is just
+        // accounting plumbing — it can fall out of sync when a request was
+        // created by means other than FileLeaveRequestCommand (seeded demo
+        // data, bulk imports, direct DB inserts). Clamp it at 0 when moving
+        // days to Used so the approval doesn't fail on a bookkeeping mismatch.
+        var remaining = balance.Entitlement + balance.CarryOver - balance.Used;
+        if (remaining < req.DaysRequested)
+            return Result.Invalid("balance",
+                $"Insufficient leave balance. Available: {remaining}, requested: {req.DaysRequested}.");
 
-        // Move days from Pending → Used
-        balance.Pending -= req.DaysRequested;
-        balance.Used    += req.DaysRequested;
+        balance.Pending = Math.Max(0m, balance.Pending - req.DaysRequested);
+        balance.Used   += req.DaysRequested;
 
         req.Status         = LeaveRequestStatus.Approved;
         req.ResolvedById   = user.Id;
@@ -53,6 +63,24 @@ internal sealed class ApproveLeaveRequestHandler(
 
         // Domain event → outbox dispatcher will pick it up
         req.Raise(new LeaveRequestApproved(req.Id, req.EmployeeId, user.Id));
+
+        // Notify the filer in-app. Look up their user record via Employee
+        // (filer.EmployeeId == req.EmployeeId).
+        var filerUserId = await db.Users
+            .Where(u => u.EmployeeId == req.EmployeeId)
+            .Select(u => (Guid?)u.Id)
+            .FirstOrDefaultAsync(ct);
+        if (filerUserId is { } uid)
+        {
+            await notifications.NotifyUserAsync(
+                recipientUserId:   uid,
+                type:              NotificationType.LeaveApproved,
+                title:             "Leave approved",
+                body:              $"Your leave request for {req.StartDate:MMM d} – {req.EndDate:MMM d} was approved.",
+                relatedEntityId:   req.Id,
+                relatedEntityType: "LeaveRequest",
+                ct: ct);
+        }
 
         await db.SaveChangesAsync(ct);
         return Result.Success();

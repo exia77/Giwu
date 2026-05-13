@@ -1,4 +1,5 @@
-﻿
+﻿@inject ISnackbar Snackbar
+
 <MudDialog>
     <DialogContent>
         <MudText Typo="Typo.body2" Style="opacity:.7" Class="mb-3">
@@ -56,7 +57,11 @@
 
     private void Create()
     {
-        if (!PeriodStart.HasValue || !PeriodEnd.HasValue) { MudDialog.Cancel(); return; }
+        if (!PeriodStart.HasValue || !PeriodEnd.HasValue)
+        {
+            Snackbar.Add("Please pick both a period start and end date.", Severity.Warning);
+            return;
+        }
         var run = new PayRun
         {
             PeriodStart = PeriodStart.Value,

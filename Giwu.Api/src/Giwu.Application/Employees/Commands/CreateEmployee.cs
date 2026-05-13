@@ -1,6 +1,7 @@
 using FluentValidation;
 using Giwu.Application.Common;
 using Giwu.Contracts.Employees;
+using Giwu.Domain.Common;
 using Giwu.Domain.Organization;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
@@ -21,6 +22,12 @@ public sealed class CreateEmployeeValidator : AbstractValidator<CreateEmployeeCo
         RuleFor(x => x.Request.JobTitle).NotEmpty().MaximumLength(128);
         RuleFor(x => x.Request.DepartmentId).NotEmpty();
         RuleFor(x => x.Request.MonthlyBaseSalary).GreaterThanOrEqualTo(0);
+        RuleFor(x => x.Request.EmploymentType).IsInEnum();
+        RuleFor(x => x.Request.Gender).IsInEnum();
+        RuleFor(x => x.Request.Phone).MaximumLength(32);
+        RuleFor(x => x.Request.AddressLine).MaximumLength(256);
+        RuleFor(x => x.Request.City).MaximumLength(128);
+        RuleFor(x => x.Request.Province).MaximumLength(128);
     }
 }
 
@@ -48,6 +55,15 @@ internal sealed class CreateEmployeeHandler(IApplicationDbContext db)
             HireDate          = r.HireDate,
             MonthlyBaseSalary = r.MonthlyBaseSalary,
             EmploymentType    = r.EmploymentType,
+            Phone             = r.Phone,
+            BirthDate         = r.BirthDate,
+            Gender            = r.Gender,
+            PermanentAddress  = new Address
+            {
+                Line1    = r.AddressLine,
+                City     = r.City,
+                Province = r.Province,
+            },
         };
 
         db.Employees.Add(emp);
@@ -56,6 +72,8 @@ internal sealed class CreateEmployeeHandler(IApplicationDbContext db)
         return Result<EmployeeDto>.Success(new EmployeeDto(
             emp.Id, emp.EmployeeNumber, emp.FirstName, emp.LastName, emp.Email,
             emp.JobTitle, emp.DepartmentId, dept.Name,
-            emp.Status, emp.EmploymentType, emp.HireDate));
+            emp.Status, emp.EmploymentType, emp.HireDate,
+            emp.Phone, emp.BirthDate, emp.Gender, emp.MonthlyBaseSalary,
+            emp.PermanentAddress.Line1, emp.PermanentAddress.City, emp.PermanentAddress.Province));
     }
 }

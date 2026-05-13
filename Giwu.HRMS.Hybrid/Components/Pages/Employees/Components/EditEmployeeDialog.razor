@@ -1,5 +1,7 @@
 @* ── Edit Employee Dialog ── *@
 @using Giwu.Contracts.Departments
+@inject ISnackbar Snackbar
+
 <MudDialog>
     <TitleContent>
         <div style="display:flex;align-items:center;gap:10px">
@@ -14,7 +16,13 @@
     </TitleContent>
 
     <DialogContent>
-        <MudForm @ref="_form" @bind-IsValid="_isValid">
+        <MudForm @ref="_form">
+
+            @if (!string.IsNullOrEmpty(_submitError))
+            {
+                <MudAlert Severity="Severity.Warning" Dense="true" Variant="Variant.Filled"
+                          Class="mb-3">@_submitError</MudAlert>
+            }
 
             @* ── Personal Info ── *@
             <MudText Typo="Typo.caption"
@@ -28,6 +36,7 @@
                                   Label="First name"
                                   Variant="Variant.Outlined"
                                   Margin="Margin.Dense"
+                                  Immediate="true"
                                   Required="true" />
                 </MudItem>
                 <MudItem xs="12" sm="6">
@@ -35,6 +44,7 @@
                                   Label="Last name"
                                   Variant="Variant.Outlined"
                                   Margin="Margin.Dense"
+                                  Immediate="true"
                                   Required="true" />
                 </MudItem>
                 <MudItem xs="12" sm="6">
@@ -42,14 +52,18 @@
                                   Label="Email address"
                                   Variant="Variant.Outlined"
                                   Margin="Margin.Dense"
+                                  Immediate="true"
                                   InputType="InputType.Email"
-                                  Required="true" />
+                                  Required="true"
+                                  RequiredError="Email is required"
+                                  Validation="@(new Func<string, string?>(ValidateEmail))" />
                 </MudItem>
                 <MudItem xs="12" sm="6">
                     <MudTextField @bind-Value="_model.Phone"
                                   Label="Phone number"
                                   Variant="Variant.Outlined"
-                                  Margin="Margin.Dense" />
+                                  Margin="Margin.Dense"
+                                  Immediate="true" />
                 </MudItem>
                 <MudItem xs="12" sm="6">
                     <MudDatePicker @bind-Date="_model.BirthDate"
@@ -59,7 +73,7 @@
                                    Editable="true" />
                 </MudItem>
                 <MudItem xs="12" sm="6">
-                    <MudSelect @bind-Value="_model.Gender"
+                    <MudSelect T="string" @bind-Value="_model.Gender"
                                Label="Gender"
                                Variant="Variant.Outlined"
                                Margin="Margin.Dense">
@@ -70,9 +84,24 @@
                 </MudItem>
                 <MudItem xs="12">
                     <MudTextField @bind-Value="_model.Address"
-                                  Label="Address"
+                                  Label="Street address"
                                   Variant="Variant.Outlined"
-                                  Margin="Margin.Dense" />
+                                  Margin="Margin.Dense"
+                                  Immediate="true" />
+                </MudItem>
+                <MudItem xs="12" sm="6">
+                    <MudTextField @bind-Value="_model.City"
+                                  Label="City / Municipality"
+                                  Variant="Variant.Outlined"
+                                  Margin="Margin.Dense"
+                                  Immediate="true" />
+                </MudItem>
+                <MudItem xs="12" sm="6">
+                    <MudTextField @bind-Value="_model.Province"
+                                  Label="Province"
+                                  Variant="Variant.Outlined"
+                                  Margin="Margin.Dense"
+                                  Immediate="true" />
                 </MudItem>
             </MudGrid>
 
@@ -86,7 +115,7 @@
 
             <MudGrid Spacing="2">
                 <MudItem xs="12" sm="6">
-                    <MudSelect @bind-Value="_model.Department"
+                    <MudSelect T="string" @bind-Value="_model.Department"
                                Label="Department"
                                Variant="Variant.Outlined"
                                Margin="Margin.Dense"
@@ -102,14 +131,14 @@
                                   Label="Job title / Role"
                                   Variant="Variant.Outlined"
                                   Margin="Margin.Dense"
+                                  Immediate="true"
                                   Required="true" />
                 </MudItem>
                 <MudItem xs="12" sm="6">
-                    <MudSelect @bind-Value="_model.EmploymentType"
+                    <MudSelect T="string" @bind-Value="_model.EmploymentType"
                                Label="Employment type"
                                Variant="Variant.Outlined"
-                               Margin="Margin.Dense"
-                               Disabled="true">
+                               Margin="Margin.Dense">
                         <MudSelectItem Value="@("Regular")">Regular</MudSelectItem>
                         <MudSelectItem Value="@("Probationary")">Probationary</MudSelectItem>
                         <MudSelectItem Value="@("Contractual")">Contractual</MudSelectItem>
@@ -119,11 +148,10 @@
                     </MudSelect>
                 </MudItem>
                 <MudItem xs="12" sm="6">
-                    <MudSelect @bind-Value="_model.Status"
+                    <MudSelect T="string" @bind-Value="_model.Status"
                                Label="Status"
                                Variant="Variant.Outlined"
-                               Margin="Margin.Dense"
-                               Disabled="true">
+                               Margin="Margin.Dense">
                         <MudSelectItem Value="@("Active")">Active</MudSelectItem>
                         <MudSelectItem Value="@("On Leave")">On Leave</MudSelectItem>
                         <MudSelectItem Value="@("Suspended")">Suspended</MudSelectItem>
@@ -160,8 +188,7 @@
                    Color="Color.Primary"
                    Style="text-transform:none;border-radius:8px"
                    StartIcon="@Icons.Material.Outlined.Save"
-                   OnClick="Save"
-                   Disabled="!_isValid">
+                   OnClick="Save">
             Save Changes
         </MudButton>
     </DialogActions>
@@ -174,7 +201,7 @@
     [Parameter] public IReadOnlyList<DepartmentDto> Departments { get; set; } = Array.Empty<DepartmentDto>();
 
     MudForm _form  = default!;
-    bool    _isValid;
+    string? _submitError;
 
     public class EmployeeEditModel
     {
@@ -189,6 +216,8 @@
         public DateTime? BirthDate      { get; set; }
         public string    Gender         { get; set; } = "";
         public string    Address        { get; set; } = "";
+        public string    City           { get; set; } = "";
+        public string    Province       { get; set; } = "";
         public string    Department     { get; set; } = "";
         public string    Role           { get; set; } = "";
         public string    EmploymentType { get; set; } = "Full-time";
@@ -216,6 +245,8 @@
             BirthDate      = Employee.BirthDate,
             Gender         = Employee.Gender,
             Address        = Employee.Address,
+            City           = Employee.City,
+            Province       = Employee.Province,
             Department     = Employee.Department,
             Role           = Employee.Role,
             EmploymentType = Employee.EmploymentType,
@@ -227,10 +258,27 @@
 
     async Task Save()
     {
-        await _form.Validate();
-        if (_isValid)
+        _submitError = null;
+        await _form.ValidateAsync();
+        if (_form.IsValid)
+        {
             MudDialog.Close(DialogResult.Ok(_model));
+        }
+        else
+        {
+            _submitError = "Please fix the highlighted fields before saving.";
+            Snackbar.Add(_submitError, Severity.Warning);
+        }
     }
 
     void Cancel() => MudDialog.Cancel();
+
+    static readonly System.Text.RegularExpressions.Regex EmailRx =
+        new(@"^[^\s@]+@[^\s@]+\.[^\s@]+$", System.Text.RegularExpressions.RegexOptions.Compiled);
+
+    static string? ValidateEmail(string email)
+    {
+        if (string.IsNullOrWhiteSpace(email)) return null;
+        return EmailRx.IsMatch(email) ? null : "Enter a valid email address (e.g. name@example.com).";
+    }
 }

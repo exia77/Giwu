@@ -100,3 +100,80 @@ internal sealed class ClockOutHandler(
             record.OvertimeApprovedMinutes, record.Notes));
     }
 }
+
+public sealed record UpdateAttendanceCommand(Guid Id, UpdateAttendanceRequest Request) : IRequest<Result<AttendanceRecordDto>>;
+
+internal sealed class UpdateAttendanceHandler(IApplicationDbContext db)
+    : IRequestHandler<UpdateAttendanceCommand, Result<AttendanceRecordDto>>
+{
+    public async Task<Result<AttendanceRecordDto>> Handle(UpdateAttendanceCommand cmd, CancellationToken ct)
+    {
+        var record = await db.AttendanceRecords.FirstOrDefaultAsync(r => r.Id == cmd.Id, ct);
+        if (record is null) return Result<AttendanceRecordDto>.NotFound("Attendance record not found");
+
+        var emp = await db.Employees.FirstOrDefaultAsync(e => e.Id == record.EmployeeId, ct);
+        if (emp is null) return Result<AttendanceRecordDto>.NotFound("Employee not found");
+
+        record.Status = cmd.Request.Status;
+        record.Notes  = cmd.Request.Notes ?? "";
+
+        // TimeOnly + record.Date → DateTimeOffset. Null clears the value.
+        // Stored as UTC offset; clients are responsible for any TZ conversion
+        // when binding the time field to local "HH:mm".
+        record.ClockIn  = ToDtoFromTime(record.Date, cmd.Request.ClockInTime);
+        record.ClockOut = ToDtoFromTime(record.Date, cmd.Request.ClockOutTime);
+
+        await db.SaveChangesAsync(ct);
+
+        return Result<AttendanceRecordDto>.Success(new AttendanceRecordDto(
+            record.Id, emp.Id, emp.FirstName + " " + emp.LastName,
+            record.Date, record.ClockIn, record.ClockOut, record.BreakMinutes,
+            record.Status, record.LateMinutes, record.UndertimeMinutes,
+            record.OvertimeApprovedMinutes, record.Notes));
+    }
+
+    private static DateTimeOffset? ToDtoFromTime(DateOnly date, TimeOnly? time)
+    {
+        if (time is null) return null;
+        return new DateTimeOffset(date.ToDateTime(time.Value), TimeSpan.Zero);
+    }
+}
+
+public sealed record ManualAttendanceEntryCommand(ManualAttendanceEntryRequest Request) : IRequest<Result<AttendanceRecordDto>>;
+
+internal sealed class ManualAttendanceEntryHandler(IApplicationDbContext db)
+    : IRequestHandler<ManualAttendanceEntryCommand, Result<AttendanceRecordDto>>
+{
+    public async Task<Result<AttendanceRecordDto>> Handle(ManualAttendanceEntryCommand cmd, CancellationToken ct)
+    {
+        var r = cmd.Request;
+        var emp = await db.Employees.FirstOrDefaultAsync(e => e.Id == r.EmployeeId, ct);
+        if (emp is null) return Result<AttendanceRecordDto>.NotFound("Employee not found");
+
+        // Upsert by (EmployeeId, Date): if a record already exists for that day,
+        // overwrite it; otherwise create one. This lets HR back-fill missed
+        // clock-ins idempotently without surfacing a "record exists" error.
+        var record = await db.AttendanceRecords.FirstOrDefaultAsync(
+            x => x.EmployeeId == r.EmployeeId && x.Date == r.Date, ct);
+
+        if (record is null)
+        {
+            record = new AttendanceRecord { EmployeeId = r.EmployeeId, Date = r.Date };
+            db.AttendanceRecords.Add(record);
+        }
+
+        record.Status   = r.Status;
+        record.Notes    = r.Notes ?? "";
+        record.ClockIn  = r.ClockInTime  is { } ci ? new DateTimeOffset(r.Date.ToDateTime(ci), TimeSpan.Zero) : null;
+        record.ClockOut = r.ClockOutTime is { } co ? new DateTimeOffset(r.Date.ToDateTime(co), TimeSpan.Zero) : null;
+        record.ClockInSource = AttendanceSource.Manual;
+
+        await db.SaveChangesAsync(ct);
+
+        return Result<AttendanceRecordDto>.Success(new AttendanceRecordDto(
+            record.Id, emp.Id, emp.FirstName + " " + emp.LastName,
+            record.Date, record.ClockIn, record.ClockOut, record.BreakMinutes,
+            record.Status, record.LateMinutes, record.UndertimeMinutes,
+            record.OvertimeApprovedMinutes, record.Notes));
+    }
+}

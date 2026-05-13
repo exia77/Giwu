@@ -6,7 +6,7 @@
             <MudAvatar Style="@($"width:42px;height:42px;font-size:13px;{AvatarStyle(Emp.Av)}")">@Emp.Init</MudAvatar>
             <div>
                 <MudText Typo="Typo.subtitle2" Class="fw-medium">@Emp.Name</MudText>
-                <MudText Typo="Typo.caption" Style="opacity:.55">@Emp.Role Â· @Emp.Dept</MudText>
+                <MudText Typo="Typo.caption" Style="opacity:.55">@Emp.Role · @Emp.Dept</MudText>
             </div>
         </div>
 
@@ -31,7 +31,7 @@
             </div>
             <div class="att-info-row">
                 <span class="att-info-key">Reason</span>
-                <span>@(string.IsNullOrEmpty(Emp.Reason) ? "â€”" : Emp.Reason)</span>
+                <span>@(string.IsNullOrEmpty(Emp.Reason) ? "—" : Emp.Reason)</span>
             </div>
             <div class="att-info-row">
                 <span class="att-info-key">Pending Approval</span>

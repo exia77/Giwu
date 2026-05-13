@@ -1,7 +1,10 @@
-﻿
-<MudDialog>
+﻿<MudDialog>
     <DialogContent>
         <MudStack Spacing="3">
+            @if (!string.IsNullOrEmpty(_validationError))
+            {
+                <MudAlert Severity="Severity.Warning" Dense="true" Variant="Variant.Outlined">@_validationError</MudAlert>
+            }
             <MudGrid Spacing="2">
                 <MudItem xs="12" sm="8">
                     <MudTextField T="string" Label="Full name" @bind-Value="Working.Name"
@@ -30,7 +33,7 @@
                        Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true">
                 @foreach (var j in Jobs.Where(j => j.Status == "Open" || j.Id == Working.JobId))
                 {
-                    <MudSelectItem Value="@j.Id">@j.Title â€” @j.Dept</MudSelectItem>
+                    <MudSelectItem Value="@j.Id">@j.Title — @j.Dept</MudSelectItem>
                 }
             </MudSelect>
 
@@ -48,11 +51,11 @@
                     <MudSelect T="int" Label="Rating" @bind-Value="Working.Rating"
                                Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true">
                         <MudSelectItem Value="0">Unrated</MudSelectItem>
-                        <MudSelectItem Value="1">1 â˜…</MudSelectItem>
-                        <MudSelectItem Value="2">2 â˜…</MudSelectItem>
-                        <MudSelectItem Value="3">3 â˜…</MudSelectItem>
-                        <MudSelectItem Value="4">4 â˜…</MudSelectItem>
-                        <MudSelectItem Value="5">5 â˜…</MudSelectItem>
+                        <MudSelectItem Value="1">1 ★</MudSelectItem>
+                        <MudSelectItem Value="2">2 ★</MudSelectItem>
+                        <MudSelectItem Value="3">3 ★</MudSelectItem>
+                        <MudSelectItem Value="4">4 ★</MudSelectItem>
+                        <MudSelectItem Value="5">5 ★</MudSelectItem>
                     </MudSelect>
                 </MudItem>
             </MudGrid>
@@ -76,6 +79,7 @@
 
     private Candidate Working { get; set; } = new();
     private bool IsEditing => Existing != null;
+    private string? _validationError;
 
     private static readonly string[] AvatarTokens = { "green", "blue", "amber", "red", "purple", "primary" };
 
@@ -102,9 +106,19 @@
 
     private void Save()
     {
-        if (string.IsNullOrWhiteSpace(Working.Name)) { MudDialog.Cancel(); return; }
+        if (string.IsNullOrWhiteSpace(Working.Name))
+        {
+            _validationError = "Please enter the candidate's full name.";
+            return;
+        }
+        if (string.IsNullOrWhiteSpace(Working.JobId))
+        {
+            _validationError = "Please pick a job for the candidate to apply to.";
+            return;
+        }
 
-        // Auto-compute initials if blank
+        _validationError = null;
+
         if (string.IsNullOrWhiteSpace(Working.Init))
         {
             var parts = Working.Name.Split(' ', StringSplitOptions.RemoveEmptyEntries);

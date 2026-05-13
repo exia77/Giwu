@@ -14,6 +14,10 @@ public class User : AuditableEntity
     public int FailedLoginCount { get; set; }
     public DateTimeOffset? LockedUntil { get; set; }
 
+    // Password reset: hashed token + expiry. Single-use; cleared on success.
+    public string? PasswordResetTokenHash { get; set; }
+    public DateTimeOffset? PasswordResetExpiresAt { get; set; }
+
     public List<UserRoleAssignment> Roles { get; set; } = new();
 }
 

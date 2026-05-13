@@ -4,10 +4,12 @@ using Giwu.Domain.Audit;
 using Giwu.Domain.Benefits;
 using Giwu.Domain.Identity;
 using Giwu.Domain.Leaves;
+using Giwu.Domain.Notifications;
 using Giwu.Domain.Organization;
 using Giwu.Domain.Outbox;
 using Giwu.Domain.Payroll;
 using Giwu.Domain.Recruitment;
+using Giwu.Domain.Reports;
 using Giwu.Domain.Tenancy;
 
 namespace Giwu.Application.Common;
@@ -41,6 +43,13 @@ public interface IApplicationDbContext
     DbSet<BenefitProgram>     BenefitPrograms     { get; }
     DbSet<BenefitEnrollment>  BenefitEnrollments  { get; }
     DbSet<BenefitRequest>     BenefitRequests     { get; }
+
+    DbSet<ReportDefinition>      ReportDefinitions     { get; }
+    DbSet<ReportSchedule>        ReportSchedules       { get; }
+    DbSet<ReportRun>             ReportRuns            { get; }
+    DbSet<ComplianceDeadline>    ComplianceDeadlines   { get; }
+
+    DbSet<Notification>          Notifications         { get; }
 
     Task<int> SaveChangesAsync(CancellationToken ct = default);
 }
@@ -80,3 +89,24 @@ public interface IJwtTokenService
     string IssueRefreshToken();
     string HashRefreshToken(string token);
 }
+
+public interface IEmailSender
+{
+    Task SendAsync(string toEmail, string toName, string subject, string htmlBody, CancellationToken ct = default);
+}
+
+public interface IGoogleTokenVerifier
+{
+    /// <summary>
+    /// Validates a Google ID token issued for this app's OAuth client.
+    /// Returns null if the token is invalid, expired, or for a different audience.
+    /// </summary>
+    Task<GoogleUserInfo?> VerifyAsync(string idToken, CancellationToken ct = default);
+}
+
+public sealed record GoogleUserInfo(
+    string Subject,
+    string Email,
+    bool EmailVerified,
+    string DisplayName,
+    string? PictureUrl);

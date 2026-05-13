@@ -138,8 +138,10 @@ h1:focus {
 
 .mud-dialog {
     border-radius: 12px !important;
-    overflow: hidden;
-    padding: 30px;
+    /* Do NOT set overflow:hidden here — MudDatePicker / MudSelect /
+       MudAutocomplete popovers render absolutely-positioned and get
+       clipped inside the dialog box if overflow is hidden. */
+    /* No outer padding — .mud-dialog-title / -content / -actions own padding. */
 }
 
     .mud-dialog .mud-dialog-title {

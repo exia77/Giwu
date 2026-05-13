@@ -84,6 +84,24 @@ internal static class ApiClientCore
         catch (Exception ex)         { return ApiResult.Fail(ex.Message); }
     }
 
+    public static async Task<ApiResult<TResp>> PutAsync<TReq, TResp>(
+        HttpClient http, string path, TReq body, CancellationToken ct)
+    {
+        try
+        {
+            var res = await http.PutAsJsonAsync(path, body, JsonOpts, ct);
+            if (!res.IsSuccessStatusCode)
+                return ApiResult<TResp>.Fail(await ReadErrorAsync(res, ct));
+
+            var value = await res.Content.ReadFromJsonAsync<TResp>(JsonOpts, ct);
+            return value is null
+                ? ApiResult<TResp>.Fail("Empty response body")
+                : ApiResult<TResp>.Ok(value);
+        }
+        catch (HttpRequestException) { return ApiResult<TResp>.Fail("Cannot reach the server. Check your connection."); }
+        catch (Exception ex)         { return ApiResult<TResp>.Fail(ex.Message); }
+    }
+
     public static async Task<ApiResult> DeleteAsync(HttpClient http, string path, CancellationToken ct)
     {
         try

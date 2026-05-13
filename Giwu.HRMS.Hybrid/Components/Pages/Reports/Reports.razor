@@ -2,9 +2,22 @@
 @using static Giwu.HRMS.Hybrid.Models.ReportsFormatting
 @using Giwu.Contracts.Reports
 @using Giwu.HRMS.Hybrid.Services.Reports
+@using Giwu.HRMS.Hybrid.Services.Employees
+@using Giwu.HRMS.Hybrid.Services.Attendance
+@using Giwu.HRMS.Hybrid.Services.Leaves
+@using Giwu.HRMS.Hybrid.Services.Payroll
+@using Giwu.HRMS.Hybrid.Services.Recruitment
+@using Giwu.HRMS.Hybrid.Services.Benefits
 @inject ISnackbar Snackbar
 @inject IDialogService DialogService
+@inject IJSRuntime JS
 @inject IReportsApi ReportsApi
+@inject IEmployeesApi EmployeesApi
+@inject IAttendanceApi AttendanceApi
+@inject ILeavesApi LeavesApi
+@inject IPayrollApi PayrollApi
+@inject IRecruitmentApi RecruitmentApi
+@inject IBenefitsApi BenefitsApi
 
 @using Pages.Reports.Components
 
@@ -69,7 +82,7 @@
         </MudItem>
         <MudItem xs="12" sm="6" md="3">
             <div class="kpi-label">Payroll (YTD)</div>
-            <div class="kpi-value">@(Payroll is null ? "—" : Payroll.TotalNet.ToString("C0"))</div>
+            <div class="kpi-value">@(Payroll is null ? "—" : $"₱{Payroll.TotalNet:N0}")</div>
             <div class="kpi-sub">
                 <span class="kpi-dot" style="background:var(--rep-amber)"></span>
                 <span>
@@ -81,9 +94,9 @@
     </MudGrid>
 </MudPaper>
 
-@* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+@* ═══════════════════════════════════════════════════
    KPI STRIP
-â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• *@
+═══════════════════════════════════════════════════ *@
 <MudGrid Spacing="3" Class="mb-4">
     <MudItem xs="12" sm="6" md="3">
         <MudPaper Class="rep-kpi" Elevation="0">
@@ -127,16 +140,19 @@
     </MudItem>
 </MudGrid>
 
-@* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+@* ═══════════════════════════════════════════════════
    MIDDLE ROW: COMPLIANCE CALENDAR + RECENT RUNS
-â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• *@
+═══════════════════════════════════════════════════ *@
 <MudGrid Spacing="3" Class="mb-4">
-    @* â”€â”€ Compliance calendar â”€â”€ *@
+    @* ── Compliance calendar ── *@
     <MudItem xs="12" md="7">
         <MudPaper Class="rep-card" Elevation="0">
             <div class="rep-card-header">
                 <div>
                     <MudText Typo="Typo.subtitle2" Class="fw-medium">Compliance Calendar</MudText>
+                    <MudButton Variant="Variant.Text" Size="Size.Small"
+                               StartIcon="@Icons.Material.Outlined.Add"
+                               OnClick="OpenAddComplianceDialog">Add</MudButton>
                     <MudText Typo="Typo.caption" Style="opacity:.55">Statutory filing deadlines</MudText>
                 </div>
                 <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Style="height:20px;font-size:.7rem">
@@ -152,7 +168,7 @@
             @if (upcoming.Count == 0)
             {
                 <div class="rep-empty">
-                    <div class="rep-empty-icon">âœ“</div>
+                    <div class="rep-empty-icon">✓</div>
                     <MudText Typo="Typo.body2">No filings due in the next 60 days.</MudText>
                 </div>
             }
@@ -170,22 +186,30 @@
                             <div class="compliance-headline">
                                 <span class="@($"rep-agency {AgencyBadgeClass(c.Agency)}")">@c.Agency</span>
                                 <span class="fw-medium">@c.FormCode</span>
-                                <span style="opacity:.7">â€” @c.Name</span>
+                                <span style="opacity:.7">— @c.Name</span>
                             </div>
                             <div class="compliance-detail">
-                                @c.PeriodCovered Â· @DaysUntilLabel(c.DueDate)
+                                @c.PeriodCovered · @DaysUntilLabel(c.DueDate)
                             </div>
                         </div>
-                        <MudIconButton Icon="@Icons.Material.Outlined.PlayArrow" Size="Size.Small"
-                                       Title="Run filing report" Color="Color.Primary"
-                                       OnClick="@(() => RunComplianceReport(c.Id))" />
+                        <MudStack Row="true" Spacing="1" @onclick:stopPropagation="true">
+                            <MudIconButton Icon="@Icons.Material.Outlined.Edit" Size="Size.Small"
+                                           Title="Edit"
+                                           OnClick="@(() => OpenEditComplianceDialog(c.Id))" />
+                            <MudIconButton Icon="@Icons.Material.Outlined.CheckCircle" Size="Size.Small"
+                                           Title="Mark as filed" Color="Color.Success"
+                                           OnClick="@(() => MarkComplianceFiled(c.Id))" />
+                            <MudIconButton Icon="@Icons.Material.Outlined.PlayArrow" Size="Size.Small"
+                                           Title="Run filing report" Color="Color.Primary"
+                                           OnClick="@(() => RunComplianceReport(c.Id))" />
+                        </MudStack>
                     </div>
                 }
             }
         </MudPaper>
     </MudItem>
 
-    @* â”€â”€ Recent runs â”€â”€ *@
+    @* ── Recent runs ── *@
     <MudItem xs="12" md="5">
         <MudPaper Class="rep-card" Elevation="0">
             <div class="rep-card-header">
@@ -199,7 +223,7 @@
             @if (recent.Count == 0)
             {
                 <div class="rep-empty">
-                    <div class="rep-empty-icon">â€”</div>
+                    <div class="rep-empty-icon">—</div>
                     <MudText Typo="Typo.body2">No runs yet.</MudText>
                 </div>
             }
@@ -214,10 +238,10 @@
                         <div class="recent-meta">
                             <div class="recent-name">@run.DefinitionName</div>
                             <div class="recent-detail">
-                                @RelativeTime(run.QueuedAt) Â· @run.RanBy
+                                @RelativeTime(run.QueuedAt) · @run.RanBy
                                 @if (run.Status == ReportRunStatus.Completed && run.RowCount > 0)
                                 {
-                                    <span> Â· @run.RowCount.ToString("N0") rows</span>
+                                    <span> · @run.RowCount.ToString("N0") rows</span>
                                 }
                             </div>
                         </div>
@@ -229,15 +253,15 @@
     </MudItem>
 </MudGrid>
 
-@* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+@* ═══════════════════════════════════════════════════
    MAIN TABS
-â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• *@
+═══════════════════════════════════════════════════ *@
 <MudPaper Class="rep-card" Elevation="0">
     <MudTabs Elevation="0" Rounded="false" ApplyEffectsToContainer="true"
              PanelClass="rep-tab-panel" TabPanelClass="rep-tab-item"
              @bind-ActivePanelIndex="ActiveTab">
 
-        @* â•â• CATALOG TAB â•â• *@
+        @* ══ CATALOG TAB ══ *@
         <MudTabPanel Text="@($"Report Catalog ({ReportDefinitions.Count})")"
                      Icon="@Icons.Material.Outlined.LibraryBooks">
             <div class="rep-card-header">
@@ -261,7 +285,7 @@
                     }
                 </MudChipSet>
                 <MudSpacer />
-                <MudTextField @bind-Value="CatalogSearch" Placeholder="Search reportsâ€¦"
+                <MudTextField @bind-Value="CatalogSearch" Placeholder="Search reports…"
                               Variant="Variant.Outlined" Margin="Margin.Dense" Class="rep-search"
                               Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Outlined.Search"
                               DebounceInterval="200" Immediate="true" />
@@ -270,7 +294,7 @@
             @if (FilteredDefinitions.Count == 0)
             {
                 <div class="rep-empty">
-                    <div class="rep-empty-icon">âŠ˜</div>
+                    <div class="rep-empty-icon">⊘</div>
                     <MudText Typo="Typo.body2">No reports match your filter.</MudText>
                 </div>
             }
@@ -300,6 +324,17 @@
                                         @CategoryLabel(def.Category)
                                     </span>
                                 </div>
+                                @if (def.IsCustom)
+                                {
+                                    <div class="catalog-card-actions" @onclick:stopPropagation="true">
+                                        <MudIconButton Icon="@Icons.Material.Outlined.Edit" Size="Size.Small"
+                                                       Title="Edit"
+                                                       OnClick="@(() => OpenEditCustomReportDialog(def.Id))" />
+                                        <MudIconButton Icon="@Icons.Material.Outlined.Delete" Size="Size.Small" Color="Color.Error"
+                                                       Title="Delete"
+                                                       OnClick="@(() => DeleteCustomReport(def.Id))" />
+                                    </div>
+                                }
                             </div>
                             <div class="catalog-card-desc">@def.ShortDescription</div>
                             <div class="catalog-card-footer">
@@ -327,7 +362,7 @@
             }
         </MudTabPanel>
 
-        @* â•â• SCHEDULED TAB â•â• *@
+        @* ══ SCHEDULED TAB ══ *@
         <MudTabPanel Text="@($"Scheduled ({Schedules.Count(s => s.IsActive)})")"
                      Icon="@Icons.Material.Outlined.Schedule">
             <div class="rep-card-header">
@@ -369,7 +404,7 @@
                     <MudTd DataLabel="Recipients" Style="font-size:12.5px">
                         @if (context.Recipients.Count == 0)
                         {
-                            <span style="opacity:.4">â€”</span>
+                            <span style="opacity:.4">—</span>
                         }
                         else if (context.Recipients.Count == 1)
                         {
@@ -384,7 +419,7 @@
                         <span class="catalog-format-chip">@FormatLabel(context.Format)</span>
                     </MudTd>
                     <MudTd DataLabel="Last Run" Style="opacity:.7;font-size:12px">
-                        @(context.LastRunAt.HasValue ? RelativeTime(context.LastRunAt.Value) : "â€”")
+                        @(context.LastRunAt.HasValue ? RelativeTime(context.LastRunAt.Value) : "—")
                     </MudTd>
                     <MudTd DataLabel="Next Run" Style="font-size:12px">
                         @if (context.IsActive)
@@ -417,12 +452,15 @@
                             <MudIconButton Icon="@Icons.Material.Outlined.PlayCircle" Size="Size.Small"
                                            Title="Run now" Color="Color.Primary"
                                            OnClick="@(() => RunScheduleNow(context.Id))" />
+                            <MudIconButton Icon="@Icons.Material.Outlined.Delete" Size="Size.Small" Color="Color.Error"
+                                           Title="Delete schedule"
+                                           OnClick="@(() => DeleteSchedule(context.Id))" />
                         </MudStack>
                     </MudTd>
                 </RowTemplate>
                 <NoRecordsContent>
                     <div class="rep-empty">
-                        <div class="rep-empty-icon">âŠ˜</div>
+                        <div class="rep-empty-icon">⊘</div>
                         <MudText Typo="Typo.body2">No scheduled reports configured.</MudText>
                     </div>
                 </NoRecordsContent>
@@ -432,7 +470,7 @@
             </MudTable>
         </MudTabPanel>
 
-        @* â•â• HISTORY TAB â•â• *@
+        @* ══ HISTORY TAB ══ *@
         <MudTabPanel Text="@($"History ({Runs.Count})")"
                      Icon="@Icons.Material.Outlined.History">
             <div class="rep-card-header">
@@ -452,7 +490,7 @@
                     <MudChip T="string" Value="@("Failed")" Size="Size.Small">Failed</MudChip>
                 </MudChipSet>
                 <MudSpacer />
-                <MudTextField @bind-Value="RunSearch" Placeholder="Search report, runnerâ€¦"
+                <MudTextField @bind-Value="RunSearch" Placeholder="Search report, runner…"
                               Variant="Variant.Outlined" Margin="Margin.Dense" Class="rep-search"
                               Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Outlined.Search"
                               DebounceInterval="200" Immediate="true" />
@@ -495,11 +533,11 @@
                     <MudTd DataLabel="Period" Style="font-size:12px;opacity:.8">
                         @if (context.PeriodStart.HasValue && context.PeriodEnd.HasValue)
                         {
-                            <span>@FmtDateShort(context.PeriodStart.Value) â€“ @FmtDateShort(context.PeriodEnd.Value)</span>
+                            <span>@FmtDateShort(context.PeriodStart.Value) – @FmtDateShort(context.PeriodEnd.Value)</span>
                         }
                         else
                         {
-                            <span style="opacity:.4">â€”</span>
+                            <span style="opacity:.4">—</span>
                         }
                     </MudTd>
                     <MudTd DataLabel="Run By">
@@ -518,7 +556,7 @@
                         }
                         else
                         {
-                            <span style="opacity:.4">â€”</span>
+                            <span style="opacity:.4">—</span>
                         }
                     </MudTd>
                     <MudTd DataLabel="Size" Style="text-align:right;font-size:12px">
@@ -528,7 +566,7 @@
                         }
                         else
                         {
-                            <span style="opacity:.4">â€”</span>
+                            <span style="opacity:.4">—</span>
                         }
                     </MudTd>
                     <MudTd DataLabel="Status">
@@ -549,7 +587,7 @@
                 </RowTemplate>
                 <NoRecordsContent>
                     <div class="rep-empty">
-                        <div class="rep-empty-icon">âŠ˜</div>
+                        <div class="rep-empty-icon">⊘</div>
                         <MudText Typo="Typo.body2">No runs match your filter.</MudText>
                     </div>
                 </NoRecordsContent>
@@ -561,9 +599,9 @@
     </MudTabs>
 </MudPaper>
 
-@* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+@* ═══════════════════════════════════════════════════
    STYLES
-â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• *@
+═══════════════════════════════════════════════════ *@
 <style>
     :root {
         --rep-green:        #1D9E75;
@@ -727,6 +765,8 @@
         box-shadow: 0 1px 3px rgba(0,0,0,.05);
     }
     .catalog-card-head { display: flex; gap: 10px; align-items: flex-start; }
+    .catalog-card-actions { display: flex; gap: 2px; margin-left: auto; flex-shrink: 0; }
+    .catalog-card-actions .mud-icon-button { padding: 4px; }
     .catalog-icon {
         width: 36px; height: 36px; border-radius: 8px;
         display: flex; align-items: center; justify-content: center; flex-shrink: 0;
@@ -802,7 +842,7 @@
     private int RunPage { get; set; } = 0;
     private int RunPageSize { get; set; } = 25;
 
-    // â”€â”€â”€ Derived â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ─── Derived ────────────────────────────────────────────────
     private int CategoriesUsedCount => ReportDefinitions.Select(d => d.Category).Distinct().Count();
     private int GeneratedThisMonthCount => Runs.Count(r =>
         r.QueuedAt.Year == DateTime.Today.Year && r.QueuedAt.Month == DateTime.Today.Month);
@@ -844,29 +884,196 @@
         }
     }
 
-    // â”€â”€â”€ Actions â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ─── Actions ────────────────────────────────────────────────
     private async Task OpenRunReportDialog(string defId)
     {
         var def = ReportDefinitions.FirstOrDefault(d => d.Id == defId);
         if (def == null) return;
         var parameters = new DialogParameters { ["Definition"] = def };
         var options = new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true };
-        var dialog = await DialogService.ShowAsync<RunReportDialog>($"Run â€” {def.Name}", parameters, options);
+        var dialog = await DialogService.ShowAsync<RunReportDialog>($"Run — {def.Name}", parameters, options);
         var result = await dialog.Result;
         if (result is not null && !result.Canceled && result.Data is ReportRun run)
         {
-            run.Id = $"RUN-{Runs.Count + 1:0000}";
-            run.RanBy = "Jane Dela Cruz";
-            run.RanByInit = "JD";
-            run.RanByAv = "primary";
-            // Demo: instantly mark as completed with simulated metrics
-            run.Status = ReportRunStatus.Completed;
-            run.CompletedAt = DateTime.Now.AddSeconds(2);
-            run.RowCount = SimulateRowCount(def);
-            run.FileSizeBytes = SimulateFileSize(def, run.RowCount, run.Format);
-            run.FileName = $"{def.Id}_{run.QueuedAt:yyyyMMdd_HHmmss}.{FormatExtension(run.Format)}";
-            Runs.Insert(0, run);
-            Snackbar.Add($"Generated {def.Name} ({run.RowCount:N0} rows)", Severity.Success);
+            var req = new Giwu.Contracts.Reports.QueueReportRunRequest(
+                DefinitionId: def.Id,
+                DefinitionName: def.Name,
+                Category: (Giwu.Domain.Reports.ReportCategory)(int)def.Category,
+                Format: (Giwu.Domain.Reports.ReportFormat)(int)run.Format,
+                PeriodStart: run.PeriodStart,
+                PeriodEnd: run.PeriodEnd,
+                Departments: run.Departments ?? new List<string>());
+            var apiResult = await ReportsApi.QueueRunAsync(req);
+            if (apiResult.Success)
+            {
+                await ReloadRunsAsync();
+                var rows = apiResult.Value?.RowCount ?? 0;
+                Snackbar.Add($"Generated {def.Name} ({rows:N0} rows)", Severity.Success);
+            }
+            else
+            {
+                Snackbar.Add(apiResult.ErrorMessage ?? "Failed to queue report run.", Severity.Error);
+            }
+        }
+    }
+
+    private async Task OpenEditCustomReportDialog(string id)
+    {
+        var def = ReportDefinitions.FirstOrDefault(d => d.Id == id);
+        if (def == null || !def.IsCustom) return;
+        if (!Guid.TryParse(def.Id, out var guid)) { Snackbar.Add("Invalid definition id", Severity.Error); return; }
+
+        var parameters = new DialogParameters { ["Existing"] = def };
+        var options = new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true };
+        var dialog = await DialogService.ShowAsync<EditReportTemplateDialog>($"Edit — {def.Name}", parameters, options);
+        var result = await dialog.Result;
+        if (result is not null && !result.Canceled && result.Data is ReportDefinition edited)
+        {
+            var req = new Giwu.Contracts.Reports.UpdateReportDefinitionRequest(
+                Name: edited.Name,
+                ShortDescription: edited.ShortDescription,
+                LongDescription: edited.LongDescription,
+                Category: (Giwu.Domain.Reports.ReportCategory)(int)edited.Category,
+                RequiresDateRange: edited.RequiresDateRange,
+                RequiresDepartmentFilter: edited.RequiresDepartmentFilter,
+                SupportedFormats: edited.SupportedFormats.Select(f => (Giwu.Domain.Reports.ReportFormat)(int)f).ToList(),
+                Columns: edited.Columns ?? new List<string>());
+            var apiResult = await ReportsApi.UpdateDefinitionAsync(guid, req);
+            if (apiResult.Success)
+            {
+                await ReloadDefinitionsAsync();
+                Snackbar.Add($"Updated: {edited.Name}", Severity.Success);
+            }
+            else
+            {
+                Snackbar.Add(apiResult.ErrorMessage ?? "Failed to update report.", Severity.Error);
+            }
+        }
+    }
+
+    private async Task DeleteCustomReport(string id)
+    {
+        var def = ReportDefinitions.FirstOrDefault(d => d.Id == id);
+        if (def == null || !def.IsCustom) return;
+        if (!Guid.TryParse(def.Id, out var guid)) { Snackbar.Add("Invalid definition id", Severity.Error); return; }
+
+        var confirmed = await JS.InvokeAsync<bool>("confirm",
+            $"Permanently delete \"{def.Name}\"?\n\nExisting run history is preserved.");
+        if (!confirmed) return;
+
+        var apiResult = await ReportsApi.DeleteDefinitionAsync(guid);
+        if (apiResult.Success)
+        {
+            await ReloadDefinitionsAsync();
+            Snackbar.Add($"Deleted: {def.Name}", Severity.Warning);
+        }
+        else
+        {
+            Snackbar.Add(apiResult.ErrorMessage ?? "Failed to delete report.", Severity.Error);
+        }
+    }
+
+    private async Task DeleteSchedule(string id)
+    {
+        var sched = Schedules.FirstOrDefault(s => s.Id == id);
+        if (sched == null) return;
+        if (!Guid.TryParse(sched.Id, out var guid)) { Snackbar.Add("Invalid schedule id", Severity.Error); return; }
+
+        var confirmed = await JS.InvokeAsync<bool>("confirm",
+            $"Stop scheduled runs of \"{sched.DefinitionName}\"?\n\nThe report definition is unaffected.");
+        if (!confirmed) return;
+
+        var apiResult = await ReportsApi.DeleteScheduleAsync(guid);
+        if (apiResult.Success)
+        {
+            await ReloadSchedulesAsync();
+            Snackbar.Add($"Deleted schedule for {sched.DefinitionName}", Severity.Warning);
+        }
+        else
+        {
+            Snackbar.Add(apiResult.ErrorMessage ?? "Failed to delete schedule.", Severity.Error);
+        }
+    }
+
+    private async Task OpenAddComplianceDialog()
+    {
+        var options = new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true };
+        var dialog = await DialogService.ShowAsync<EditComplianceDialog>("Add compliance deadline", new DialogParameters(), options);
+        var result = await dialog.Result;
+        if (result is not null && !result.Canceled && result.Data is ComplianceDeadline d)
+        {
+            var req = new Giwu.Contracts.Reports.CreateComplianceDeadlineRequest(
+                Agency:            d.Agency,
+                FormCode:          d.FormCode,
+                Name:              d.Name,
+                Description:       d.Description ?? "",
+                DueDate:           DateOnly.FromDateTime(d.DueDate),
+                PeriodCovered:     d.PeriodCovered ?? "",
+                RelatedReportCode: string.IsNullOrWhiteSpace(d.RelatedReportId) ? null : d.RelatedReportId);
+
+            var apiResult = await ReportsApi.CreateComplianceAsync(req);
+            if (apiResult.Success)
+            {
+                await ReloadComplianceAsync();
+                Snackbar.Add($"Added: {d.Agency} {d.FormCode}", Severity.Success);
+            }
+            else
+            {
+                Snackbar.Add(apiResult.ErrorMessage ?? "Failed to add deadline.", Severity.Error);
+            }
+        }
+    }
+
+    private async Task OpenEditComplianceDialog(string id)
+    {
+        var c = ComplianceDeadlines.FirstOrDefault(x => x.Id == id);
+        if (c == null) return;
+        if (!Guid.TryParse(c.Id, out var guid)) { Snackbar.Add("Invalid deadline id", Severity.Error); return; }
+
+        var parameters = new DialogParameters { ["Existing"] = c };
+        var options = new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true };
+        var dialog = await DialogService.ShowAsync<EditComplianceDialog>($"Edit — {c.Agency} {c.FormCode}", parameters, options);
+        var result = await dialog.Result;
+        if (result is not null && !result.Canceled && result.Data is ComplianceDeadline edited)
+        {
+            var req = new Giwu.Contracts.Reports.UpdateComplianceDeadlineRequest(
+                Agency:            edited.Agency,
+                FormCode:          edited.FormCode,
+                Name:              edited.Name,
+                Description:       edited.Description ?? "",
+                DueDate:           DateOnly.FromDateTime(edited.DueDate),
+                PeriodCovered:     edited.PeriodCovered ?? "",
+                RelatedReportCode: string.IsNullOrWhiteSpace(edited.RelatedReportId) ? null : edited.RelatedReportId);
+
+            var apiResult = await ReportsApi.UpdateComplianceAsync(guid, req);
+            if (apiResult.Success)
+            {
+                await ReloadComplianceAsync();
+                Snackbar.Add($"Updated: {edited.Agency} {edited.FormCode}", Severity.Success);
+            }
+            else
+            {
+                Snackbar.Add(apiResult.ErrorMessage ?? "Failed to update deadline.", Severity.Error);
+            }
+        }
+    }
+
+    private async Task MarkComplianceFiled(string id)
+    {
+        var c = ComplianceDeadlines.FirstOrDefault(x => x.Id == id);
+        if (c == null) return;
+        if (!Guid.TryParse(c.Id, out var guid)) { Snackbar.Add("Invalid deadline id", Severity.Error); return; }
+        if (c.IsFiled) { Snackbar.Add("Already marked as filed.", Severity.Info); return; }
+
+        var apiResult = await ReportsApi.SetComplianceFiledAsync(guid, true);
+        if (apiResult.Success)
+        {
+            await ReloadComplianceAsync();
+            Snackbar.Add($"Marked {c.Agency} {c.FormCode} as filed", Severity.Success);
+        }
+        else
+        {
+            Snackbar.Add(apiResult.ErrorMessage ?? "Failed to mark filed.", Severity.Error);
         }
     }
 
@@ -877,12 +1084,25 @@
         var result = await dialog.Result;
         if (result is not null && !result.Canceled && result.Data is ReportDefinition def)
         {
-            def.Id = $"RD-CUSTOM-{ReportDefinitions.Count(d => d.IsCustom) + 1:000}";
-            def.IsCustom = true;
-            def.CreatedBy = "Jane Dela Cruz";
-            def.CreatedOn = DateTime.Now;
-            ReportDefinitions.Add(def);
-            Snackbar.Add($"Added custom report: {def.Name}", Severity.Success);
+            var req = new Giwu.Contracts.Reports.CreateReportDefinitionRequest(
+                Name: def.Name,
+                ShortDescription: def.ShortDescription,
+                LongDescription: def.LongDescription,
+                Category: (Giwu.Domain.Reports.ReportCategory)(int)def.Category,
+                RequiresDateRange: def.RequiresDateRange,
+                RequiresDepartmentFilter: def.RequiresDepartmentFilter,
+                SupportedFormats: def.SupportedFormats.Select(f => (Giwu.Domain.Reports.ReportFormat)(int)f).ToList(),
+                Columns: def.Columns ?? new List<string>());
+            var apiResult = await ReportsApi.CreateDefinitionAsync(req);
+            if (apiResult.Success)
+            {
+                await ReloadDefinitionsAsync();
+                Snackbar.Add($"Added custom report: {def.Name}", Severity.Success);
+            }
+            else
+            {
+                Snackbar.Add(apiResult.ErrorMessage ?? "Failed to create custom report.", Severity.Error);
+            }
         }
     }
 
@@ -894,16 +1114,31 @@
         var result = await dialog.Result;
         if (result is not null && !result.Canceled && result.Data is ReportSchedule sched)
         {
-            sched.Id = $"SCH-{Schedules.Count + 1:000}";
-            sched.CreatedBy = "Jane Dela Cruz";
-            sched.CreatedOn = DateTime.Now;
-            Schedules.Add(sched);
-            Snackbar.Add($"Scheduled: {sched.DefinitionName} â€” {sched.Cadence}", Severity.Success);
+            var req = new Giwu.Contracts.Reports.CreateReportScheduleRequest(
+                DefinitionId: sched.DefinitionId,
+                DefinitionName: sched.DefinitionName,
+                Category: (Giwu.Domain.Reports.ReportCategory)(int)sched.Category,
+                Frequency: (Giwu.Domain.Reports.ScheduleFrequency)(int)sched.Frequency,
+                Cadence: sched.Cadence,
+                Recipients: sched.Recipients ?? new List<string>(),
+                Format: (Giwu.Domain.Reports.ReportFormat)(int)sched.Format,
+                NextRunAt: sched.NextRunAt);
+            var apiResult = await ReportsApi.CreateScheduleAsync(req);
+            if (apiResult.Success)
+            {
+                await ReloadSchedulesAsync();
+                Snackbar.Add($"Scheduled: {sched.DefinitionName} — {sched.Cadence}", Severity.Success);
+            }
+            else
+            {
+                Snackbar.Add(apiResult.ErrorMessage ?? "Failed to create schedule.", Severity.Error);
+            }
         }
     }
 
     private async Task OpenEditScheduleDialog(string id)
     {
+        if (!Guid.TryParse(id, out var guid)) return;
         var sched = Schedules.FirstOrDefault(s => s.Id == id);
         if (sched == null) return;
         var parameters = new DialogParameters
@@ -912,12 +1147,27 @@
             ["Existing"] = sched
         };
         var options = new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true };
-        var dialog = await DialogService.ShowAsync<ScheduleReportDialog>($"Edit Schedule â€” {sched.DefinitionName}", parameters, options);
+        var dialog = await DialogService.ShowAsync<ScheduleReportDialog>($"Edit Schedule — {sched.DefinitionName}", parameters, options);
         var result = await dialog.Result;
-        if (result is not null && !result.Canceled)
+        if (result is not null && !result.Canceled && result.Data is ReportSchedule updated)
         {
-            Snackbar.Add($"Updated schedule for {sched.DefinitionName}", Severity.Success);
-            StateHasChanged();
+            var req = new Giwu.Contracts.Reports.UpdateReportScheduleRequest(
+                Frequency: (Giwu.Domain.Reports.ScheduleFrequency)(int)updated.Frequency,
+                Cadence: updated.Cadence,
+                Recipients: updated.Recipients ?? new List<string>(),
+                Format: (Giwu.Domain.Reports.ReportFormat)(int)updated.Format,
+                NextRunAt: updated.NextRunAt,
+                IsActive: updated.IsActive);
+            var apiResult = await ReportsApi.UpdateScheduleAsync(guid, req);
+            if (apiResult.Success)
+            {
+                await ReloadSchedulesAsync();
+                Snackbar.Add($"Updated schedule for {updated.DefinitionName}", Severity.Success);
+            }
+            else
+            {
+                Snackbar.Add(apiResult.ErrorMessage ?? "Failed to update schedule.", Severity.Error);
+            }
         }
     }
 
@@ -932,46 +1182,58 @@
             ["Definition"] = def
         };
         var options = new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true };
-        await DialogService.ShowAsync<ReportRunDetailDialog>("Run Detail", parameters, options);
+        var dialog = await DialogService.ShowAsync<ReportRunDetailDialog>("Run Detail", parameters, options);
+        var result = await dialog.Result;
+        // Dialog returns true when the user clicks Download — re-use the same
+        // CSV-export pipeline as the inline download button.
+        if (result is { Canceled: false, Data: true })
+            await DownloadRun(id);
     }
 
-    private void ToggleSchedule(string id)
+    private async Task ToggleSchedule(string id)
     {
+        if (!Guid.TryParse(id, out var guid)) return;
         var sched = Schedules.FirstOrDefault(s => s.Id == id);
         if (sched == null) return;
-        sched.IsActive = !sched.IsActive;
-        Snackbar.Add($"{sched.DefinitionName} {(sched.IsActive ? "resumed" : "paused")}",
-            sched.IsActive ? Severity.Success : Severity.Info);
+        var apiResult = await ReportsApi.ToggleScheduleAsync(guid);
+        if (apiResult.Success)
+        {
+            await ReloadSchedulesAsync();
+            var updated = Schedules.FirstOrDefault(s => s.Id == id);
+            Snackbar.Add($"{sched.DefinitionName} {(updated?.IsActive == true ? "resumed" : "paused")}",
+                updated?.IsActive == true ? Severity.Success : Severity.Info);
+        }
+        else
+        {
+            Snackbar.Add(apiResult.ErrorMessage ?? "Failed to toggle schedule.", Severity.Error);
+        }
     }
 
-    private void RunScheduleNow(string id)
+    private async Task RunScheduleNow(string id)
     {
         var sched = Schedules.FirstOrDefault(s => s.Id == id);
         if (sched == null) return;
         var def = ReportDefinitions.FirstOrDefault(d => d.Id == sched.DefinitionId);
         if (def == null) return;
 
-        var run = new ReportRun
+        var req = new Giwu.Contracts.Reports.QueueReportRunRequest(
+            DefinitionId: def.Id,
+            DefinitionName: def.Name,
+            Category: (Giwu.Domain.Reports.ReportCategory)(int)def.Category,
+            Format: (Giwu.Domain.Reports.ReportFormat)(int)sched.Format,
+            PeriodStart: null,
+            PeriodEnd: null,
+            Departments: new List<string>());
+        var apiResult = await ReportsApi.QueueRunAsync(req);
+        if (apiResult.Success)
         {
-            Id = $"RUN-{Runs.Count + 1:0000}",
-            DefinitionId = def.Id,
-            DefinitionName = def.Name,
-            Category = def.Category,
-            Format = sched.Format,
-            QueuedAt = DateTime.Now,
-            CompletedAt = DateTime.Now.AddSeconds(2),
-            Status = ReportRunStatus.Completed,
-            RanBy = "(Scheduled run)",
-            RanByInit = "SR",
-            RanByAv = "purple",
-            ScheduleId = sched.Id,
-            RowCount = SimulateRowCount(def),
-        };
-        run.FileSizeBytes = SimulateFileSize(def, run.RowCount, run.Format);
-        run.FileName = $"{def.Id}_{run.QueuedAt:yyyyMMdd_HHmmss}.{FormatExtension(run.Format)}";
-        Runs.Insert(0, run);
-        sched.LastRunAt = DateTime.Now;
-        Snackbar.Add($"Ran {def.Name} immediately", Severity.Success);
+            await ReloadRunsAsync();
+            Snackbar.Add($"Ran {def.Name} immediately", Severity.Success);
+        }
+        else
+        {
+            Snackbar.Add(apiResult.ErrorMessage ?? "Failed to run schedule.", Severity.Error);
+        }
     }
 
     private void RunComplianceReport(string deadlineId)
@@ -988,14 +1250,223 @@
         }
     }
 
-    private void DownloadRun(string id)
+    private async Task DownloadRun(string id)
     {
         var run = Runs.FirstOrDefault(r => r.Id == id);
         if (run == null) return;
-        Snackbar.Add($"Downloading {run.FileName} ({FmtFileSize(run.FileSizeBytes)})", Severity.Info);
+        if (run.Status != ReportRunStatus.Completed)
+        {
+            Snackbar.Add("Run is not completed yet.", Severity.Warning);
+            return;
+        }
+
+        var def = ReportDefinitions.FirstOrDefault(d => d.Id == run.DefinitionId);
+        if (def == null)
+        {
+            Snackbar.Add("Report definition not found.", Severity.Error);
+            return;
+        }
+
+        Snackbar.Add($"Preparing {run.FileName}…", Severity.Info);
+        try
+        {
+            var csv = await BuildCsvForCategoryAsync(def.Category, run);
+            // Force a .csv extension regardless of selected format — we only emit CSV.
+            var filename = System.IO.Path.ChangeExtension(run.FileName ?? $"{def.Id}.csv", "csv");
+            await TriggerCsvDownloadAsync(csv, filename!);
+            // Refresh the row count + size so the UI reflects the actual export.
+            run.RowCount = csv.RowCount;
+            run.FileSizeBytes = csv.SizeBytes;
+            StateHasChanged();
+            Snackbar.Add($"Downloaded {filename} ({FmtFileSize(csv.SizeBytes)})", Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Download failed: {ex.Message}", Severity.Error);
+        }
     }
 
-    // â”€â”€â”€ Simulated metrics for demo â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    /// <summary>
+    /// Pulls the right dataset from the API for a given report category and
+    /// converts it to a CSV string. Returns the CSV plus row count + byte size
+    /// so the caller can update the run summary.
+    /// </summary>
+    private async Task<CsvPayload> BuildCsvForCategoryAsync(ReportCategory category, ReportRun run)
+    {
+        var sb = new System.Text.StringBuilder();
+        var rowCount = 0;
+
+        switch (category)
+        {
+            case ReportCategory.Payroll:
+            {
+                sb.AppendLine("Employee,Employee Number,Department,Job Title,Basic,Overtime,Bonus,Allowance,Gross,SSS,PhilHealth,Pag-IBIG,WHT,Loan,Other,Total Deductions,Net");
+                var slips = await PayrollApi.ListPayslipsAsync();
+                if (slips.Success && slips.Value is not null)
+                    foreach (var s in slips.Value)
+                    {
+                        sb.AppendLine(string.Join(",", new[] {
+                            CsvEscape(s.EmployeeName), CsvEscape(s.EmployeeNumber),
+                            CsvEscape(s.DepartmentName), CsvEscape(s.JobTitle),
+                            s.BasicSalary.ToString("F2"), s.Overtime.ToString("F2"),
+                            s.Bonus.ToString("F2"), s.Allowance.ToString("F2"),
+                            s.Gross.ToString("F2"),
+                            s.Sss.ToString("F2"), s.PhilHealth.ToString("F2"),
+                            s.PagIbig.ToString("F2"), s.WithholdingTax.ToString("F2"),
+                            s.LoanDeduction.ToString("F2"), s.OtherDeduction.ToString("F2"),
+                            s.TotalDeductions.ToString("F2"), s.Net.ToString("F2"),
+                        }));
+                        rowCount++;
+                    }
+                break;
+            }
+            case ReportCategory.Attendance:
+            {
+                sb.AppendLine("Employee,Date,Status,Clock In,Clock Out,Late Min,OT Min,Notes");
+                var from = run.PeriodStart.HasValue ? DateOnly.FromDateTime(run.PeriodStart.Value) : DateOnly.FromDateTime(DateTime.Today.AddDays(-30));
+                var to   = run.PeriodEnd.HasValue   ? DateOnly.FromDateTime(run.PeriodEnd.Value)   : DateOnly.FromDateTime(DateTime.Today);
+                var att = await AttendanceApi.ListAsync(from, to, null, page: 1, pageSize: 5000);
+                if (att.Success && att.Value is not null)
+                    foreach (var a in att.Value.Items)
+                    {
+                        sb.AppendLine(string.Join(",", new[] {
+                            CsvEscape(a.EmployeeName),
+                            a.Date.ToString("yyyy-MM-dd"),
+                            a.Status.ToString(),
+                            a.ClockIn?.ToString("yyyy-MM-dd HH:mm") ?? "",
+                            a.ClockOut?.ToString("yyyy-MM-dd HH:mm") ?? "",
+                            a.LateMinutes?.ToString() ?? "",
+                            a.OvertimeApprovedMinutes?.ToString() ?? "",
+                            CsvEscape(a.Notes),
+                        }));
+                        rowCount++;
+                    }
+                break;
+            }
+            case ReportCategory.People:
+            {
+                sb.AppendLine("Employee Number,First Name,Last Name,Email,Department,Job Title,Status,Employment Type,Hire Date");
+                var emps = await EmployeesApi.ListAsync(page: 1, pageSize: 500);
+                if (emps.Success && emps.Value is not null)
+                    foreach (var e in emps.Value.Items)
+                    {
+                        sb.AppendLine(string.Join(",", new[] {
+                            CsvEscape(e.EmployeeNumber), CsvEscape(e.FirstName), CsvEscape(e.LastName),
+                            CsvEscape(e.Email), CsvEscape(e.DepartmentName), CsvEscape(e.JobTitle),
+                            e.Status.ToString(), e.EmploymentType.ToString(),
+                            e.HireDate.ToString("yyyy-MM-dd"),
+                        }));
+                        rowCount++;
+                    }
+                break;
+            }
+            case ReportCategory.Leave:
+            {
+                sb.AppendLine("Employee,Leave Type,Start,End,Days,Status,Reason,Filed At");
+                var leaves = await LeavesApi.ListRequestsAsync(page: 1, pageSize: 5000);
+                if (leaves.Success && leaves.Value is not null)
+                    foreach (var l in leaves.Value.Items)
+                    {
+                        sb.AppendLine(string.Join(",", new[] {
+                            CsvEscape(l.EmployeeName), CsvEscape(l.LeaveTypeName),
+                            l.StartDate.ToString("yyyy-MM-dd"), l.EndDate.ToString("yyyy-MM-dd"),
+                            l.DaysRequested.ToString("F1"), l.Status.ToString(),
+                            CsvEscape(l.Reason),
+                            l.FiledAt.ToString("yyyy-MM-dd"),
+                        }));
+                        rowCount++;
+                    }
+                break;
+            }
+            case ReportCategory.Recruitment:
+            {
+                sb.AppendLine("Candidate,Email,Phone,Job,Stage,Source,Rating,Applied At");
+                var candidates = await RecruitmentApi.ListCandidatesAsync();
+                if (candidates.Success && candidates.Value is not null)
+                    foreach (var c in candidates.Value)
+                    {
+                        sb.AppendLine(string.Join(",", new[] {
+                            CsvEscape($"{c.FirstName} {c.LastName}"),
+                            CsvEscape(c.Email), CsvEscape(c.Phone),
+                            CsvEscape(c.JobTitle),
+                            c.Stage.ToString(),
+                            CsvEscape(c.Source),
+                            c.Rating.ToString(),
+                            c.AppliedAt.ToString("yyyy-MM-dd"),
+                        }));
+                        rowCount++;
+                    }
+                break;
+            }
+            case ReportCategory.Benefits:
+            {
+                sb.AppendLine("Employee,Program,Provider,Category,Status,Enrolled On,Monthly Contribution");
+                var programsTask = BenefitsApi.ListProgramsAsync();
+                var enrollmentsTask = BenefitsApi.ListEnrollmentsAsync();
+                await Task.WhenAll(programsTask, enrollmentsTask);
+
+                var programsById = (programsTask.Result.Success && programsTask.Result.Value is not null)
+                    ? programsTask.Result.Value.ToDictionary(p => p.Id)
+                    : new Dictionary<Guid, Giwu.Contracts.Benefits.BenefitProgramDto>();
+
+                if (enrollmentsTask.Result.Success && enrollmentsTask.Result.Value is not null)
+                    foreach (var en in enrollmentsTask.Result.Value)
+                    {
+                        programsById.TryGetValue(en.BenefitProgramId, out var prog);
+                        sb.AppendLine(string.Join(",", new[] {
+                            CsvEscape(en.EmployeeName),
+                            CsvEscape(en.ProgramName),
+                            CsvEscape(prog?.Provider ?? ""),
+                            prog?.Category.ToString() ?? "",
+                            en.Status.ToString(),
+                            en.EnrolledOn.ToString("yyyy-MM-dd"),
+                            en.MonthlyContribution.ToString("F2"),
+                        }));
+                        rowCount++;
+                    }
+                break;
+            }
+            default:
+            {
+                // Compliance/Custom or anything we don't have a row dataset for —
+                // emit the API summary stats as a one-row CSV so the file is still meaningful.
+                sb.AppendLine("Metric,Value");
+                var hc = await ReportsApi.HeadcountAsync();
+                if (hc.Success && hc.Value is not null)
+                {
+                    sb.AppendLine($"Total Employees,{hc.Value.TotalEmployees}");
+                    sb.AppendLine($"Active,{hc.Value.Active}");
+                    sb.AppendLine($"Departments,{hc.Value.Departments}");
+                    rowCount += 3;
+                }
+                break;
+            }
+        }
+
+        var bytes = System.Text.Encoding.UTF8.GetBytes(sb.ToString());
+        return new CsvPayload(sb.ToString(), rowCount, bytes.LongLength);
+    }
+
+    private async Task TriggerCsvDownloadAsync(CsvPayload payload, string filename)
+    {
+        var base64 = Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes(payload.Csv));
+        // Same Blob-download trick used by the Attendance page — works inside the
+        // WebView2/Blazor Hybrid container without needing a server endpoint.
+        await JS.InvokeVoidAsync("eval",
+            $@"(function(){{var bin=atob('{base64}');var bytes=new Uint8Array(bin.length);for(var i=0;i<bin.length;i++)bytes[i]=bin.charCodeAt(i);var blob=new Blob([bytes],{{type:'text/csv'}});var url=URL.createObjectURL(blob);var a=document.createElement('a');a.href=url;a.download='{filename}';document.body.appendChild(a);a.click();document.body.removeChild(a);URL.revokeObjectURL(url);}})();");
+    }
+
+    private static string CsvEscape(string? value)
+    {
+        if (string.IsNullOrEmpty(value)) return "";
+        var needsQuoting = value.Contains(',') || value.Contains('"') || value.Contains('\n');
+        var escaped = value.Replace("\"", "\"\"");
+        return needsQuoting ? $"\"{escaped}\"" : escaped;
+    }
+
+    private sealed record CsvPayload(string Csv, int RowCount, long SizeBytes);
+
+    // ─── Simulated metrics for demo ─────────────────────────────
     private static int SimulateRowCount(ReportDefinition def) => def.Category switch
     {
         ReportCategory.Payroll     => 18,
@@ -1020,11 +1491,13 @@
         };
     }
 
-    // â”€â”€â”€ Seed data â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ─── Lists ──────────────────────────────────────────────
+    // Built-in definitions live in code (SeedDefinitions); custom ones come from the API.
+    // The combined list is rebuilt in ReloadDefinitionsAsync.
     private List<ReportDefinition> ReportDefinitions { get; set; } = SeedDefinitions();
     private List<ReportSchedule> Schedules { get; set; } = new();
     private List<ReportRun> Runs { get; set; } = new();
-    private List<ComplianceDeadline> ComplianceDeadlines { get; set; } = SeedComplianceDeadlines();
+    private List<ComplianceDeadline> ComplianceDeadlines { get; set; } = new();
 
     // ─── Live snapshot (API-backed) ───────────────────────────────────
     private HeadcountSummaryDto? Headcount;
@@ -1037,10 +1510,118 @@
 
     protected override async Task OnInitializedAsync()
     {
-        SeedSchedules();
-        SeedRuns();
-        await LoadLiveSnapshotAsync();
+        await Task.WhenAll(
+            ReloadDefinitionsAsync(),
+            ReloadSchedulesAsync(),
+            ReloadRunsAsync(),
+            ReloadComplianceAsync(),
+            LoadLiveSnapshotAsync()
+        );
     }
+
+    // ── API → Hybrid model reload helpers ───────────────────────
+    private async Task ReloadDefinitionsAsync()
+    {
+        // Built-in definitions (in code) + custom (from API).
+        var combined = SeedDefinitions();
+        var res = await ReportsApi.ListDefinitionsAsync();
+        if (res.Success && res.Value is not null)
+            combined.AddRange(res.Value.Select(MapDefinition));
+        ReportDefinitions = combined;
+    }
+
+    private async Task ReloadSchedulesAsync()
+    {
+        var res = await ReportsApi.ListSchedulesAsync();
+        if (res.Success && res.Value is not null)
+            Schedules = res.Value.Select(MapSchedule).ToList();
+    }
+
+    private async Task ReloadRunsAsync()
+    {
+        var res = await ReportsApi.ListRunsAsync(200);
+        if (res.Success && res.Value is not null)
+            Runs = res.Value.Select(MapRun).ToList();
+    }
+
+    private async Task ReloadComplianceAsync()
+    {
+        var res = await ReportsApi.ListComplianceAsync();
+        if (res.Success && res.Value is not null)
+            ComplianceDeadlines = res.Value.Select(MapCompliance).ToList();
+    }
+
+    // ── DTO → Hybrid model mappers ──────────────────────────────
+    private static ReportDefinition MapDefinition(Giwu.Contracts.Reports.ReportDefinitionDto d) => new()
+    {
+        Id = d.Id,
+        Name = d.Name,
+        ShortDescription = d.ShortDescription,
+        LongDescription = d.LongDescription,
+        Category = (ReportCategory)(int)d.Category,
+        IsCustom = true,
+        RequiresDateRange = d.RequiresDateRange,
+        RequiresDepartmentFilter = d.RequiresDepartmentFilter,
+        SupportedFormats = d.SupportedFormats.Select(f => (ReportFormat)(int)f).ToList(),
+        Columns = d.Columns.ToList(),
+        RegulatoryReference = d.RegulatoryReference,
+        CreatedBy = "—",
+        CreatedOn = DateTime.UtcNow,
+    };
+
+    private static ReportSchedule MapSchedule(Giwu.Contracts.Reports.ReportScheduleDto s) => new()
+    {
+        Id = s.Id.ToString(),
+        DefinitionId = s.DefinitionId,
+        DefinitionName = s.DefinitionName,
+        Category = (ReportCategory)(int)s.Category,
+        Frequency = (ScheduleFrequency)(int)s.Frequency,
+        Cadence = s.Cadence,
+        Recipients = s.Recipients.ToList(),
+        Format = (ReportFormat)(int)s.Format,
+        NextRunAt = s.NextRunAt,
+        LastRunAt = s.LastRunAt,
+        IsActive = s.IsActive,
+        CreatedBy = "—",
+        CreatedOn = DateTime.UtcNow,
+    };
+
+    private static ReportRun MapRun(Giwu.Contracts.Reports.ReportRunDto r) => new()
+    {
+        Id = r.Id.ToString(),
+        DefinitionId = r.DefinitionId,
+        DefinitionName = r.DefinitionName,
+        Category = (ReportCategory)(int)r.Category,
+        Format = (ReportFormat)(int)r.Format,
+        QueuedAt = r.QueuedAt,
+        CompletedAt = r.CompletedAt,
+        Status = (ReportRunStatus)(int)r.Status,
+        RanBy = r.RanByDisplay,
+        RanByInit = string.IsNullOrEmpty(r.RanByDisplay) ? "?" : new string(r.RanByDisplay.Split(' ', StringSplitOptions.RemoveEmptyEntries).Take(2).Select(s => s[0]).ToArray()).ToUpperInvariant(),
+        RanByAv = "primary",
+        PeriodStart = r.PeriodStart,
+        PeriodEnd = r.PeriodEnd,
+        Departments = r.Departments.ToList(),
+        RowCount = r.RowCount,
+        FileSizeBytes = r.FileSizeBytes,
+        FileName = r.FileName,
+        ErrorMessage = r.ErrorMessage,
+        ScheduleId = r.ScheduleId?.ToString(),
+    };
+
+    private static ComplianceDeadline MapCompliance(Giwu.Contracts.Reports.ComplianceDeadlineDto c) => new()
+    {
+        Id = c.Id.ToString(),
+        Agency = c.Agency,
+        FormCode = c.FormCode,
+        Name = c.Name,
+        Description = c.Description,
+        DueDate = c.DueDate.ToDateTime(TimeOnly.MinValue),
+        PeriodCovered = c.PeriodCovered,
+        IsFiled = c.IsFiled,
+        FiledOn = c.FiledOn?.ToDateTime(TimeOnly.MinValue),
+        RelatedReportId = c.RelatedReportCode,
+    };
 
     private async Task LoadLiveSnapshotAsync()
     {
@@ -1224,166 +1805,4 @@
                 Columns=new() { "Item","Value" } },
     };
 
-    private static List<ComplianceDeadline> SeedComplianceDeadlines()
-    {
-        var today = DateTime.Today;
-        return new()
-        {
-            new() { Id="CD-001", Agency="BIR", FormCode="1601-C", Name="Monthly Withholding Tax",
-                    PeriodCovered="April 2026", DueDate=today.AddDays(8), IsFiled=false,
-                    RelatedReportId="RD-CMP-001",
-                    Description="Monthly remittance of withholding tax on compensation. Due on the 10th of the following month." },
-            new() { Id="CD-002", Agency="SSS", FormCode="R-3", Name="Monthly Contribution List",
-                    PeriodCovered="April 2026", DueDate=today.AddDays(13), IsFiled=false,
-                    RelatedReportId="RD-CMP-003",
-                    Description="Monthly remittance of SSS contributions. Due based on the 10th digit of the SSS employer ID." },
-            new() { Id="CD-003", Agency="PhilHealth", FormCode="RF-1", Name="Employer Remittance",
-                    PeriodCovered="April 2026", DueDate=today.AddDays(15), IsFiled=false,
-                    RelatedReportId="RD-CMP-004",
-                    Description="Monthly remittance of PhilHealth premiums." },
-            new() { Id="CD-004", Agency="Pag-IBIG", FormCode="MCRF", Name="Membership Contribution",
-                    PeriodCovered="April 2026", DueDate=today.AddDays(22), IsFiled=false,
-                    RelatedReportId="RD-CMP-005",
-                    Description="Monthly Membership Contribution Remittance Form." },
-            new() { Id="CD-005", Agency="BIR", FormCode="1604-C", Name="Annual Withholding Reconciliation",
-                    PeriodCovered="2025", DueDate=today.AddDays(45), IsFiled=false,
-                    Description="Annual reconciliation of compensation tax withheld. Due January 31 of following year." },
-            new() { Id="CD-006", Agency="DOLE", FormCode="Form 30", Name="Establishment Report",
-                    PeriodCovered="2025", DueDate=today.AddDays(55), IsFiled=false,
-                    RelatedReportId="RD-CMP-006",
-                    Description="Annual establishment data submission." },
-            new() { Id="CD-007", Agency="BIR", FormCode="1601-C", Name="Monthly Withholding Tax",
-                    PeriodCovered="March 2026", DueDate=today.AddDays(-22), IsFiled=true, FiledOn=today.AddDays(-23) },
-        };
-    }
-
-    private void SeedSchedules()
-    {
-        Schedules.Add(new ReportSchedule
-        {
-            Id = "SCH-001",
-            DefinitionId = "RD-PAY-001",
-            DefinitionName = "Payroll Register",
-            Category = ReportCategory.Payroll,
-            Frequency = ScheduleFrequency.BiWeekly,
-            Cadence = "Every 15th and 30th at 6:00 PM",
-            Recipients = new() { "finance@giwu.com", "ceo@giwu.com" },
-            Format = ReportFormat.Excel,
-            IsActive = true,
-            LastRunAt = DateTime.Today.AddDays(-DateTime.Today.Day + 15).AddHours(18),
-            NextRunAt = DateTime.Today.AddDays(30 - DateTime.Today.Day).AddHours(18),
-            CreatedBy = "Jane Dela Cruz",
-            CreatedOn = DateTime.Today.AddMonths(-6),
-        });
-        Schedules.Add(new ReportSchedule
-        {
-            Id = "SCH-002",
-            DefinitionId = "RD-PPL-001",
-            DefinitionName = "Headcount Snapshot",
-            Category = ReportCategory.People,
-            Frequency = ScheduleFrequency.Monthly,
-            Cadence = "1st of each month at 8:00 AM",
-            Recipients = new() { "ceo@giwu.com", "board@giwu.com" },
-            Format = ReportFormat.Pdf,
-            IsActive = true,
-            LastRunAt = DateTime.Today.AddDays(-DateTime.Today.Day + 1).AddHours(8),
-            NextRunAt = new DateTime(DateTime.Today.AddMonths(1).Year, DateTime.Today.AddMonths(1).Month, 1, 8, 0, 0),
-            CreatedBy = "Jane Dela Cruz",
-            CreatedOn = DateTime.Today.AddMonths(-12),
-        });
-        Schedules.Add(new ReportSchedule
-        {
-            Id = "SCH-003",
-            DefinitionId = "RD-CMP-003",
-            DefinitionName = "SSS R-3 Contribution Collection List",
-            Category = ReportCategory.Compliance,
-            Frequency = ScheduleFrequency.Monthly,
-            Cadence = "5th of each month at 9:00 AM",
-            Recipients = new() { "compliance@giwu.com" },
-            Format = ReportFormat.Excel,
-            IsActive = true,
-            LastRunAt = DateTime.Today.AddDays(-DateTime.Today.Day + 5).AddHours(9),
-            NextRunAt = new DateTime(DateTime.Today.AddMonths(1).Year, DateTime.Today.AddMonths(1).Month, 5, 9, 0, 0),
-            CreatedBy = "Jane Dela Cruz",
-            CreatedOn = DateTime.Today.AddMonths(-18),
-        });
-        Schedules.Add(new ReportSchedule
-        {
-            Id = "SCH-004",
-            DefinitionId = "RD-ATT-002",
-            DefinitionName = "Tardiness & Undertime Summary",
-            Category = ReportCategory.Attendance,
-            Frequency = ScheduleFrequency.Weekly,
-            Cadence = "Every Monday at 7:00 AM",
-            Recipients = new() { "hr@giwu.com", "managers@giwu.com" },
-            Format = ReportFormat.Csv,
-            IsActive = false,
-            LastRunAt = DateTime.Today.AddDays(-15),
-            NextRunAt = DateTime.Today.AddDays(7 - (int)DateTime.Today.DayOfWeek + 1).AddHours(7),
-            CreatedBy = "Jane Dela Cruz",
-            CreatedOn = DateTime.Today.AddMonths(-3),
-        });
-        Schedules.Add(new ReportSchedule
-        {
-            Id = "SCH-005",
-            DefinitionId = "RD-LV-001",
-            DefinitionName = "Leave Balance Summary",
-            Category = ReportCategory.Leave,
-            Frequency = ScheduleFrequency.Monthly,
-            Cadence = "Last Friday of each month at 5:00 PM",
-            Recipients = new() { "hr@giwu.com" },
-            Format = ReportFormat.Excel,
-            IsActive = true,
-            LastRunAt = DateTime.Today.AddDays(-7),
-            NextRunAt = DateTime.Today.AddDays(20),
-            CreatedBy = "Nadia Lim",
-            CreatedOn = DateTime.Today.AddMonths(-4),
-        });
-    }
-
-    private void SeedRuns()
-    {
-        var rng = new Random(42);
-        var runners = new[] {
-            ("Jane Dela Cruz", "JD", "primary"),
-            ("Nadia Lim",      "NL", "green"),
-            ("Liza Mendoza",   "LM", "amber"),
-            ("(Scheduled run)","SR", "purple"),
-        };
-        var counter = 0;
-
-        for (int i = 0; i < 30; i++)
-        {
-            counter++;
-            var def = ReportDefinitions[rng.Next(ReportDefinitions.Count)];
-            var runner = runners[rng.Next(runners.Length)];
-            var queuedAt = DateTime.Now.AddHours(-rng.Next(1, 24 * 60));
-            var status = rng.NextDouble() switch
-            {
-                < 0.05 => ReportRunStatus.Failed,
-                < 0.10 => ReportRunStatus.Running,
-                _      => ReportRunStatus.Completed
-            };
-            var rowCount = status == ReportRunStatus.Completed ? SimulateRowCount(def) + rng.Next(-5, 10) : 0;
-            var fmt = def.SupportedFormats[rng.Next(def.SupportedFormats.Count)];
-
-            Runs.Add(new ReportRun
-            {
-                Id = $"RUN-{counter:0000}",
-                DefinitionId = def.Id, DefinitionName = def.Name, Category = def.Category,
-                Format = fmt,
-                QueuedAt = queuedAt,
-                CompletedAt = status == ReportRunStatus.Completed ? queuedAt.AddSeconds(rng.Next(2, 30)) : null,
-                Status = status,
-                RanBy = runner.Item1, RanByInit = runner.Item2, RanByAv = runner.Item3,
-                ScheduleId = runner.Item1 == "(Scheduled run)" ? Schedules.ElementAtOrDefault(rng.Next(Schedules.Count))?.Id : null,
-                PeriodStart = def.RequiresDateRange ? queuedAt.AddDays(-30).Date : null,
-                PeriodEnd = def.RequiresDateRange ? queuedAt.Date : null,
-                RowCount = rowCount,
-                FileSizeBytes = status == ReportRunStatus.Completed ? SimulateFileSize(def, rowCount, fmt) : 0,
-                FileName = status == ReportRunStatus.Completed ? $"{def.Id}_{queuedAt:yyyyMMdd_HHmmss}.{FormatExtension(fmt)}" : null,
-                ErrorMessage = status == ReportRunStatus.Failed ? "Source data unavailable for the selected period." : null,
-            });
-        }
-    }
 }

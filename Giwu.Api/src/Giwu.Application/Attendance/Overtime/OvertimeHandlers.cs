@@ -1,7 +1,9 @@
 using FluentValidation;
 using Giwu.Application.Common;
+using Giwu.Application.Notifications;
 using Giwu.Contracts.Attendance;
 using Giwu.Domain.Attendance;
+using Giwu.Domain.Notifications;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 
@@ -51,7 +53,8 @@ public sealed class FileOvertimeValidator : AbstractValidator<FileOvertimeComman
     }
 }
 
-internal sealed class FileOvertimeHandler(IApplicationDbContext db, ICurrentUser user)
+internal sealed class FileOvertimeHandler(
+    IApplicationDbContext db, ICurrentUser user, INotificationDispatcher notifications)
     : IRequestHandler<FileOvertimeCommand, Result<OvertimeRequestDto>>
 {
     public async Task<Result<OvertimeRequestDto>> Handle(FileOvertimeCommand cmd, CancellationToken ct)
@@ -70,6 +73,16 @@ internal sealed class FileOvertimeHandler(IApplicationDbContext db, ICurrentUser
             Type = r.Type, Reason = r.Reason, Status = ApprovalStatus.Pending,
         };
         db.OvertimeRequests.Add(ot);
+
+        await notifications.NotifyRoleAsync(
+            roleName: Giwu.Domain.Identity.SystemRoles.HrAdmin,
+            type:     NotificationType.OvertimeFiled,
+            title:    $"Overtime from {emp.FirstName} {emp.LastName}",
+            body:     $"{ot.Date:MMM d} · {ot.StartTime:HH:mm}–{ot.EndTime:HH:mm} ({ot.Type})",
+            relatedEntityId:   ot.Id,
+            relatedEntityType: "OvertimeRequest",
+            ct: ct);
+
         await db.SaveChangesAsync(ct);
 
         return Result<OvertimeRequestDto>.Success(new OvertimeRequestDto(
@@ -85,7 +98,8 @@ public sealed record ResolveOvertimeCommand(Guid Id, bool Approve, string Note) 
 internal sealed class ResolveOvertimeHandler(
     IApplicationDbContext db,
     ICurrentUser user,
-    TimeProvider clock)
+    TimeProvider clock,
+    INotificationDispatcher notifications)
     : IRequestHandler<ResolveOvertimeCommand, Result>
 {
     public async Task<Result> Handle(ResolveOvertimeCommand cmd, CancellationToken ct)
@@ -100,6 +114,23 @@ internal sealed class ResolveOvertimeHandler(
         ot.ApprovedById   = user.Id;
         ot.ApprovedAt     = clock.GetUtcNow();
         ot.ResolutionNote = cmd.Note;
+
+        // Notify the filer of the decision.
+        var filerUserId = await db.Users
+            .Where(u => u.EmployeeId == ot.EmployeeId)
+            .Select(u => (Guid?)u.Id)
+            .FirstOrDefaultAsync(ct);
+        if (filerUserId is { } uid)
+        {
+            await notifications.NotifyUserAsync(
+                recipientUserId:   uid,
+                type:              cmd.Approve ? NotificationType.OvertimeApproved : NotificationType.OvertimeRejected,
+                title:             cmd.Approve ? "Overtime approved" : "Overtime rejected",
+                body:              $"Your OT for {ot.Date:MMM d} ({ot.StartTime:HH:mm}–{ot.EndTime:HH:mm}) was {(cmd.Approve ? "approved" : "rejected")}.",
+                relatedEntityId:   ot.Id,
+                relatedEntityType: "OvertimeRequest",
+                ct: ct);
+        }
 
         await db.SaveChangesAsync(ct);
         return Result.Success();

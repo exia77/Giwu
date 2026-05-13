@@ -16,9 +16,9 @@
 
 <PageTitle>Recruitment</PageTitle>
 
-@* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+@* ═══════════════════════════════════════════════════
    KPI STRIP
-â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• *@
+═══════════════════════════════════════════════════ *@
 <MudGrid Spacing="3" Class="mb-4">
     <MudItem xs="12" sm="6" md="3">
         <MudPaper Class="rec-kpi" Elevation="0">
@@ -62,9 +62,9 @@
     </MudItem>
 </MudGrid>
 
-@* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+@* ═══════════════════════════════════════════════════
    FUNNEL + UPCOMING INTERVIEWS
-â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• *@
+═══════════════════════════════════════════════════ *@
 <MudGrid Spacing="3" Class="mb-4">
     <MudItem xs="12" md="7">
         <MudPaper Class="rec-card" Elevation="0">
@@ -116,7 +116,7 @@
             @if (UpcomingInterviews.Count == 0)
             {
                 <div class="rec-empty">
-                    <div class="rec-empty-icon">â€”</div>
+                    <div class="rec-empty-icon">—</div>
                     <MudText Typo="Typo.body2">No interviews scheduled.</MudText>
                 </div>
             }
@@ -135,7 +135,7 @@
                         <div class="interview-meta">
                             <MudText Typo="Typo.body2" Class="fw-medium">@cand.Name</MudText>
                             <MudText Typo="Typo.caption" Style="opacity:.55">
-                                @iv.Kind Â· @iv.ScheduledAt.ToString("h:mm tt") Â· @(job?.Title ?? "â€”")
+                                @iv.Kind · @iv.ScheduledAt.ToString("h:mm tt") · @(job?.Title ?? "—")
                             </MudText>
                         </div>
                         <MudAvatar Style="@AvatarStyle(iv.InterviewerAv)" Class="rec-av-sm"
@@ -147,15 +147,15 @@
     </MudItem>
 </MudGrid>
 
-@* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+@* ═══════════════════════════════════════════════════
    MAIN TABS: CANDIDATES / JOBS
-â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• *@
+═══════════════════════════════════════════════════ *@
 <MudPaper Class="rec-card" Elevation="0">
     <MudTabs Elevation="0" Rounded="false" ApplyEffectsToContainer="true"
              PanelClass="rec-tab-panel" TabPanelClass="rec-tab-item"
              @bind-ActivePanelIndex="ActiveTab">
 
-        @* â•â• CANDIDATES TAB â•â• *@
+        @* ══ CANDIDATES TAB ══ *@
         <MudTabPanel Text="@($"Candidates ({Candidates.Count(c => c.Stage != "Rejected")})")"
                      Icon="@Icons.Material.Outlined.PeopleAlt">
             <div class="rec-card-header">
@@ -188,7 +188,7 @@
                     <MudChip T="string" Value="@("Rejected")" Size="Size.Small">Rejected</MudChip>
                 </MudChipSet>
                 <MudSpacer />
-                <MudTextField @bind-Value="CandidateSearch" Placeholder="Search name, emailâ€¦"
+                <MudTextField @bind-Value="CandidateSearch" Placeholder="Search name, email…"
                               Variant="Variant.Outlined" Margin="Margin.Dense" Class="rec-search"
                               Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Outlined.Search"
                               DebounceInterval="200" Immediate="true" />
@@ -216,9 +216,9 @@
                     <MudSelect T="int" @bind-Value="CandidateMinRating" Placeholder="Min rating" Dense="true"
                                Variant="Variant.Outlined" Margin="Margin.Dense" Style="min-width:130px">
                         <MudSelectItem Value="0">Any</MudSelectItem>
-                        <MudSelectItem Value="3">â‰¥ 3 â˜…</MudSelectItem>
-                        <MudSelectItem Value="4">â‰¥ 4 â˜…</MudSelectItem>
-                        <MudSelectItem Value="5">5 â˜… only</MudSelectItem>
+                        <MudSelectItem Value="3">≥ 3 ★</MudSelectItem>
+                        <MudSelectItem Value="4">≥ 4 ★</MudSelectItem>
+                        <MudSelectItem Value="5">5 ★ only</MudSelectItem>
                     </MudSelect>
                     <MudButton Variant="Variant.Text" Size="Size.Small" OnClick="ClearAdvancedFilters">Clear</MudButton>
                 </div>
@@ -248,7 +248,7 @@
                         </div>
                     </MudTd>
                     <MudTd DataLabel="Role" Style="opacity:.8">
-                        @(Jobs.FirstOrDefault(j => j.Id == context.JobId)?.Title ?? "â€”")
+                        @(Jobs.FirstOrDefault(j => j.Id == context.JobId)?.Title ?? "—")
                     </MudTd>
                     <MudTd DataLabel="Stage">
                         <span class="@($"rec-badge {StageBadgeClass(context.Stage)}")">@context.Stage</span>
@@ -291,7 +291,7 @@
                 </RowTemplate>
                 <NoRecordsContent>
                     <div class="rec-empty">
-                        <div class="rec-empty-icon">âŠ˜</div>
+                        <div class="rec-empty-icon">⊘</div>
                         <MudText Typo="Typo.body2">No candidates match your filters.</MudText>
                     </div>
                 </NoRecordsContent>
@@ -301,7 +301,7 @@
             </MudTable>
         </MudTabPanel>
 
-        @* â•â• JOBS TAB â•â• *@
+        @* ══ JOBS TAB ══ *@
         <MudTabPanel Text="@($"Jobs ({Jobs.Count(j => j.Status == "Open")} open)")"
                      Icon="@Icons.Material.Outlined.WorkOutline">
             <div class="rec-card-header">
@@ -322,7 +322,7 @@
                     <MudChip T="string" Value="@("Draft")" Size="Size.Small">Draft</MudChip>
                 </MudChipSet>
                 <MudSpacer />
-                <MudTextField @bind-Value="JobSearch" Placeholder="Search title, deptâ€¦"
+                <MudTextField @bind-Value="JobSearch" Placeholder="Search title, dept…"
                               Variant="Variant.Outlined" Margin="Margin.Dense" Class="rec-search"
                               Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Outlined.Search"
                               DebounceInterval="200" Immediate="true" />
@@ -347,7 +347,7 @@
                         <div>
                             <MudText Typo="Typo.body2" Class="fw-medium" Style="line-height:1.2">@context.Title</MudText>
                             <MudText Typo="Typo.caption" Style="opacity:.55">
-                                @context.EmploymentType Â· @FmtSalary(context.SalaryMin, context.SalaryMax)
+                                @context.EmploymentType · @FmtSalary(context.SalaryMin, context.SalaryMax)
                             </MudText>
                         </div>
                     </MudTd>
@@ -406,7 +406,7 @@
                 </RowTemplate>
                 <NoRecordsContent>
                     <div class="rec-empty">
-                        <div class="rec-empty-icon">âŠ˜</div>
+                        <div class="rec-empty-icon">⊘</div>
                         <MudText Typo="Typo.body2">No roles match your filters.</MudText>
                     </div>
                 </NoRecordsContent>
@@ -418,9 +418,9 @@
     </MudTabs>
 </MudPaper>
 
-@* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+@* ═══════════════════════════════════════════════════
    STYLES
-â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• *@
+═══════════════════════════════════════════════════ *@
 <style>
     :root {
         --rec-green:        #1D9E75;
@@ -441,7 +441,7 @@
         --rec-blue-text:    #0C447C;
     }
 
-    /* â”€â”€ KPI â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+    /* ── KPI ───────────────────────────────────────────────── */
     .rec-kpi {
         padding: 16px;
         border: 0.5px solid var(--mud-palette-divider);
@@ -453,7 +453,7 @@
     .kpi-sub   { font-size: 11.5px; opacity: .6; display: flex; align-items: center; gap: 5px; }
     .kpi-dot   { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; display: inline-block; }
 
-    /* â”€â”€ Card shell â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+    /* ── Card shell ────────────────────────────────────────── */
     .rec-card {
         border: 0.5px solid var(--mud-palette-divider);
         border-radius: 10px;
@@ -470,7 +470,7 @@
     }
     .fw-medium { font-weight: 500; }
 
-    /* â”€â”€ Avatars â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+    /* ── Avatars ───────────────────────────────────────────── */
     .rec-av-sm {
         width: 30px !important;
         height: 30px !important;
@@ -478,7 +478,7 @@
         font-weight: 500;
     }
 
-    /* â”€â”€ Badges (stage colors) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+    /* ── Badges (stage colors) ─────────────────────────────── */
     .rec-badge {
         display: inline-block;
         font-size: 11px;
@@ -494,7 +494,7 @@
     .rec-badge-hired     { background: var(--rec-green-light);  color: var(--rec-green-text);  }
     .rec-badge-rejected  { background: var(--rec-red-light);    color: var(--rec-red-text);    }
 
-    /* â”€â”€ Funnel â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+    /* ── Funnel ─────────────────────────────────────────────── */
     .funnel-wrap { padding: 16px; }
     .funnel-row {
         display: flex; align-items: center; gap: 12px;
@@ -521,7 +521,7 @@
         font-size: 13px; font-weight: 500;
     }
 
-    /* â”€â”€ Upcoming interviews â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+    /* ── Upcoming interviews ─────────────────────────────────── */
     .interview-item {
         display: flex; align-items: center; gap: 12px;
         padding: 10px 16px;
@@ -539,7 +539,7 @@
     .interview-num { font-size: 15px; font-weight: 600; line-height: 1.1; }
     .interview-meta { flex: 1; min-width: 0; }
 
-    /* â”€â”€ Filter row â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+    /* ── Filter row ──────────────────────────────────────────── */
     .filter-row {
         display: flex; flex-wrap: wrap; align-items: center; gap: 8px;
         padding: 10px 14px;
@@ -547,7 +547,7 @@
     }
     .rec-search { max-width: 260px; }
 
-    /* â”€â”€ Progress bar (jobs table) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+    /* ── Progress bar (jobs table) ───────────────────────────── */
     .progress-wrap { display: flex; align-items: center; gap: 7px; }
     .progress-bar {
         width: 60px; height: 5px; border-radius: 3px;
@@ -555,25 +555,25 @@
     }
     .progress-fill { height: 100%; border-radius: 3px; background: var(--rec-green); }
 
-    /* â”€â”€ Star rating â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+    /* ── Star rating ─────────────────────────────────────────── */
     .rec-stars { display: inline-flex; gap: 1px; font-size: 13px; line-height: 1; }
     .rec-star-filled { color: var(--rec-amber); }
     .rec-star-empty  { color: var(--mud-palette-divider); }
 
-    /* â”€â”€ Empty state â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+    /* ── Empty state ─────────────────────────────────────────── */
     .rec-empty { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 40px 16px; opacity: .55; gap: 8px; }
     .rec-empty-icon { font-size: 28px; }
 
-    /* â”€â”€ Tabs â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+    /* ── Tabs ────────────────────────────────────────────────── */
     .rec-tab-panel { padding: 0 !important; }
     .rec-tab-item  { min-width: unset !important; text-transform: none !important; font-size: 13px !important; }
 
-    /* â”€â”€ MudTable overrides â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+    /* ── MudTable overrides ──────────────────────────────────── */
     .rec-mud-table .mud-table-container { border-radius: 0; }
     .rec-mud-table th { font-size: 10.5px !important; font-weight: 500 !important; letter-spacing: .055em !important; text-transform: uppercase !important; opacity: .65; }
     .rec-mud-table td { font-size: 13px !important; vertical-align: middle; }
 
-    /* â”€â”€ Responsive â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+    /* ── Responsive ──────────────────────────────────────────── */
     @@media (max-width: 600px) {
         .rec-search { max-width: 100%; width: 100%; }
         .funnel-label { width: 80px; }
@@ -581,7 +581,7 @@
 </style>
 
 @code {
-    // â”€â”€â”€ State â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ─── State ──────────────────────────────────────────────────
     private int ActiveTab { get; set; } = 0;
     private string FunnelJobFilter { get; set; } = "";
 
@@ -601,7 +601,7 @@
     private int JobPage { get; set; } = 0;
     private int JobPageSize { get; set; } = 10;
 
-    // â”€â”€â”€ Derived â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ─── Derived ────────────────────────────────────────────────
     private int OpenRolesCount => Jobs.Count(j => j.Status == "Open");
     private int TotalOpeningsCount => Jobs.Where(j => j.Status == "Open").Sum(j => j.Openings);
     private int ActiveCandidateCount => Candidates.Count(c => c.Stage != "Rejected" && c.Stage != "Hired");
@@ -659,7 +659,7 @@
         }
     }
 
-    // â”€â”€â”€ Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ─── Helpers ────────────────────────────────────────────────
     private string StageColor(string s) => s switch
     {
         "Applied"   => "var(--rec-blue)",
@@ -681,7 +681,7 @@
             var baseSeq = i * 10;
             builder.OpenElement(baseSeq, "span");
             builder.AddAttribute(baseSeq + 1, "class", i <= r ? "rec-star-filled" : "rec-star-empty");
-            builder.AddContent(baseSeq + 2, "â˜…");
+            builder.AddContent(baseSeq + 2, "★");
             builder.CloseElement();
         }
         builder.CloseElement();
@@ -696,7 +696,7 @@
         CandidateMinRating = 0;
     }
 
-    // â”€â”€â”€ Actions â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ─── Actions ────────────────────────────────────────────────
     private async Task OpenCandidateDetailDialog(string id)
     {
         var cand = Candidates.FirstOrDefault(c => c.Id == id);

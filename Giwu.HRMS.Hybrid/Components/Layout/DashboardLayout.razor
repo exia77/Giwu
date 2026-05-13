@@ -5,12 +5,19 @@
 @inject AuthService Auth
 @inject RoleAuthService RoleAuth
 @inject IJSRuntime JS
+@inject Giwu.HRMS.Hybrid.Services.Attendance.IAttendanceApi AttendanceApi
+@inject Giwu.HRMS.Hybrid.Services.Leaves.ILeavesApi LeavesApi
+@inject Giwu.HRMS.Hybrid.Services.Auth.SessionSignal Session
+@inject Giwu.HRMS.Hybrid.Components.Pages.Settings.SettingsService AppSettings
+@inject Giwu.HRMS.Hybrid.Services.Notifications.INotificationsApi NotificationsApi
+@inject Giwu.HRMS.Hybrid.Services.Notifications.NotificationHubClient NotificationHub
 @implements IDisposable
+@using Giwu.Domain.Attendance
 
 
 <MudLayout>
 
-  @* â”€â”€ Sidebar drawer â”€â”€ *@
+  @* ── Sidebar drawer ── *@
   <MudDrawer Open="true" Variant="DrawerVariant.Persistent" Elevation="0"
              Style="border-right:1px solid var(--mud-palette-divider)">
 
@@ -41,7 +48,7 @@
     </MudDrawerHeader>
 
     <MudNavMenu>
-      @* â”€â”€ MAIN â”€â”€ *@
+      @* ── MAIN ── *@
       @if (RoleAuth.CanSee(NavKeys.Dashboard))
       {
         <MudText Typo="Typo.overline" Class="px-4 pt-3 pb-1"
@@ -51,7 +58,7 @@
                     Icon="@Icons.Material.Outlined.GridView">Dashboard</MudNavLink>
       }
 
-      @* â”€â”€ PEOPLE â”€â”€ shown if the user can see ANY people-related page *@
+      @* ── PEOPLE ── shown if the user can see ANY people-related page *@
       @{
           var canSeePeopleSection = RoleAuth.CanSee(NavKeys.Employees)
                                   || RoleAuth.CanSee(NavKeys.Departments)
@@ -79,8 +86,11 @@
                       Icon="@Icons.Material.Outlined.CalendarMonth">
             <div style="display:flex;align-items:center;justify-content:space-between;width:100%">
               Attendance
-              <MudChip T="string" Size="Size.Small" Color="Color.Error"
-                       Variant="Variant.Filled" Style="height:18px;font-size:.65rem;min-width:unset;padding:0 6px">3</MudChip>
+              @if (_attendanceBadge > 0)
+              {
+                <MudChip T="string" Size="Size.Small" Color="Color.Error"
+                         Variant="Variant.Filled" Style="height:18px;font-size:.65rem;min-width:unset;padding:0 6px">@_attendanceBadge</MudChip>
+              }
             </div>
           </MudNavLink>
         }
@@ -91,7 +101,7 @@
         }
       }
 
-      @* â”€â”€ PAYROLL â”€â”€ *@
+      @* ── PAYROLL ── *@
       @{
           var canSeePayrollSection = RoleAuth.CanSee(NavKeys.Payroll)
                                    || RoleAuth.CanSee(NavKeys.Benefits);
@@ -113,7 +123,7 @@
         }
       }
 
-      @* â”€â”€ MORE â”€â”€ *@
+      @* ── MORE ── *@
       @{
           var canSeeMoreSection = RoleAuth.CanSee(NavKeys.Leave)
                                 || RoleAuth.CanSee(NavKeys.Reports)
@@ -130,8 +140,11 @@
                       Icon="@Icons.Material.Outlined.Schedule">
             <div style="display:flex;align-items:center;justify-content:space-between;width:100%">
               Leave &amp; Time Off
-              <MudChip T="string" Size="Size.Small" Color="Color.Error"
-                       Variant="Variant.Filled" Style="height:18px;font-size:.65rem;min-width:unset;padding:0 6px">5</MudChip>
+              @if (_leaveBadge > 0)
+              {
+                <MudChip T="string" Size="Size.Small" Color="Color.Error"
+                         Variant="Variant.Filled" Style="height:18px;font-size:.65rem;min-width:unset;padding:0 6px">@_leaveBadge</MudChip>
+              }
             </div>
           </MudNavLink>
         }
@@ -150,25 +163,16 @@
 
     <MudSpacer />
 
-    @* â”€â”€ Footer with the current user's identity (driven by RoleAuth) â”€â”€ *@
-    <div style="padding:14px 16px;border-top:1px solid var(--mud-palette-divider);
-                display:flex;align-items:center;gap:10px">
-      <MudAvatar Style="@($"width:30px;height:30px;font-size:.72rem;{AvatarStyleFor(RoleAuth.CurrentUser.AvatarColor)}")">
-        @RoleAuth.CurrentUser.Initials
-      </MudAvatar>
-      <div style="flex:1;min-width:0">
-        <MudText Typo="Typo.body2" Class="fw-semibold" Style="line-height:1.2">
-          @RoleAuth.CurrentUser.Name
-        </MudText>
-        <MudText Typo="Typo.caption" Style="opacity:.55">
-          @RoleAuthService.RoleLabel(RoleAuth.CurrentUser.Role)
-        </MudText>
-      </div>
+    @* ── Sidebar footer: GIWU watermark. The signed-in user's identity is
+       already visible in the top-right account dropdown, so showing it here
+       too is redundant. ── *@
+    <div class="sidebar-watermark">
+      <GiwuWatermark />
     </div>
 
   </MudDrawer>
 
-  @* â”€â”€ Top app bar â”€â”€ *@
+  @* ── Top app bar ── *@
   <MudAppBar Elevation="0"
              Style="border-bottom:1px solid var(--mud-palette-divider);background:var(--mud-palette-background)">
     <div style="flex:1">
@@ -176,79 +180,222 @@
       <MudText Typo="Typo.caption" Style="opacity:.55">@Today.ToString("dddd, MMMM d, yyyy")</MudText>
     </div>
     <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Style="font-size:.7rem">
-      Q2 Â· Week @WeekNumber
+      Q2 · Week @WeekNumber
     </MudChip>
 
-    @* â”€â”€ Demo role-switcher â”€â”€ lets the user preview the app from different roles *@
-    <MudMenu Dense="true" PopoverClass="role-switcher-pop">
-      <ActivatorContent>
-        <MudButton Variant="Variant.Outlined" Size="Size.Small"
-                   StartIcon="@Icons.Material.Outlined.SwitchAccount"
-                   EndIcon="@Icons.Material.Outlined.KeyboardArrowDown"
-                   Style="text-transform:none;font-weight:400">
-          <span style="display:flex;align-items:center;gap:6px">
-            <span class="@($"role-pill {RoleAuthService.RoleBadgeClass(RoleAuth.CurrentUser.Role)}")">
-              @RoleAuthService.RoleLabel(RoleAuth.CurrentUser.Role)
-            </span>
-          </span>
-        </MudButton>
-      </ActivatorContent>
-      <ChildContent>
-        <div class="role-switcher-header">
-          <MudText Typo="Typo.overline" Style="opacity:.55;letter-spacing:.06em">View as</MudText>
-          <MudText Typo="Typo.caption" Style="opacity:.55;font-size:11px;line-height:1.4">
-            Switch perspectives to verify nav-menu visibility per role.
-          </MudText>
-        </div>
-        @foreach (var u in RoleAuth.AvailableUsers)
+    <GiwuThemeToggle ButtonClass="theme-toggle-inline" />
+
+    @* ── Notifications bell (plain-HTML popover) ── *@
+    <div class="notif-wrap">
+      <button type="button" class="notif-activator"
+              @onclick="ToggleNotifications" @onclick:stopPropagation="true"
+              aria-label="Notifications">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+          <path d="M12 2a6 6 0 0 0-6 6v3.5L4 14h16l-2-2.5V8a6 6 0 0 0-6-6zM9 18a3 3 0 0 0 6 0" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        @if (_notifUnread > 0)
         {
-          var isActive = u.Id == RoleAuth.CurrentUser.Id;
-          <button type="button"
-                  class="@($"role-switcher-row {(isActive ? "active" : "")}")"
-                  @onclick="@(() => SwitchUser(u.Id))">
-            <MudAvatar Style="@($"width:30px;height:30px;font-size:11px;{AvatarStyleFor(u.AvatarColor)}")">@u.Initials</MudAvatar>
-            <div class="role-switcher-meta">
-              <div class="role-switcher-name">@u.Name</div>
-              <div class="role-switcher-role">
-                <span class="@($"role-pill role-pill-sm {RoleAuthService.RoleBadgeClass(u.Role)}")">
-                  @RoleAuthService.RoleLabel(u.Role)
-                </span>
+          <span class="notif-badge">@(_notifUnread > 99 ? "99+" : _notifUnread.ToString())</span>
+        }
+      </button>
+
+      @if (_notifOpen)
+      {
+        <div class="notif-backdrop" @onclick="CloseNotifications"></div>
+        <div class="notif-popover" @onclick:stopPropagation="true">
+          <div class="notif-header">
+            <span class="notif-title">Notifications</span>
+            @if (_notifUnread > 0)
+            {
+              <button type="button" class="notif-mark-all" @onclick="MarkAllNotificationsRead">Mark all read</button>
+            }
+          </div>
+          @if (_notifLoading)
+          {
+            <div class="notif-empty">Loading…</div>
+          }
+          else if (_notifItems.Count == 0)
+          {
+            <div class="notif-empty">You're all caught up.</div>
+          }
+          else
+          {
+            <div class="notif-list">
+              @foreach (var n in _notifItems)
+              {
+                <button type="button"
+                        class="@($"notif-item {(n.IsRead ? "" : "unread")}")"
+                        @onclick="@(() => OnNotificationClick(n))">
+                  <span class="notif-dot @(n.IsRead ? "read" : "")"></span>
+                  <div class="notif-body">
+                    <div class="notif-item-title">@n.Title</div>
+                    <div class="notif-item-body">@n.Body</div>
+                    <div class="notif-item-time">@FormatRelative(n.CreatedAt)</div>
+                  </div>
+                </button>
+              }
+            </div>
+          }
+        </div>
+      }
+    </div>
+
+    @* ── Account dropdown: pure-HTML implementation. MudMenu's activator
+       was unreliable in MudBlazor 9.x with nested components, so we drive
+       open/close with a single bool flag and a backdrop element. ── *@
+    <div class="account-menu-wrap">
+      <button type="button" class="account-menu-activator"
+              @onclick="ToggleAccountMenu" @onclick:stopPropagation="true">
+        <span class="account-avatar-circle"
+              style="@AvatarStyleFor(RoleAuth.CurrentUser.AvatarColor)">
+          @RoleAuth.CurrentUser.Initials
+        </span>
+        <svg class="account-menu-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none">
+          <path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </button>
+
+      @if (_accountMenuOpen)
+      {
+        <div class="account-menu-backdrop" @onclick="CloseAccountMenu"></div>
+        <div class="account-menu-popover" @onclick:stopPropagation="true">
+          <div class="role-switcher-header">
+            <div style="display:flex;align-items:center;gap:10px">
+              <span class="account-avatar-circle"
+                    style="@AvatarStyleFor(RoleAuth.CurrentUser.AvatarColor);width:34px;height:34px;font-size:12px">
+                @RoleAuth.CurrentUser.Initials
+              </span>
+              <div style="min-width:0">
+                <div style="font-size:13px;font-weight:600;line-height:1.2">@RoleAuth.CurrentUser.Name</div>
+                <div style="font-size:11px;opacity:.6;line-height:1.3">@Auth.UserEmail</div>
+                <div style="margin-top:3px">
+                  <span class="@($"role-pill role-pill-sm {RoleAuthService.RoleBadgeClass(RoleAuth.CurrentUser.Role)}")">
+                    @RoleAuthService.RoleLabel(RoleAuth.CurrentUser.Role)
+                  </span>
+                </div>
               </div>
             </div>
-            @if (isActive)
-            {
-              <MudIcon Icon="@Icons.Material.Filled.Check" Size="Size.Small" Color="Color.Success" />
-            }
-          </button>
-        }
-        <div class="role-switcher-footer">
-          Edit role permissions in <a href="/settings">Settings â†’ Roles &amp; Permissions</a>
-        </div>
-      </ChildContent>
-    </MudMenu>
+          </div>
 
-    <GiwuThemeToggle ButtonClass="theme-toggle-inline" />
-    <MudIconButton Icon="@Icons.Material.Outlined.Notifications" Size="Size.Small" />
-    <MudAvatar Style="@($"width:30px;height:30px;font-size:.72rem;cursor:pointer;margin-left:4px;{AvatarStyleFor(RoleAuth.CurrentUser.AvatarColor)}")">
-      @RoleAuth.CurrentUser.Initials
-    </MudAvatar>
+          <button type="button" class="account-menu-row account-menu-signout" @onclick="HandleLogout">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            <span>Sign out</span>
+          </button>
+        </div>
+      }
+    </div>
   </MudAppBar>
 
-  @* â”€â”€ Page content â”€â”€ *@
+  @* ── Page content ── *@
   <MudMainContent>
     <div style="padding:24px">
       @Body
     </div>
   </MudMainContent>
-
-  <div class="watermark-wrap">
-    <GiwuWatermark />
-  </div>
 </MudLayout>
 
 
+
 @code {
-    private string RelPath => Navigation.ToBaseRelativePath(Navigation.Uri);
+    private bool _accountMenuOpen;
+    private void ToggleAccountMenu() => _accountMenuOpen = !_accountMenuOpen;
+    private void CloseAccountMenu() => _accountMenuOpen = false;
+
+    // ─── Notifications ─────────────────────────────────────────
+    private bool _notifOpen;
+    private bool _notifLoading;
+    private int _notifUnread;
+    private List<Giwu.Contracts.Notifications.NotificationDto> _notifItems = new();
+    private System.Threading.Timer? _notifPollTimer;
+
+    private async Task ToggleNotifications()
+    {
+        _notifOpen = !_notifOpen;
+        if (_notifOpen) await LoadNotificationsAsync();
+    }
+
+    private void CloseNotifications() => _notifOpen = false;
+
+    private async Task LoadNotificationsAsync()
+    {
+        _notifLoading = true;
+        var res = await NotificationsApi.ListAsync(unreadOnly: false, limit: 20);
+        _notifLoading = false;
+        if (res.Success && res.Value is not null)
+        {
+            _notifItems = res.Value.Items.ToList();
+            _notifUnread = res.Value.UnreadCount;
+        }
+    }
+
+    private async Task RefreshUnreadCountAsync()
+    {
+        var res = await NotificationsApi.ListAsync(unreadOnly: true, limit: 1);
+        if (res.Success && res.Value is not null)
+        {
+            _notifUnread = res.Value.UnreadCount;
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    private async Task MarkAllNotificationsRead()
+    {
+        var res = await NotificationsApi.MarkAllReadAsync();
+        if (res.Success)
+        {
+            _notifUnread = 0;
+            foreach (var n in _notifItems)
+            {
+                // Mutate locally; we don't store the DateTimeOffset, just the IsRead derivation.
+            }
+            await LoadNotificationsAsync();
+        }
+    }
+
+    private async Task OnNotificationClick(Giwu.Contracts.Notifications.NotificationDto n)
+    {
+        if (!n.IsRead)
+        {
+            await NotificationsApi.MarkReadAsync(n.Id);
+            await LoadNotificationsAsync();
+        }
+        _notifOpen = false;
+
+        // Deep-link to the relevant page based on what the notification
+        // references. Type names match the strings written by emitters.
+        var dest = n.RelatedEntityType switch
+        {
+            "LeaveRequest"      => "/leave",
+            "OvertimeRequest"   => "/attendance",
+            "AttendanceRecord"  => "/attendance",
+            "Employee"          => "/employees",
+            "Department"        => "/departments",
+            "Payslip"           => "/payroll",
+            "PayRun"            => "/payroll",
+            "BenefitRequest"    => "/benefits",
+            "BenefitProgram"    => "/benefits",
+            "Candidate"         => "/recruitment",
+            "JobRequisition"    => "/recruitment",
+            "Interview"         => "/recruitment",
+            "ReportRun"         => "/reports",
+            _                   => null,
+        };
+        if (dest is not null) Navigation.NavigateTo(dest);
+    }
+
+    private static string FormatRelative(DateTimeOffset when)
+    {
+        var span = DateTimeOffset.Now - when;
+        if (span.TotalMinutes < 1) return "just now";
+        if (span.TotalMinutes < 60) return $"{(int)span.TotalMinutes}m ago";
+        if (span.TotalHours < 24)   return $"{(int)span.TotalHours}h ago";
+        if (span.TotalDays  < 7)    return $"{(int)span.TotalDays}d ago";
+        return when.LocalDateTime.ToString("MMM d");
+    }
+
+private string RelPath => Navigation.ToBaseRelativePath(Navigation.Uri);
 
     private string TopbarTitle => RelPath.StartsWith("settings", StringComparison.OrdinalIgnoreCase)
         ? "Settings"
@@ -277,53 +424,161 @@
         _ => ""
     };
 
-    private void SwitchUser(string userId)
+    private async Task HandleLogout()
     {
-        RoleAuth.SetCurrentUser(userId);
-
-        // If the new role can't access the page they're currently on, bounce them home.
-        // This keeps the demo from leaving someone stranded on a Settings page they
-        // shouldn't see after switching to Employee.
-        var currentRoute = "/" + RelPath.TrimEnd('/');
-        var keyForCurrent = NavKeyForRoute(currentRoute);
-        if (keyForCurrent != null && !RoleAuth.CanSee(keyForCurrent))
-        {
-            Navigation.NavigateTo("/", replace: true);
-        }
+        _accountMenuOpen = false;
+        await Auth.LogoutAsync();
+        Navigation.NavigateTo("/login", forceLoad: false, replace: true);
     }
 
-    private static string? NavKeyForRoute(string route)
-    {
-        // Match the route against the known nav keys. Returns null for paths that
-        // aren't gated (e.g. /login, /profile).
-        if (route == "" || route == "/") return NavKeys.Dashboard;
-        foreach (var key in NavKeys.All)
-        {
-            var navRoute = NavKeys.Route(key);
-            if (navRoute != "/" && route.StartsWith(navRoute, StringComparison.OrdinalIgnoreCase))
-                return key;
-        }
-        return null;
-    }
+    // Sidebar nav-link counters — driven by the API, not hardcoded.
+    private int _attendanceBadge;   // today's late + absent + missing-clockout records
+    private int _leaveBadge;        // pending leave requests across the org
 
-    protected override void OnInitialized()
+    protected override async Task OnInitializedAsync()
     {
+        // On a hard refresh inside the WebView, AuthService is reconstructed with
+        // IsLoggedIn=false. Try to rehydrate from SecureStorage before bouncing
+        // to /login — otherwise the user gets kicked out on every reload.
         if (!Auth.IsLoggedIn)
+            await Auth.TryRestoreAsync();
+
+        if (!Auth.IsLoggedIn)
+        {
             Navigation.NavigateTo("/login");
+            return;
+        }
         Theme.OnChange += StateHasChanged;
         RoleAuth.OnChange += StateHasChanged;
+        Session.SessionExpired += OnSessionExpired;
+        await RefreshNavBadgesAsync();
+        await RefreshUnreadCountAsync();
+
+        // Real-time push via SignalR. If the hub connects, new notifications
+        // appear instantly (no polling lag). Falls back to the 60s poll if
+        // the hub can't reach the server.
+        NotificationHub.NotificationReceived += OnNotificationPushed;
+        _ = NotificationHub.ConnectAsync();
+
+        // Poll for new notifications every 60s as a safety net (covers brief
+        // SignalR disconnects, sleep/wake, etc.).
+        _notifPollTimer = new System.Threading.Timer(
+            _ => _ = RefreshUnreadCountAsync(),
+            null, TimeSpan.FromSeconds(60), TimeSpan.FromSeconds(60));
+    }
+
+    private async void OnNotificationPushed(Giwu.Contracts.Notifications.NotificationDto dto)
+    {
+        // Server pushed a new notification. Prepend it to the list (if the
+        // popover is open) and bump the unread badge.
+        _notifUnread++;
+        if (_notifOpen)
+        {
+            _notifItems.Insert(0, dto);
+            if (_notifItems.Count > 30) _notifItems.RemoveAt(_notifItems.Count - 1);
+        }
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private void OnSessionExpired()
+    {
+        // 401 from the API → tokens already cleared by the bearer handler.
+        // Tear down the in-memory session and bounce the user to /login.
+        _ = InvokeAsync(async () =>
+        {
+            await Auth.LogoutAsync();
+            Navigation.NavigateTo("/login", forceLoad: false);
+        });
+    }
+
+    /// <summary>
+    /// Pulls live counts for the sidebar attention badges.
+    /// Fails silently — a stale 0 in the nav is better than a thrown exception
+    /// preventing the layout from rendering at all.
+    /// </summary>
+    private async Task RefreshNavBadgesAsync()
+    {
+        var today = DateOnly.FromDateTime(DateTime.Now);
+
+        // Attendance: count of today's records flagged Late, Absent, or
+        // missing-a-clockout. Page size 200 covers the demo's 38-employee org;
+        // for larger orgs this should move to a dedicated /summary endpoint.
+        try
+        {
+            var attResult = await AttendanceApi.ListAsync(from: today, to: today, page: 1, pageSize: 200);
+            if (attResult.Success && attResult.Value is not null)
+            {
+                _attendanceBadge = attResult.Value.Items.Count(r =>
+                    r.Status == AttendanceStatus.Late
+                    || r.Status == AttendanceStatus.Absent
+                    || (r.ClockIn.HasValue && !r.ClockOut.HasValue));
+            }
+        }
+        catch { /* ignore — leave the badge at 0 */ }
+
+        // Leave: pending requests waiting for approval. We only need the Total,
+        // so request a single row.
+        try
+        {
+            var leaveResult = await LeavesApi.ListRequestsAsync(
+                page: 1, pageSize: 1, status: Giwu.Domain.Leaves.LeaveRequestStatus.Pending);
+            if (leaveResult.Success && leaveResult.Value is not null)
+                _leaveBadge = leaveResult.Value.Total;
+        }
+        catch { /* ignore */ }
+
+        StateHasChanged();
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (firstRender)
+        {
             await JS.InvokeVoidAsync("document.documentElement.setAttribute",
                 "data-theme", Theme.IsDark ? "dark" : "light");
+
+            // Apply persisted accent color on app load. Same set of overrides
+            // as Settings.razor.ApplyAccentAsync — MudBlazor primary palette
+            // plus the custom accent family used by hardcoded page styles.
+            var hex = string.IsNullOrWhiteSpace(AppSettings.AccentColor) ? "#1D9E75" : AppSettings.AccentColor;
+            var rgb = HexToRgb(hex);
+            try
+            {
+                await JS.InvokeVoidAsync("eval",
+                    $"document.body.style.setProperty('--mud-palette-primary','{hex}');" +
+                    $"document.body.style.setProperty('--mud-palette-primary-hover','{hex}');" +
+                    $"document.body.style.setProperty('--mud-palette-primary-darken','{hex}');" +
+                    $"document.body.style.setProperty('--mud-palette-primary-lighten','{hex}');" +
+                    $"document.body.style.setProperty('--mud-palette-primary-rgb','{rgb}');" +
+                    $"document.body.style.setProperty('--set-green','{hex}');" +
+                    $"document.body.style.setProperty('--set-green-light','rgba({rgb}, 0.14)');" +
+                    $"document.body.style.setProperty('--set-green-text','{hex}');" +
+                    $"document.body.style.setProperty('--rec-green','{hex}');" +
+                    $"document.body.style.setProperty('--kpi-green','{hex}');");
+            }
+            catch { }
+        }
+    }
+
+    private static string HexToRgb(string hex)
+    {
+        if (string.IsNullOrWhiteSpace(hex) || !hex.StartsWith("#") || hex.Length != 7) return "29,158,117";
+        try
+        {
+            var r = Convert.ToInt32(hex.Substring(1, 2), 16);
+            var g = Convert.ToInt32(hex.Substring(3, 2), 16);
+            var b = Convert.ToInt32(hex.Substring(5, 2), 16);
+            return $"{r},{g},{b}";
+        }
+        catch { return "29,158,117"; }
     }
 
     public void Dispose()
     {
         Theme.OnChange -= StateHasChanged;
         RoleAuth.OnChange -= StateHasChanged;
+        Session.SessionExpired -= OnSessionExpired;
+        NotificationHub.NotificationReceived -= OnNotificationPushed;
+        _notifPollTimer?.Dispose();
     }
 }

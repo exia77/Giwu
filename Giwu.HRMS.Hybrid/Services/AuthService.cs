@@ -25,8 +25,19 @@ public class AuthService(
     public async Task<string?> LoginAsync(string email, string password, CancellationToken ct = default)
     {
         var result = await api.LoginAsync(new LoginRequest(email, password), ct);
+        return await CompleteLoginAsync(result, "Login failed");
+    }
+
+    public async Task<string?> SignInWithGoogleAsync(string idToken, CancellationToken ct = default)
+    {
+        var result = await api.GoogleSignInAsync(new GoogleSignInRequest(idToken), ct);
+        return await CompleteLoginAsync(result, "Google sign-in failed");
+    }
+
+    private async Task<string?> CompleteLoginAsync(AuthCallResult<LoginResponse> result, string defaultError)
+    {
         if (!result.Success || result.Value is null)
-            return result.ErrorMessage ?? "Login failed";
+            return result.ErrorMessage ?? defaultError;
 
         var resp = result.Value;
         await tokens.SetAsync(new StoredTokens(

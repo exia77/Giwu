@@ -13,7 +13,14 @@ public sealed record EmployeeDto(
     string DepartmentName,
     EmploymentStatus Status,
     EmploymentType EmploymentType,
-    DateOnly HireDate);
+    DateOnly HireDate,
+    string Phone,
+    DateOnly? BirthDate,
+    Gender Gender,
+    decimal MonthlyBaseSalary,
+    string AddressLine,
+    string City,
+    string Province);
 
 public sealed record CreateEmployeeRequest(
     string EmployeeNumber,
@@ -24,7 +31,13 @@ public sealed record CreateEmployeeRequest(
     Guid DepartmentId,
     DateOnly HireDate,
     decimal MonthlyBaseSalary,
-    EmploymentType EmploymentType = EmploymentType.Regular);
+    EmploymentType EmploymentType = EmploymentType.Regular,
+    string Phone = "",
+    DateOnly? BirthDate = null,
+    Gender Gender = Gender.PreferNotToSay,
+    string AddressLine = "",
+    string City = "",
+    string Province = "");
 
 public sealed record UpdateEmployeeRequest(
     string FirstName,
@@ -32,4 +45,13 @@ public sealed record UpdateEmployeeRequest(
     string Email,
     string JobTitle,
     Guid DepartmentId,
-    decimal MonthlyBaseSalary);
+    decimal MonthlyBaseSalary,
+    EmploymentStatus Status = EmploymentStatus.Active,
+    EmploymentType EmploymentType = EmploymentType.Regular,
+    DateOnly? HireDate = null,
+    string Phone = "",
+    DateOnly? BirthDate = null,
+    Gender Gender = Gender.PreferNotToSay,
+    string AddressLine = "",
+    string City = "",
+    string Province = "");

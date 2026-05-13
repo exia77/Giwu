@@ -1,4 +1,5 @@
 ﻿@using static Giwu.HRMS.Hybrid.Models.BenefitsFormatting
+@inject ISnackbar Snackbar
 
 <MudDialog>
     <DialogContent>
@@ -35,17 +36,17 @@
                 <MudItem xs="4">
                     <MudNumericField T="decimal" Label="Total cost" @bind-Value="Working.MonthlyCostPerEmployee"
                                      Variant="Variant.Outlined" Margin="Margin.Dense" Min="0" Step="100"
-                                     Adornment="Adornment.Start" AdornmentText="â‚±" />
+                                     Adornment="Adornment.Start" AdornmentText="₱" />
                 </MudItem>
                 <MudItem xs="4">
                     <MudNumericField T="decimal" Label="Employer share" @bind-Value="Working.EmployerShare"
                                      Variant="Variant.Outlined" Margin="Margin.Dense" Min="0" Step="100"
-                                     Adornment="Adornment.Start" AdornmentText="â‚±" />
+                                     Adornment="Adornment.Start" AdornmentText="₱" />
                 </MudItem>
                 <MudItem xs="4">
                     <MudNumericField T="decimal" Label="Employee share" @bind-Value="Working.EmployeeShare"
                                      Variant="Variant.Outlined" Margin="Margin.Dense" Min="0" Step="100"
-                                     Adornment="Adornment.Start" AdornmentText="â‚±" />
+                                     Adornment="Adornment.Start" AdornmentText="₱" />
                 </MudItem>
             </MudGrid>
             @if (Working.MonthlyCostPerEmployee > 0
@@ -110,14 +111,14 @@
     // Snapshot fields for Cancel restore (when editing)
     private BenefitProgram? _snapshot;
 
-    // MudDatePicker requires DateTime?, but BenefitProgram.RenewalDate is already nullable â€” bridge via this
+    // MudDatePicker requires DateTime?, but BenefitProgram.RenewalDate is already nullable — bridge via this
     private DateTime? RenewalDateNullable
     {
         get => Working.RenewalDate;
         set => Working.RenewalDate = value;
     }
 
-    // MudDatePicker requires DateTime?, but BenefitProgram.EffectiveDate is non-nullable â€” bridge via this.
+    // MudDatePicker requires DateTime?, but BenefitProgram.EffectiveDate is non-nullable — bridge via this.
     // A null pick falls back to today (program must have an effective date).
     private DateTime? EffectiveDateNullable
     {
@@ -182,7 +183,11 @@
 
     private void Save()
     {
-        if (string.IsNullOrWhiteSpace(Working.Name)) { MudDialog.Cancel(); return; }
+        if (string.IsNullOrWhiteSpace(Working.Name))
+        {
+            Snackbar.Add("Please enter the program name.", Severity.Warning);
+            return;
+        }
         MudDialog.Close(DialogResult.Ok(Working));
     }
 }

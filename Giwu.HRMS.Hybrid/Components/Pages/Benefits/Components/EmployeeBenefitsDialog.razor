@@ -10,14 +10,14 @@
             <div style="flex:1;min-width:0">
                 <MudText Typo="Typo.subtitle1" Class="fw-medium">@View.Name</MudText>
                 <MudText Typo="Typo.caption" Style="opacity:.55">
-                    @View.Role Â· @View.Dept Â· Hired @FmtDate(View.HireDate)
+                    @View.Role · @View.Dept · Hired @FmtDate(View.HireDate)
                 </MudText>
             </div>
         </div>
 
         <MudTabs Elevation="0" Rounded="false" PanelClass="emp-tab-panel" TabPanelClass="emp-tab-item">
 
-            @* â”€â”€ ENROLLMENTS â”€â”€ *@
+            @* ── ENROLLMENTS ── *@
             <MudTabPanel Text="@($"Enrollments ({ActiveEnrollments.Count})")"
                          Icon="@Icons.Material.Outlined.CardGiftcard">
                 <div class="emp-section-actions">
@@ -27,7 +27,7 @@
                     <MudSpacer />
                     @if (AvailableProgramsToEnroll.Any())
                     {
-                        <MudMenu Label="Enroll inâ€¦" Variant="Variant.Outlined" Size="Size.Small"
+                        <MudMenu Label="Enroll in…" Variant="Variant.Outlined" Size="Size.Small"
                                  EndIcon="@Icons.Material.Outlined.KeyboardArrowDown" Dense="true">
                             @foreach (var prog in AvailableProgramsToEnroll)
                             {
@@ -46,7 +46,7 @@
                 @if (View.Enrollments.Count == 0)
                 {
                     <div class="ben-empty">
-                        <div class="ben-empty-icon">â€”</div>
+                        <div class="ben-empty-icon">—</div>
                         <MudText Typo="Typo.body2">Not enrolled in any programs.</MudText>
                     </div>
                 }
@@ -74,11 +74,11 @@
                                     <span>Enrolled @FmtDate(enr.EnrolledOn)</span>
                                     @if (enr.MonthlyContribution > 0)
                                     {
-                                        <span> Â· You pay @Money(enr.MonthlyContribution)/mo</span>
+                                        <span> · You pay @Money(enr.MonthlyContribution)/mo</span>
                                     }
                                     @if (!isActive && enr.EndDate.HasValue)
                                     {
-                                        <span> Â· Ended @FmtDate(enr.EndDate)</span>
+                                        <span> · Ended @FmtDate(enr.EndDate)</span>
                                     }
                                 </div>
                             </div>
@@ -96,7 +96,7 @@
                 }
             </MudTabPanel>
 
-            @* â”€â”€ DEPENDENTS â”€â”€ *@
+            @* ── DEPENDENTS ── *@
             <MudTabPanel Text="@($"Dependents ({View.Dependents.Count})")"
                          Icon="@Icons.Material.Outlined.FamilyRestroom">
                 <div class="emp-section-actions">
@@ -157,7 +157,7 @@
                 @if (View.Dependents.Count == 0 && !ShowDependentForm)
                 {
                     <div class="ben-empty">
-                        <div class="ben-empty-icon">â€”</div>
+                        <div class="ben-empty-icon">—</div>
                         <MudText Typo="Typo.body2">No dependents on file.</MudText>
                     </div>
                 }
@@ -170,7 +170,7 @@
                             <div class="dep-meta">
                                 <MudText Typo="Typo.body2" Class="fw-medium">@dep.Name</MudText>
                                 <MudText Typo="Typo.caption" Style="opacity:.55">
-                                    @AgeFromBirthdate(dep.BirthDate) yrs Â· @dep.Gender Â· b. @FmtDate(dep.BirthDate)
+                                    @AgeFromBirthdate(dep.BirthDate) yrs · @dep.Gender · b. @FmtDate(dep.BirthDate)
                                 </MudText>
                             </div>
                             @if (dep.IsEnrolledInHmo)
@@ -185,13 +185,13 @@
                 }
             </MudTabPanel>
 
-            @* â”€â”€ REQUEST HISTORY â”€â”€ *@
+            @* ── REQUEST HISTORY ── *@
             <MudTabPanel Text="@($"Activity ({View.Requests.Count})")"
                          Icon="@Icons.Material.Outlined.History">
                 @if (View.Requests.Count == 0)
                 {
                     <div class="ben-empty">
-                        <div class="ben-empty-icon">â€”</div>
+                        <div class="ben-empty-icon">—</div>
                         <MudText Typo="Typo.body2">No claim or loan history.</MudText>
                     </div>
                 }
@@ -206,13 +206,13 @@
                             </div>
                             <div class="req-meta">
                                 <div class="req-headline">
-                                    <span class="fw-medium">@RequestTypeLabel(req.Type) â€” @Money(req.Amount)</span>
+                                    <span class="fw-medium">@RequestTypeLabel(req.Type) — @Money(req.Amount)</span>
                                     <span class="@($"ben-badge {RequestStatusBadgeClass(req.Status)}")">
                                         @RequestStatusLabel(req.Status)
                                     </span>
                                 </div>
                                 <div class="req-detail">
-                                    @req.ProgramName Â· @req.Reason
+                                    @req.ProgramName · @req.Reason
                                 </div>
                                 @if (req.Type == BenefitRequestType.Loan && req.OutstandingBalance.HasValue && req.Status == BenefitRequestStatus.Repaying)
                                 {
@@ -220,7 +220,7 @@
                                         Balance: <strong>@Money(req.OutstandingBalance.Value)</strong>
                                         @if (req.MonthlyDeduction.HasValue)
                                         {
-                                            <span> Â· @Money(req.MonthlyDeduction.Value)/mo for @req.TermMonths months</span>
+                                            <span> · @Money(req.MonthlyDeduction.Value)/mo for @req.TermMonths months</span>
                                         }
                                     </div>
                                 }
@@ -245,7 +245,7 @@
         margin-bottom: 10px;
     }
 
-    /* â”€â”€ Enrollments â”€â”€ */
+    /* ── Enrollments ── */
     .enr-row {
         display: flex; align-items: center; gap: 12px;
         padding: 10px 12px;
@@ -277,7 +277,7 @@
     }
     .enr-detail { font-size: 11.5px; opacity: .6; margin-top: 2px; }
 
-    /* â”€â”€ Dependents â”€â”€ */
+    /* ── Dependents ── */
     .dep-form {
         background: var(--mud-palette-background-grey);
         border-radius: 8px;
@@ -308,7 +308,7 @@
     }
     .dep-meta { flex: 1; min-width: 0; }
 
-    /* â”€â”€ Requests â”€â”€ */
+    /* ── Requests ── */
     .req-row {
         display: flex; gap: 12px;
         padding: 10px 12px;
@@ -332,7 +332,7 @@
     .req-detail { font-size: 11.5px; opacity: .65; margin-top: 2px; }
     .req-balance { font-size: 11.5px; margin-top: 4px; color: var(--ben-purple-text); }
 
-    /* â”€â”€ Mandatory chip (re-defined here in case dialog renders before main page CSS loads) â”€â”€ */
+    /* ── Mandatory chip (re-defined here in case dialog renders before main page CSS loads) ── */
     .ben-mandatory-chip {
         font-size: 9px;
         font-weight: 500;
@@ -366,7 +366,7 @@
                    .OrderBy(p => p.Name)
                    .ToList();
 
-    // â”€â”€ Enroll/unenroll â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ── Enroll/unenroll ────────────────────────────────────────
     private async Task EnrollIn(BenefitProgram prog)
     {
         var enr = new BenefitEnrollment
@@ -394,7 +394,7 @@
         StateHasChanged();
     }
 
-    // â”€â”€ Dependent form â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ── Dependent form ─────────────────────────────────────────
     private bool ShowDependentForm { get; set; } = false;
     private Dependent NewDep { get; set; } = new();
     private DateTime? NewDepBirthDate { get; set; }

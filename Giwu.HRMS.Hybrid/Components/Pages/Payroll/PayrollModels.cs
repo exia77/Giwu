@@ -1,6 +1,6 @@
 ﻿namespace Giwu.HRMS.Hybrid.Models;
 
-// â”€â”€â”€ Core entities â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Core entities ──────────────────────────────────────────────
 
 public class PayRun
 {
@@ -32,7 +32,7 @@ public class Payslip
     public decimal Bonus { get; set; }
     public decimal Allowance { get; set; }
 
-    // Deductions â€” employee share
+    // Deductions — employee share
     public decimal Sss { get; set; }
     public decimal PhilHealth { get; set; }
     public decimal PagIbig { get; set; }
@@ -48,7 +48,7 @@ public class Payslip
     public decimal Net => Gross - TotalDeductions;
 }
 
-// â”€â”€â”€ Reference bracket records (used by the UI) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Reference bracket records (used by the UI) ─────────────────
 
 public record SssBracket(
     decimal RangeFrom, decimal RangeTo, decimal Msc,
@@ -76,20 +76,20 @@ public record BirBracket(
     string FormulaDisplay
 );
 
-// â”€â”€â”€ PH statutory calculator (2025/2026 rules) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── PH statutory calculator (2025/2026 rules) ──────────────────
 //
 // Sources:
-//  â€¢ SSS Circular 2024-006 effective Jan 2025 (15% total, 5% employee / 10% employer,
-//    min MSC â‚±5,000, max MSC â‚±35,000). MSC follows the official bracket table.
-//  â€¢ PhilHealth Circular 2019-0009 as amended (5% premium, floor â‚±10,000, ceiling
-//    â‚±100,000, 50/50 employee/employer, so employee share = 2.5% of basic, capped
-//    â‚±250â€“â‚±2,500).
-//  â€¢ Pag-IBIG Circular 460 effective Feb 2024 (MFS capped at â‚±10,000; MFS â‰¤ â‚±1,500
-//    employee 1% / employer 2%; MFS > â‚±1,500 both 2%, max â‚±200 each).
-//  â€¢ BIR TRAIN Law, revised withholding tax table effective January 1, 2023 onward.
+//  • SSS Circular 2024-006 effective Jan 2025 (15% total, 5% employee / 10% employer,
+//    min MSC ₱5,000, max MSC ₱35,000). MSC follows the official bracket table.
+//  • PhilHealth Circular 2019-0009 as amended (5% premium, floor ₱10,000, ceiling
+//    ₱100,000, 50/50 employee/employer, so employee share = 2.5% of basic, capped
+//    ₱250–₱2,500).
+//  • Pag-IBIG Circular 460 effective Feb 2024 (MFS capped at ₱10,000; MFS ≤ ₱1,500
+//    employee 1% / employer 2%; MFS > ₱1,500 both 2%, max ₱200 each).
+//  • BIR TRAIN Law, revised withholding tax table effective January 1, 2023 onward.
 //
 // Numbers below are suitable for internal use and payroll demos. Before production
-// use, verify against the current official circulars â€” schedules change.
+// use, verify against the current official circulars — schedules change.
 
 public static class PhPayrollCalculator
 {
@@ -97,7 +97,7 @@ public static class PhPayrollCalculator
 
     private static SssBracket[] BuildSssBrackets()
     {
-        // Standard SSS schedule: MSC in â‚±500 increments from 5,000 to 35,000.
+        // Standard SSS schedule: MSC in ₱500 increments from 5,000 to 35,000.
         // Compensation range for MSC X = approximately [X - 250, X + 249.99].
         var brackets = new List<SssBracket>();
         for (decimal msc = 5000m; msc <= 35000m; msc += 500m)
@@ -105,19 +105,19 @@ public static class PhPayrollCalculator
             var rangeFrom = msc == 5000m ? 0m : msc - 250m;
             var rangeTo = msc + 249.99m;
 
-            // Regular SS is capped at MSC â‚±20,000
+            // Regular SS is capped at MSC ₱20,000
             var regularMsc = Math.Min(msc, 20000m);
             var regEe = Math.Round(regularMsc * 0.05m, 2);
             var regEr = Math.Round(regularMsc * 0.10m, 2);
 
-            // MPF (Mandatory Provident Fund) on the excess MSC above â‚±20,000.
-            // Same 5%/10% employee/employer split as Regular SS â€” total still 15% of MSC.
+            // MPF (Mandatory Provident Fund) on the excess MSC above ₱20,000.
+            // Same 5%/10% employee/employer split as Regular SS — total still 15% of MSC.
             // (MPF is just where the contribution is credited; the rate split is identical.)
             var mpfMsc = Math.Max(0m, msc - 20000m);
             var mpfEe = Math.Round(mpfMsc * 0.05m, 2);
             var mpfEr = Math.Round(mpfMsc * 0.10m, 2);
 
-            // EC (Employees' Compensation): â‚±10 if MSC â‰¤ â‚±14,500, else â‚±30 (employer-paid)
+            // EC (Employees' Compensation): ₱10 if MSC ≤ ₱14,500, else ₱30 (employer-paid)
             var ec = msc <= 14500m ? 10m : 30m;
 
             brackets.Add(new SssBracket(
@@ -144,12 +144,12 @@ public static class PhPayrollCalculator
     public static decimal CalculateSss(decimal monthlyBasic) =>
         GetSssBracket(monthlyBasic).TotalEmployee;
 
-    // â”€â”€ PhilHealth â€” three reference rows, computed on the fly for the middle band
+    // ── PhilHealth — three reference rows, computed on the fly for the middle band
     public static readonly PhilHealthBracket[] PhilHealthBrackets = new[]
     {
         new PhilHealthBracket(0m,        10000m,    "5% (floor applies)",   500m,    250m,   250m),
         // Middle band stays as a parameterized row in the UI; values are computed for any salary.
-        new PhilHealthBracket(10000.01m, 99999.99m, "5% Ã— salary",          0m,      0m,     0m),
+        new PhilHealthBracket(10000.01m, 99999.99m, "5% × salary",          0m,      0m,     0m),
         new PhilHealthBracket(100000m,   decimal.MaxValue, "5% (ceiling capped)", 5000m, 2500m, 2500m),
     };
 
@@ -166,15 +166,15 @@ public static class PhPayrollCalculator
         return 1;
     }
 
-    // â”€â”€ Pag-IBIG (HDMF Circular 460, effective Feb 2024)
+    // ── Pag-IBIG (HDMF Circular 460, effective Feb 2024)
     public static readonly PagIbigBracket[] PagIbigBrackets = new[]
     {
         new PagIbigBracket(0m,        1500m,            "1%",            "2%", "1% of MFS",   "2% of MFS",
-            "For MFS â‰¤ â‚±1,500: employee pays 1%, employer pays 2%."),
+            "For MFS ≤ ₱1,500: employee pays 1%, employer pays 2%."),
         new PagIbigBracket(1500.01m,  10000m,           "2%",            "2%", "2% of MFS",   "2% of MFS",
-            "For MFS > â‚±1,500 up to â‚±10,000: both parties pay 2% of MFS."),
-        new PagIbigBracket(10000.01m, decimal.MaxValue, "2% (capped)",   "2% (capped)", "â‚±200 (max)", "â‚±200 (max)",
-            "MFS is capped at â‚±10,000 â€” maximum contribution is â‚±200 each side."),
+            "For MFS > ₱1,500 up to ₱10,000: both parties pay 2% of MFS."),
+        new PagIbigBracket(10000.01m, decimal.MaxValue, "2% (capped)",   "2% (capped)", "₱200 (max)", "₱200 (max)",
+            "MFS is capped at ₱10,000 — maximum contribution is ₱200 each side."),
     };
 
     public static int GetPagIbigBracketIndex(decimal monthlyBasic)
@@ -191,21 +191,21 @@ public static class PhPayrollCalculator
         return Math.Round(mfs * rate, 2);
     }
 
-    // â”€â”€ BIR Withholding Tax (TRAIN Law, monthly table effective Jan 2023 onward)
+    // ── BIR Withholding Tax (TRAIN Law, monthly table effective Jan 2023 onward)
     public static readonly BirBracket[] BirBrackets = new[]
     {
         new BirBracket(    0m,    250000m,       0m,    20833m, "0%",     0m,        0.00m,      0m,
             "No tax due"),
         new BirBracket(250000m,   400000m,   20833m,    33332m, "15% of excess",    0m,        0.15m,  20833m,
-            "15% Ã— (taxable âˆ’ â‚±20,833)"),
-        new BirBracket(400000m,   800000m,   33333m,    66666m, "â‚±1,875 + 20% of excess",     1875m,     0.20m,  33333m,
-            "â‚±1,875 + 20% Ã— (taxable âˆ’ â‚±33,333)"),
-        new BirBracket(800000m,  2000000m,   66667m,   166666m, "â‚±8,541.80 + 25% of excess",  8541.80m,  0.25m,  66667m,
-            "â‚±8,541.80 + 25% Ã— (taxable âˆ’ â‚±66,667)"),
-        new BirBracket(2000000m, 8000000m,  166667m,   666666m, "â‚±33,541.80 + 30% of excess", 33541.80m, 0.30m, 166667m,
-            "â‚±33,541.80 + 30% Ã— (taxable âˆ’ â‚±166,667)"),
-        new BirBracket(8000000m, decimal.MaxValue, 666667m, decimal.MaxValue, "â‚±183,541.80 + 35% of excess", 183541.80m, 0.35m, 666667m,
-            "â‚±183,541.80 + 35% Ã— (taxable âˆ’ â‚±666,667)"),
+            "15% × (taxable − ₱20,833)"),
+        new BirBracket(400000m,   800000m,   33333m,    66666m, "₱1,875 + 20% of excess",     1875m,     0.20m,  33333m,
+            "₱1,875 + 20% × (taxable − ₱33,333)"),
+        new BirBracket(800000m,  2000000m,   66667m,   166666m, "₱8,541.80 + 25% of excess",  8541.80m,  0.25m,  66667m,
+            "₱8,541.80 + 25% × (taxable − ₱66,667)"),
+        new BirBracket(2000000m, 8000000m,  166667m,   666666m, "₱33,541.80 + 30% of excess", 33541.80m, 0.30m, 166667m,
+            "₱33,541.80 + 30% × (taxable − ₱166,667)"),
+        new BirBracket(8000000m, decimal.MaxValue, 666667m, decimal.MaxValue, "₱183,541.80 + 35% of excess", 183541.80m, 0.35m, 666667m,
+            "₱183,541.80 + 35% × (taxable − ₱666,667)"),
     };
 
     public static BirBracket GetBirBracket(decimal monthlyTaxable)
@@ -235,7 +235,7 @@ public static class PhPayrollCalculator
     }
 }
 
-// â”€â”€â”€ Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Helpers ────────────────────────────────────────────────────
 
 public static class PayrollFormatting
 {
@@ -263,23 +263,23 @@ public static class PayrollFormatting
     };
 
     public static string Money(decimal v) =>
-        "â‚±" + v.ToString("N2", System.Globalization.CultureInfo.InvariantCulture);
+        "₱" + v.ToString("N2", System.Globalization.CultureInfo.InvariantCulture);
 
     public static string MoneyCompact(decimal v)
     {
-        if (Math.Abs(v) >= 1_000_000m) return $"â‚±{v/1_000_000m:F2}M";
-        if (Math.Abs(v) >= 1_000m)     return $"â‚±{v/1_000m:F0}k";
-        return $"â‚±{v:F0}";
+        if (Math.Abs(v) >= 1_000_000m) return $"₱{v/1_000_000m:F2}M";
+        if (Math.Abs(v) >= 1_000m)     return $"₱{v/1_000m:F0}k";
+        return $"₱{v:F0}";
     }
 
     public static string MoneyRange(decimal from, decimal to)
     {
         if (to == decimal.MaxValue) return $"Over {Money(from)}";
         if (from == 0m) return $"Up to {Money(to)}";
-        return $"{Money(from)} â€“ {Money(to)}";
+        return $"{Money(from)} – {Money(to)}";
     }
 
-    public static string FmtDate(DateTime? d) => d.HasValue ? d.Value.ToString("MMM d, yyyy") : "â€”";
+    public static string FmtDate(DateTime? d) => d.HasValue ? d.Value.ToString("MMM d, yyyy") : "—";
     public static string FmtDateShort(DateTime d) => d.ToString("MMM d");
-    public static string FmtPeriodRange(DateTime s, DateTime e) => $"{s:MMM d} â€“ {e:MMM d, yyyy}";
+    public static string FmtPeriodRange(DateTime s, DateTime e) => $"{s:MMM d} – {e:MMM d, yyyy}";
 }

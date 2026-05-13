@@ -1,6 +1,6 @@
 ﻿namespace Giwu.HRMS.Hybrid.Models;
 
-// â”€â”€â”€ Core entities â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Core entities ──────────────────────────────────────────────
 
 public enum BenefitCategory
 {
@@ -30,11 +30,11 @@ public class BenefitProgram
 
     // Cost split
     public decimal MonthlyCostPerEmployee { get; set; } // total program cost
-    public decimal EmployerShare { get; set; }          // â‚± amount or â€” see ShareIsPercent
+    public decimal EmployerShare { get; set; }          // ₱ amount or — see ShareIsPercent
     public decimal EmployeeShare { get; set; }
-    public bool ShareIsPercent { get; set; } = false;   // if true, shares are %, else â‚±
+    public bool ShareIsPercent { get; set; } = false;   // if true, shares are %, else ₱
 
-    // Tiers â€” for HMO/insurance plans with multiple coverage levels
+    // Tiers — for HMO/insurance plans with multiple coverage levels
     public List<BenefitTier> Tiers { get; set; } = new();
 }
 
@@ -42,7 +42,7 @@ public class BenefitTier
 {
     public string Id { get; set; } = "";
     public string Name { get; set; } = "";              // "Standard", "Gold", "Platinum"
-    public decimal CoverageAmount { get; set; }         // e.g. â‚±150k MBL
+    public decimal CoverageAmount { get; set; }         // e.g. ₱150k MBL
     public decimal MonthlyCost { get; set; }
     public string Inclusions { get; set; } = "";        // free-form description
 }
@@ -96,7 +96,7 @@ public class BenefitRequest
     public decimal? OutstandingBalance { get; set; }
 }
 
-// â”€â”€â”€ BenefitsBundle: convenience for per-employee dialogs â”€â”€â”€â”€â”€â”€â”€
+// ─── BenefitsBundle: convenience for per-employee dialogs ───────
 
 public class EmployeeBenefitsView
 {
@@ -113,7 +113,7 @@ public class EmployeeBenefitsView
     public List<BenefitRequest> Requests { get; set; } = new();
 }
 
-// â”€â”€â”€ Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Helpers ────────────────────────────────────────────────────
 
 public static class BenefitsFormatting
 {
@@ -128,7 +128,7 @@ public static class BenefitsFormatting
         BenefitCategory.Education   => "Education",
         BenefitCategory.Leave       => "Leave",
         BenefitCategory.Other       => "Other",
-        _ => "â€”"
+        _ => "—"
     };
 
     public static string CategoryBadgeClass(BenefitCategory c) => c switch
@@ -175,7 +175,7 @@ public static class BenefitsFormatting
         BenefitRequestType.Claim         => "Claim",
         BenefitRequestType.Loan          => "Loan",
         BenefitRequestType.Reimbursement => "Reimbursement",
-        _ => "â€”"
+        _ => "—"
     };
 
     public static string AvatarStyle(string av) => av switch
@@ -190,16 +190,16 @@ public static class BenefitsFormatting
     };
 
     public static string Money(decimal v) =>
-        "â‚±" + v.ToString("N2", System.Globalization.CultureInfo.InvariantCulture);
+        "₱" + v.ToString("N2", System.Globalization.CultureInfo.InvariantCulture);
 
     public static string MoneyCompact(decimal v)
     {
-        if (Math.Abs(v) >= 1_000_000m) return $"â‚±{v/1_000_000m:F2}M";
-        if (Math.Abs(v) >= 1_000m)     return $"â‚±{v/1_000m:F0}k";
-        return $"â‚±{v:F0}";
+        if (Math.Abs(v) >= 1_000_000m) return $"₱{v/1_000_000m:F2}M";
+        if (Math.Abs(v) >= 1_000m)     return $"₱{v/1_000m:F0}k";
+        return $"₱{v:F0}";
     }
 
-    public static string FmtDate(DateTime? d) => d.HasValue ? d.Value.ToString("MMM d, yyyy") : "â€”";
+    public static string FmtDate(DateTime? d) => d.HasValue ? d.Value.ToString("MMM d, yyyy") : "—";
     public static string FmtDateShort(DateTime d) => d.ToString("MMM d");
 
     public static string RelativeTime(DateTime d)

@@ -1,4 +1,6 @@
 @* ── Add Department Dialog ── *@
+@inject ISnackbar Snackbar
+
 <MudDialog>
     <TitleContent>
         <div style="display:flex;align-items:center;gap:10px">
@@ -18,7 +20,7 @@
     </TitleContent>
 
     <DialogContent>
-        <MudForm @ref="_form" @bind-IsValid="_isValid">
+        <MudForm @ref="_form">
 
             <MudText Typo="Typo.caption"
                      Style="font-weight:600;text-transform:uppercase;letter-spacing:.06em;opacity:.5;margin-bottom:10px;display:block">
@@ -78,7 +80,7 @@
         <MudButton Variant="Variant.Filled" Color="Color.Primary"
                    Style="text-transform:none;border-radius:8px"
                    StartIcon="@Icons.Material.Outlined.Add"
-                   OnClick="Submit" Disabled="!_isValid">
+                   OnClick="Submit">
             Create Department
         </MudButton>
     </DialogActions>
@@ -88,7 +90,6 @@
     [CascadingParameter] IMudDialogInstance MudDialog { get; set; } = default!;
 
     MudForm _form = default!;
-    bool _isValid;
 
     public class DeptForm
     {
@@ -105,8 +106,9 @@
 
     async Task Submit()
     {
-        await _form.Validate();
-        if (_isValid) MudDialog.Close(DialogResult.Ok(_model));
+        await _form.ValidateAsync();
+        if (_form.IsValid) MudDialog.Close(DialogResult.Ok(_model));
+        else Snackbar.Add("Please fill in all required fields (marked with *).", Severity.Warning);
     }
 
     void Cancel() => MudDialog.Cancel();

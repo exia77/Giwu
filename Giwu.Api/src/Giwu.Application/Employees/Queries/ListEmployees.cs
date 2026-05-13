@@ -39,7 +39,9 @@ internal sealed class ListEmployeesHandler(IApplicationDbContext db)
             .Select(x => new EmployeeDto(
                 x.e.Id, x.e.EmployeeNumber, x.e.FirstName, x.e.LastName, x.e.Email,
                 x.e.JobTitle, x.e.DepartmentId, x.DeptName,
-                x.e.Status, x.e.EmploymentType, x.e.HireDate))
+                x.e.Status, x.e.EmploymentType, x.e.HireDate,
+                x.e.Phone, x.e.BirthDate, x.e.Gender, x.e.MonthlyBaseSalary,
+                x.e.PermanentAddress.Line1, x.e.PermanentAddress.City, x.e.PermanentAddress.Province))
             .ToListAsync(ct);
 
         return Result<PagedResult<EmployeeDto>>.Success(

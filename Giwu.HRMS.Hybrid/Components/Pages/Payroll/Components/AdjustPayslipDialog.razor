@@ -4,10 +4,10 @@
     <DialogContent>
         <MudText Typo="Typo.body2" Style="opacity:.7" Class="mb-2">
             Adjusting @Slip.Name's payslip. Statutory deductions auto-compute from the basic
-            salary â€” edit any field to override its computed value, and use â†» to restore it.
+            salary — edit any field to override its computed value, and use ↻ to restore it.
         </MudText>
 
-        @* â”€â”€ Earnings â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ *@
+        @* ── Earnings ───────────────────────────────────────── *@
         <div class="adjust-section-header">Earnings</div>
         <MudGrid Spacing="2" Class="mb-3">
             <MudItem xs="6">
@@ -15,32 +15,32 @@
                                  ValueChanged="@OnBasicSalaryChanged"
                                  Variant="Variant.Outlined" Margin="Margin.Dense"
                                  Min="0" Step="1000"
-                                 Adornment="Adornment.Start" AdornmentText="â‚±" />
+                                 Adornment="Adornment.Start" AdornmentText="₱" />
             </MudItem>
             <MudItem xs="6">
                 <MudNumericField T="decimal" Label="Allowance" Value="Slip.Allowance"
                                  ValueChanged="@(v => { Slip.Allowance = v; AutoRecalcStatutory(); })"
                                  Variant="Variant.Outlined" Margin="Margin.Dense"
                                  Min="0" Step="500"
-                                 Adornment="Adornment.Start" AdornmentText="â‚±" />
+                                 Adornment="Adornment.Start" AdornmentText="₱" />
             </MudItem>
             <MudItem xs="6">
                 <MudNumericField T="decimal" Label="Overtime" Value="Slip.Overtime"
                                  ValueChanged="@(v => { Slip.Overtime = v; AutoRecalcStatutory(); })"
                                  Variant="Variant.Outlined" Margin="Margin.Dense"
                                  Min="0" Step="500"
-                                 Adornment="Adornment.Start" AdornmentText="â‚±" />
+                                 Adornment="Adornment.Start" AdornmentText="₱" />
             </MudItem>
             <MudItem xs="6">
                 <MudNumericField T="decimal" Label="Bonus" Value="Slip.Bonus"
                                  ValueChanged="@(v => { Slip.Bonus = v; AutoRecalcStatutory(); })"
                                  Variant="Variant.Outlined" Margin="Margin.Dense"
                                  Min="0" Step="500"
-                                 Adornment="Adornment.Start" AdornmentText="â‚±" />
+                                 Adornment="Adornment.Start" AdornmentText="₱" />
             </MudItem>
         </MudGrid>
 
-        @* â”€â”€ Statutory Deductions (auto-compute, override-able) â”€â”€â”€ *@
+        @* ── Statutory Deductions (auto-compute, override-able) ─── *@
         <div class="adjust-section-header">
             <span>Statutory Deductions</span>
             <span class="adjust-section-hint">auto-computed from Basic Salary</span>
@@ -56,11 +56,11 @@
                                      ValueChanged="@OnSssChanged"
                                      Variant="Variant.Outlined" Margin="Margin.Dense"
                                      Min="0" Step="50"
-                                     Adornment="Adornment.Start" AdornmentText="â‚±" />
+                                     Adornment="Adornment.Start" AdornmentText="₱" />
                     @if (SssOverridden)
                     {
                         <button type="button" class="stat-reset-btn" title="Reset to auto-computed"
-                                @onclick="ResetSss">â†»</button>
+                                @onclick="ResetSss">↻</button>
                     }
                 </div>
             </MudItem>
@@ -74,11 +74,11 @@
                                      ValueChanged="@OnPhilHealthChanged"
                                      Variant="Variant.Outlined" Margin="Margin.Dense"
                                      Min="0" Step="50"
-                                     Adornment="Adornment.Start" AdornmentText="â‚±" />
+                                     Adornment="Adornment.Start" AdornmentText="₱" />
                     @if (PhilHealthOverridden)
                     {
                         <button type="button" class="stat-reset-btn" title="Reset to auto-computed"
-                                @onclick="ResetPhilHealth">â†»</button>
+                                @onclick="ResetPhilHealth">↻</button>
                     }
                 </div>
             </MudItem>
@@ -92,11 +92,11 @@
                                      ValueChanged="@OnPagIbigChanged"
                                      Variant="Variant.Outlined" Margin="Margin.Dense"
                                      Min="0" Step="50"
-                                     Adornment="Adornment.Start" AdornmentText="â‚±" />
+                                     Adornment="Adornment.Start" AdornmentText="₱" />
                     @if (PagIbigOverridden)
                     {
                         <button type="button" class="stat-reset-btn" title="Reset to auto-computed"
-                                @onclick="ResetPagIbig">â†»</button>
+                                @onclick="ResetPagIbig">↻</button>
                     }
                 </div>
             </MudItem>
@@ -110,38 +110,38 @@
                                      ValueChanged="@OnWhtChanged"
                                      Variant="Variant.Outlined" Margin="Margin.Dense"
                                      Min="0" Step="100"
-                                     Adornment="Adornment.Start" AdornmentText="â‚±" />
+                                     Adornment="Adornment.Start" AdornmentText="₱" />
                     @if (WhtOverridden)
                     {
                         <button type="button" class="stat-reset-btn" title="Reset to auto-computed"
-                                @onclick="ResetWht">â†»</button>
+                                @onclick="ResetWht">↻</button>
                     }
                 </div>
             </MudItem>
         </MudGrid>
 
-        @* â”€â”€ Non-statutory deductions â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ *@
+        @* ── Non-statutory deductions ───────────────────────── *@
         <div class="adjust-section-header">Other Deductions</div>
         <MudGrid Spacing="2" Class="mb-3">
             <MudItem xs="6">
                 <MudNumericField T="decimal" Label="Loan Deduction" @bind-Value="Slip.LoanDeduction"
                                  Variant="Variant.Outlined" Margin="Margin.Dense"
                                  Min="0" Step="500"
-                                 Adornment="Adornment.Start" AdornmentText="â‚±" />
+                                 Adornment="Adornment.Start" AdornmentText="₱" />
             </MudItem>
             <MudItem xs="6">
                 <MudNumericField T="decimal" Label="Other Deduction" @bind-Value="Slip.OtherDeduction"
                                  Variant="Variant.Outlined" Margin="Margin.Dense"
                                  Min="0" Step="500"
-                                 Adornment="Adornment.Start" AdornmentText="â‚±" />
+                                 Adornment="Adornment.Start" AdornmentText="₱" />
             </MudItem>
         </MudGrid>
 
         <MudTextField T="string" Label="Adjustment note" @bind-Value="Slip.Notes"
-                      Placeholder="e.g. mid-month hire â€” prorated SSS"
+                      Placeholder="e.g. mid-month hire — prorated SSS"
                       Variant="Variant.Outlined" Lines="2" />
 
-        @* â”€â”€ Live preview â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ *@
+        @* ── Live preview ───────────────────────────────────── *@
         <div class="adjust-preview">
             <div class="adjust-preview-title">Live Preview</div>
             <div class="adjust-preview-row">
@@ -150,7 +150,7 @@
             </div>
             <div class="adjust-preview-row">
                 <span>Total Deductions</span>
-                <span class="slip-amt neg">âˆ’@Money(Slip.TotalDeductions)</span>
+                <span class="slip-amt neg">−@Money(Slip.TotalDeductions)</span>
             </div>
             <div class="adjust-preview-row adjust-preview-net">
                 <span>Net Pay</span>
@@ -291,7 +291,7 @@
 
     protected override void OnInitialized()
     {
-        // Snapshot â€” Cancel will restore these
+        // Snapshot — Cancel will restore these
         _origBasic = Slip.BasicSalary;
         _origAllow = Slip.Allowance;
         _origOt    = Slip.Overtime;
@@ -344,7 +344,7 @@
             Slip.PagIbig = PhPayrollCalculator.CalculatePagIbig(Slip.BasicSalary);
 
         // WHT depends on the taxable base, which depends on the other three. Always
-        // recompute WHT when something changes â€” unless the user explicitly overrode it.
+        // recompute WHT when something changes — unless the user explicitly overrode it.
         if (!WhtOverridden)
             RecalcWht();
     }
@@ -355,7 +355,7 @@
         Slip.WithholdingTax = PhPayrollCalculator.CalculateWithholdingTax(taxable);
     }
 
-    // â”€â”€ Per-statutory-field change handlers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ── Per-statutory-field change handlers ─────────────────────
     // Each one sets the field value, marks it as overridden, and recomputes WHT
     // (because WHT depends on the other three statutory amounts).
 
@@ -386,7 +386,7 @@
         WhtOverridden = true;
     }
 
-    // â”€â”€ Per-field reset handlers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ── Per-field reset handlers ────────────────────────────────
 
     private void ResetSss()
     {

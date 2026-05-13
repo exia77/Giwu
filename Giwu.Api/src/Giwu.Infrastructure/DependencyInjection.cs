@@ -1,5 +1,6 @@
 using Giwu.Application.Common;
 using Giwu.Infrastructure.Auth;
+using Giwu.Infrastructure.Email;
 using Giwu.Infrastructure.Persistence;
 using Giwu.Infrastructure.Persistence.Interceptors;
 using Giwu.Infrastructure.Tenancy;
@@ -18,6 +19,7 @@ public static class DependencyInjection
 
         services.AddScoped<AuditInterceptor>();
         services.AddScoped<DomainEventToOutboxInterceptor>();
+        services.AddScoped<NotificationBroadcastInterceptor>();
 
         services.AddDbContext<ApplicationDbContext>((sp, opts) =>
         {
@@ -26,16 +28,28 @@ public static class DependencyInjection
 
             opts.AddInterceptors(
                 sp.GetRequiredService<AuditInterceptor>(),
-                sp.GetRequiredService<DomainEventToOutboxInterceptor>());
+                sp.GetRequiredService<DomainEventToOutboxInterceptor>(),
+                sp.GetRequiredService<NotificationBroadcastInterceptor>());
         });
 
         services.AddScoped<IApplicationDbContext>(sp => sp.GetRequiredService<ApplicationDbContext>());
+
+        services.AddScoped<Giwu.Application.Notifications.INotificationDispatcher,
+                           Giwu.Infrastructure.Notifications.NotificationDispatcher>();
 
         services.AddScoped<ITenantContext, TenantContext>();
 
         services.Configure<JwtOptions>(config.GetSection("Auth"));
         services.AddSingleton<IJwtTokenService, JwtTokenService>();
         services.AddSingleton<IPasswordHasher, BcryptPasswordHasher>();
+
+        services.Configure<SmtpOptions>(config.GetSection("Smtp"));
+        services.AddSingleton<IEmailSender, SmtpEmailSender>();
+
+        services.Configure<GoogleOptions>(config.GetSection("Google"));
+        services.AddSingleton<IGoogleTokenVerifier, GoogleTokenVerifier>();
+
+        services.Configure<AppUrlOptions>(config.GetSection("AppUrl"));
 
         return services;
     }

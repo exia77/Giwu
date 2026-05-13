@@ -19,9 +19,9 @@
 <PageTitle>Benefits</PageTitle>
 
 
-@* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+@* ═══════════════════════════════════════════════════
    KPI STRIP
-â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• *@
+═══════════════════════════════════════════════════ *@
 <MudGrid Spacing="3" Class="mb-4">
     <MudItem xs="12" sm="6" md="3">
         <MudPaper Class="ben-kpi" Elevation="0">
@@ -65,11 +65,11 @@
     </MudItem>
 </MudGrid>
 
-@* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+@* ═══════════════════════════════════════════════════
    MIDDLE ROW: ENROLLMENT BY CATEGORY + RENEWALS/REQUESTS
-â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• *@
+═══════════════════════════════════════════════════ *@
 <MudGrid Spacing="3" Class="mb-4">
-    @* â”€â”€ Coverage by category â”€â”€ *@
+    @* ── Coverage by category ── *@
     <MudItem xs="12" md="7">
         <MudPaper Class="ben-card" Elevation="0">
             <div class="ben-card-header">
@@ -90,7 +90,7 @@
                 @if (categoriesInUse.Count == 0)
                 {
                     <div class="ben-empty">
-                        <div class="ben-empty-icon">â€”</div>
+                        <div class="ben-empty-icon">—</div>
                         <MudText Typo="Typo.body2">No programs configured yet.</MudText>
                     </div>
                 }
@@ -113,7 +113,7 @@
                             <div class="cov-track">
                                 <div class="cov-fill" style="@($"width:{pct}%;background:{CategoryFillColor(cat)}")"></div>
                             </div>
-                            <div class="cov-count">@enrolledCount<span class="cov-pct"> Â· @pct%</span></div>
+                            <div class="cov-count">@enrolledCount<span class="cov-pct"> · @pct%</span></div>
                         </div>
                     }
                 }
@@ -121,7 +121,7 @@
         </MudPaper>
     </MudItem>
 
-    @* â”€â”€ Activity feed: pending requests + renewals â”€â”€ *@
+    @* ── Activity feed: pending requests + renewals ── *@
     <MudItem xs="12" md="5">
         <MudPaper Class="ben-card" Elevation="0">
             <div class="ben-card-header">
@@ -142,7 +142,7 @@
             @if (pending.Count == 0 && upcoming.Count == 0)
             {
                 <div class="ben-empty">
-                    <div class="ben-empty-icon">âœ“</div>
+                    <div class="ben-empty-icon">✓</div>
                     <MudText Typo="Typo.body2">All caught up.</MudText>
                 </div>
             }
@@ -154,10 +154,10 @@
                         <MudAvatar Style="@AvatarStyle(req.EmployeeAv)" Class="ben-av-sm">@req.EmployeeInit</MudAvatar>
                         <div class="activity-meta">
                             <MudText Typo="Typo.body2" Class="fw-medium">
-                                @RequestTypeLabel(req.Type) â€” @Money(req.Amount)
+                                @RequestTypeLabel(req.Type) — @Money(req.Amount)
                             </MudText>
                             <MudText Typo="Typo.caption" Style="opacity:.55">
-                                @req.EmployeeName Â· @req.ProgramName Â· @RelativeTime(req.RequestedOn)
+                                @req.EmployeeName · @req.ProgramName · @RelativeTime(req.RequestedOn)
                             </MudText>
                         </div>
                         <span class="@($"ben-badge {RequestStatusBadgeClass(req.Status)}")">Pending</span>
@@ -173,7 +173,7 @@
                         <div class="activity-meta">
                             <MudText Typo="Typo.body2" Class="fw-medium">@prog.Name renewal</MudText>
                             <MudText Typo="Typo.caption" Style="opacity:.55">
-                                @prog.Provider Â· due @FmtDate(prog.RenewalDate)
+                                @prog.Provider · due @FmtDate(prog.RenewalDate)
                             </MudText>
                         </div>
                         <span class="ben-badge ben-badge-pending">@daysLeft d</span>
@@ -184,15 +184,15 @@
     </MudItem>
 </MudGrid>
 
-@* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+@* ═══════════════════════════════════════════════════
    MAIN TABS
-â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• *@
+═══════════════════════════════════════════════════ *@
 <MudPaper Class="ben-card" Elevation="0">
     <MudTabs Elevation="0" Rounded="false" ApplyEffectsToContainer="true"
              PanelClass="ben-tab-panel" TabPanelClass="ben-tab-item"
              @bind-ActivePanelIndex="ActiveTab">
 
-        @* â•â• PROGRAMS TAB â•â• *@
+        @* ══ PROGRAMS TAB ══ *@
         <MudTabPanel Text="@($"Programs ({ActiveProgramCount})")"
                      Icon="@Icons.Material.Outlined.CardGiftcard">
             <div class="ben-card-header">
@@ -216,7 +216,7 @@
                     }
                 </MudChipSet>
                 <MudSpacer />
-                <MudTextField @bind-Value="ProgramSearch" Placeholder="Search name, providerâ€¦"
+                <MudTextField @bind-Value="ProgramSearch" Placeholder="Search name, provider…"
                               Variant="Variant.Outlined" Margin="Margin.Dense" Class="ben-search"
                               Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Outlined.Search"
                               DebounceInterval="200" Immediate="true" />
@@ -296,7 +296,7 @@
                 </RowTemplate>
                 <NoRecordsContent>
                     <div class="ben-empty">
-                        <div class="ben-empty-icon">âŠ˜</div>
+                        <div class="ben-empty-icon">⊘</div>
                         <MudText Typo="Typo.body2">No programs match your filter.</MudText>
                     </div>
                 </NoRecordsContent>
@@ -306,7 +306,7 @@
             </MudTable>
         </MudTabPanel>
 
-        @* â•â• ENROLLMENTS TAB â•â• *@
+        @* ══ ENROLLMENTS TAB ══ *@
         <MudTabPanel Text="@($"Enrollments ({CoveredEmployeeCount})")"
                      Icon="@Icons.Material.Outlined.PeopleOutline">
             <div class="ben-card-header">
@@ -329,7 +329,7 @@
                     <MudChip T="string" Value="@("Missing health")" Size="Size.Small">Missing health</MudChip>
                 </MudChipSet>
                 <MudSpacer />
-                <MudTextField @bind-Value="EnrollmentSearch" Placeholder="Search employee, deptâ€¦"
+                <MudTextField @bind-Value="EnrollmentSearch" Placeholder="Search employee, dept…"
                               Variant="Variant.Outlined" Margin="Margin.Dense" Class="ben-search"
                               Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Outlined.Search"
                               DebounceInterval="200" Immediate="true" />
@@ -387,7 +387,7 @@
                     <MudTd DataLabel="Dependents" Style="font-size:13px">
                         @if (context.Dependents.Count == 0)
                         {
-                            <span style="opacity:.45">â€”</span>
+                            <span style="opacity:.45">—</span>
                         }
                         else
                         {
@@ -409,7 +409,7 @@
                 </RowTemplate>
                 <NoRecordsContent>
                     <div class="ben-empty">
-                        <div class="ben-empty-icon">âŠ˜</div>
+                        <div class="ben-empty-icon">⊘</div>
                         <MudText Typo="Typo.body2">No employees match your filter.</MudText>
                     </div>
                 </NoRecordsContent>
@@ -419,7 +419,7 @@
             </MudTable>
         </MudTabPanel>
 
-        @* â•â• CLAIMS & LOANS TAB â•â• *@
+        @* ══ CLAIMS & LOANS TAB ══ *@
         <MudTabPanel Text="@($"Claims & Loans ({Requests.Count(r => r.Status != BenefitRequestStatus.Closed && r.Status != BenefitRequestStatus.Rejected)})")"
                      Icon="@Icons.Material.Outlined.RequestPage">
             <div class="ben-card-header">
@@ -444,7 +444,7 @@
                     <MudChip T="string" Value="@("Closed")" Size="Size.Small">Closed</MudChip>
                 </MudChipSet>
                 <MudSpacer />
-                <MudTextField @bind-Value="RequestSearch" Placeholder="Search employee, programâ€¦"
+                <MudTextField @bind-Value="RequestSearch" Placeholder="Search employee, program…"
                               Variant="Variant.Outlined" Margin="Margin.Dense" Class="ben-search"
                               Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Outlined.Search"
                               DebounceInterval="200" Immediate="true" />
@@ -485,7 +485,7 @@
                         }
                         else
                         {
-                            <span style="opacity:.4">â€”</span>
+                            <span style="opacity:.4">—</span>
                         }
                     </MudTd>
                     <MudTd DataLabel="Status">
@@ -511,7 +511,7 @@
                 </RowTemplate>
                 <NoRecordsContent>
                     <div class="ben-empty">
-                        <div class="ben-empty-icon">âŠ˜</div>
+                        <div class="ben-empty-icon">⊘</div>
                         <MudText Typo="Typo.body2">No requests match your filter.</MudText>
                     </div>
                 </NoRecordsContent>
@@ -523,9 +523,9 @@
     </MudTabs>
 </MudPaper>
 
-@* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+@* ═══════════════════════════════════════════════════
    STYLES
-â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• *@
+═══════════════════════════════════════════════════ *@
 <style>
     :root {
         --ben-green:        #1D9E75;
@@ -552,7 +552,7 @@
         --ben-teal-text:    #084040;
     }
 
-    /* â”€â”€ KPI â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+    /* ── KPI ─────────────────────────────────────────────── */
     .ben-kpi {
         padding: 16px;
         border: 0.5px solid var(--mud-palette-divider);
@@ -564,7 +564,7 @@
     .kpi-sub   { font-size: 11.5px; opacity: .6; display: flex; align-items: center; gap: 5px; }
     .kpi-dot   { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; display: inline-block; }
 
-    /* â”€â”€ Card shell â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+    /* ── Card shell ──────────────────────────────────────── */
     .ben-card {
         border: 0.5px solid var(--mud-palette-divider);
         border-radius: 10px;
@@ -581,7 +581,7 @@
     }
     .fw-medium { font-weight: 500; }
 
-    /* â”€â”€ Avatars â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+    /* ── Avatars ─────────────────────────────────────────── */
     .ben-av-sm {
         width: 30px !important;
         height: 30px !important;
@@ -589,7 +589,7 @@
         font-weight: 500;
     }
 
-    /* â”€â”€ Badges (category + status) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+    /* ── Badges (category + status) ──────────────────────── */
     .ben-badge {
         display: inline-block;
         font-size: 11px;
@@ -615,7 +615,7 @@
     .ben-badge-repaying    { background: var(--ben-purple-light); color: var(--ben-purple-text); }
     .ben-badge-closed      { background: var(--mud-palette-background-grey); color: var(--mud-palette-text-secondary); }
 
-    /* â”€â”€ Mandatory chip on program rows â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+    /* ── Mandatory chip on program rows ──────────────────── */
     .ben-mandatory-chip {
         font-size: 9px;
         font-weight: 500;
@@ -627,7 +627,7 @@
         color: var(--ben-amber-text);
     }
 
-    /* â”€â”€ Program category icon (square) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+    /* ── Program category icon (square) ──────────────────── */
     .ben-prog-icon {
         width: 30px; height: 30px;
         border-radius: 6px;
@@ -635,7 +635,7 @@
         flex-shrink: 0;
     }
 
-    /* â”€â”€ Coverage chart â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+    /* ── Coverage chart ──────────────────────────────────── */
     .coverage-wrap { padding: 16px; }
     .cov-row {
         display: flex; align-items: center; gap: 12px;
@@ -664,7 +664,7 @@
     }
     .cov-pct { font-weight: 400; opacity: .55; font-size: 11.5px; }
 
-    /* â”€â”€ Activity feed â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+    /* ── Activity feed ───────────────────────────────────── */
     .activity-item {
         display: flex; align-items: center; gap: 12px;
         padding: 10px 16px;
@@ -677,7 +677,7 @@
     .activity-item-renewal:hover { background: transparent; }
     .activity-meta { flex: 1; min-width: 0; }
 
-    /* â”€â”€ Filter row â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+    /* ── Filter row ──────────────────────────────────────── */
     .filter-row {
         display: flex; flex-wrap: wrap; align-items: center; gap: 8px;
         padding: 10px 14px;
@@ -685,7 +685,7 @@
     }
     .ben-search { max-width: 260px; }
 
-    /* â”€â”€ Program chips on enrollment table â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+    /* ── Program chips on enrollment table ───────────────── */
     .prog-chips { display: flex; flex-wrap: wrap; gap: 4px; }
     .prog-chip {
         font-size: 10.5px;
@@ -699,15 +699,15 @@
         color: var(--mud-palette-text-secondary);
     }
 
-    /* â”€â”€ Empty state â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+    /* ── Empty state ─────────────────────────────────────── */
     .ben-empty { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 40px 16px; opacity: .55; gap: 8px; }
     .ben-empty-icon { font-size: 28px; }
 
-    /* â”€â”€ Tabs â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+    /* ── Tabs ────────────────────────────────────────────── */
     .ben-tab-panel { padding: 0 !important; }
     .ben-tab-item  { min-width: unset !important; text-transform: none !important; font-size: 13px !important; }
 
-    /* â”€â”€ MudTable overrides â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+    /* ── MudTable overrides ──────────────────────────────── */
     .ben-mud-table .mud-table-container { border-radius: 0; }
     .ben-mud-table th { font-size: 10.5px !important; font-weight: 500 !important; letter-spacing: .055em !important; text-transform: uppercase !important; opacity: .65; }
     .ben-mud-table td { font-size: 13px !important; vertical-align: middle; }
@@ -719,7 +719,7 @@
 </style>
 
 @code {
-    // â”€â”€â”€ State â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ─── State ──────────────────────────────────────────────────
     private int ActiveTab { get; set; } = 0;
 
     // Programs tab state
@@ -740,7 +740,7 @@
     private int RequestPage { get; set; } = 0;
     private int RequestPageSize { get; set; } = 10;
 
-    // â”€â”€â”€ Derived â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ─── Derived ────────────────────────────────────────────────
     private int ActiveProgramCount => Programs.Count(p => p.IsActive);
     private int CategoryCount => Programs.Where(p => p.IsActive).Select(p => p.Category).Distinct().Count();
     private int TotalEmployees => EmployeeViews.Count;
@@ -821,7 +821,7 @@
         }
     }
 
-    // â”€â”€â”€ Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ─── Helpers ────────────────────────────────────────────────
     private string CategoryFillColor(BenefitCategory c) => c switch
     {
         BenefitCategory.Health     => "var(--ben-pink)",
@@ -837,14 +837,14 @@
 
     private string ShortName(string fullName)
     {
-        // Trim long program names so the chips fit. e.g. "Maxicare HMO Gold (50% dep)" â†’ "HMO Gold"
+        // Trim long program names so the chips fit. e.g. "Maxicare HMO Gold (50% dep)" → "HMO Gold"
         if (fullName.Length <= 14) return fullName;
         // Try to strip common prefixes like provider names
         var trimmed = fullName.Replace("Maxicare ", "").Replace("Sun Life ", "").Replace("In-house ", "");
-        return trimmed.Length <= 14 ? trimmed : trimmed[..14] + "â€¦";
+        return trimmed.Length <= 14 ? trimmed : trimmed[..14] + "…";
     }
 
-    // â”€â”€â”€ Actions â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ─── Actions ────────────────────────────────────────────────
     private async Task OpenCreateProgramDialog()
     {
         var options = new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true };
@@ -960,12 +960,12 @@
             })
         };
         var options = new DialogOptions { MaxWidth = MaxWidth.Medium, FullWidth = true };
-        await DialogService.ShowAsync<EmployeeBenefitsDialog>($"{view.Name} â€” Benefits", parameters, options);
+        await DialogService.ShowAsync<EmployeeBenefitsDialog>($"{view.Name} — Benefits", parameters, options);
     }
 
     private async Task OpenBulkEnrollDialog()
     {
-        Snackbar.Add("Bulk enrollment workflow not wired in this demo â€” open an individual employee to enroll.",
+        Snackbar.Add("Bulk enrollment workflow not wired in this demo — open an individual employee to enroll.",
             Severity.Info);
         await Task.CompletedTask;
     }
@@ -1019,7 +1019,7 @@
         };
         var options = new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true };
         var dialog = await DialogService.ShowAsync<ClaimLoanDialog>(
-            $"{RequestTypeLabel(req.Type)} â€” {req.EmployeeName}",
+            $"{RequestTypeLabel(req.Type)} — {req.EmployeeName}",
             parameters, options);
         var result = await dialog.Result;
         if (result is not null && !result.Canceled)

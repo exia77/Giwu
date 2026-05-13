@@ -39,7 +39,7 @@
                 <div class="prog-stat-label">Cost / Employee / Month</div>
                 <div class="prog-stat-value">@Money(Program.MonthlyCostPerEmployee)</div>
                 <div class="prog-stat-suffix">
-                    Employer @Money(Program.EmployerShare) Â· Employee @Money(Program.EmployeeShare)
+                    Employer @Money(Program.EmployerShare) · Employee @Money(Program.EmployeeShare)
                 </div>
             </div>
             <div class="prog-stat">
@@ -53,7 +53,7 @@
         <div class="prog-info">
             <div class="prog-info-row">
                 <span class="prog-info-key">Eligibility</span>
-                <span>@(string.IsNullOrEmpty(Program.Eligibility) ? "â€”" : Program.Eligibility)</span>
+                <span>@(string.IsNullOrEmpty(Program.Eligibility) ? "—" : Program.Eligibility)</span>
             </div>
             <div class="prog-info-row">
                 <span class="prog-info-key">Effective date</span>
@@ -68,11 +68,11 @@
                         @FmtDate(Program.RenewalDate)
                         @if (daysToRenewal <= 60 && daysToRenewal > 0)
                         {
-                            <span class="prog-renewal-warning">Â· in @daysToRenewal days</span>
+                            <span class="prog-renewal-warning">· in @daysToRenewal days</span>
                         }
                         else if (daysToRenewal <= 0)
                         {
-                            <span class="prog-renewal-overdue">Â· overdue</span>
+                            <span class="prog-renewal-overdue">· overdue</span>
                         }
                     </span>
                 </div>

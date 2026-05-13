@@ -11,7 +11,7 @@
             <div style="flex:1;min-width:0">
                 <MudText Typo="Typo.subtitle1" Class="fw-medium">@Slip.Name</MudText>
                 <MudText Typo="Typo.caption" Style="opacity:.55">
-                    @Slip.Role Â· @Slip.Dept
+                    @Slip.Role · @Slip.Dept
                 </MudText>
             </div>
             <span class="@($"pay-badge {StatusBadgeClass(Run.Status)}")">@Run.Status</span>
@@ -19,7 +19,7 @@
 
         <div class="slip-period-banner">
             <MudIcon Icon="@Icons.Material.Outlined.CalendarMonth" Size="Size.Small" Style="opacity:.6" />
-            <span>@Run.Period Â· @FmtPeriodRange(Run.PeriodStart, Run.PeriodEnd)</span>
+            <span>@Run.Period · @FmtPeriodRange(Run.PeriodStart, Run.PeriodEnd)</span>
         </div>
 
         @* Earnings *@
@@ -55,7 +55,7 @@
             </div>
         </div>
 
-        @* Statutory Deductions â€” each row shows its computation basis *@
+        @* Statutory Deductions — each row shows its computation basis *@
         <div class="slip-section">
             <div class="slip-section-header">
                 Statutory Deductions
@@ -86,15 +86,15 @@
                         Based on MSC @Money(sssBracket.Msc)
                         @if (sssBracket.MpfEmployee > 0)
                         {
-                            <span> Â· Reg. @Money(sssBracket.RegularSsEmployee) + MPF @Money(sssBracket.MpfEmployee)</span>
+                            <span> · Reg. @Money(sssBracket.RegularSsEmployee) + MPF @Money(sssBracket.MpfEmployee)</span>
                         }
                         else
                         {
-                            <span> Â· 5% Ã— MSC</span>
+                            <span> · 5% × MSC</span>
                         }
                     </div>
                 </div>
-                <span class="slip-amt neg">âˆ’@Money(Slip.Sss)</span>
+                <span class="slip-amt neg">−@Money(Slip.Sss)</span>
             </div>
 
             @* PhilHealth *@
@@ -110,7 +110,7 @@
                         @{
                             var phBasis = Math.Clamp(Slip.BasicSalary, 10000m, 100000m);
                         }
-                        2.5% Ã— @Money(phBasis)
+                        2.5% × @Money(phBasis)
                         @if (Slip.BasicSalary < 10000m)
                         {
                             <span> (floor applied)</span>
@@ -121,7 +121,7 @@
                         }
                     </div>
                 </div>
-                <span class="slip-amt neg">âˆ’@Money(Slip.PhilHealth)</span>
+                <span class="slip-amt neg">−@Money(Slip.PhilHealth)</span>
             </div>
 
             @* Pag-IBIG *@
@@ -138,14 +138,14 @@
                             var pagMfs = Math.Min(Slip.BasicSalary, 10000m);
                             var pagRate = Slip.BasicSalary <= 1500m ? "1%" : "2%";
                         }
-                        @pagRate Ã— MFS @Money(pagMfs)
+                        @pagRate × MFS @Money(pagMfs)
                         @if (Slip.BasicSalary > 10000m)
                         {
                             <span> (MFS capped)</span>
                         }
                     </div>
                 </div>
-                <span class="slip-amt neg">âˆ’@Money(Slip.PagIbig)</span>
+                <span class="slip-amt neg">−@Money(Slip.PagIbig)</span>
             </div>
 
             @* Withholding Tax *@
@@ -158,15 +158,15 @@
                         </button>
                     </div>
                     <div class="slip-basis">
-                        Taxable @Money(taxableIncome) Â· @birBracket.RateDisplay
+                        Taxable @Money(taxableIncome) · @birBracket.RateDisplay
                     </div>
                 </div>
-                <span class="slip-amt neg">âˆ’@Money(Slip.WithholdingTax)</span>
+                <span class="slip-amt neg">−@Money(Slip.WithholdingTax)</span>
             </div>
 
             <div class="slip-total slip-total-statutory">
                 <span>Statutory Subtotal</span>
-                <span class="slip-amt neg">âˆ’@Money(Slip.Sss + Slip.PhilHealth + Slip.PagIbig + Slip.WithholdingTax)</span>
+                <span class="slip-amt neg">−@Money(Slip.Sss + Slip.PhilHealth + Slip.PagIbig + Slip.WithholdingTax)</span>
             </div>
         </div>
 
@@ -179,19 +179,19 @@
                 {
                     <div class="slip-line">
                         <span>Loan / SSS Salary Loan</span>
-                        <span class="slip-amt neg">âˆ’@Money(Slip.LoanDeduction)</span>
+                        <span class="slip-amt neg">−@Money(Slip.LoanDeduction)</span>
                     </div>
                 }
                 @if (Slip.OtherDeduction > 0)
                 {
                     <div class="slip-line">
                         <span>Other Deduction</span>
-                        <span class="slip-amt neg">âˆ’@Money(Slip.OtherDeduction)</span>
+                        <span class="slip-amt neg">−@Money(Slip.OtherDeduction)</span>
                     </div>
                 }
                 <div class="slip-total slip-total-other">
                     <span>Other Subtotal</span>
-                    <span class="slip-amt neg">âˆ’@Money(Slip.LoanDeduction + Slip.OtherDeduction)</span>
+                    <span class="slip-amt neg">−@Money(Slip.LoanDeduction + Slip.OtherDeduction)</span>
                 </div>
             </div>
         }
@@ -199,7 +199,7 @@
         @* Total Deductions row *@
         <div class="slip-grand-deductions">
             <span>Total Deductions</span>
-            <span class="slip-amt">âˆ’@Money(Slip.TotalDeductions)</span>
+            <span class="slip-amt">−@Money(Slip.TotalDeductions)</span>
         </div>
 
         @* Net Pay *@

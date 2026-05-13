@@ -4,8 +4,12 @@
 @inject AuthService Auth
 @inject ThemeService Theme
 @inject IJSRuntime JS
+@inject IDialogService DialogService
+@inject Giwu.HRMS.Hybrid.Services.Auth.IAuthApi AuthApi
 @implements IDisposable
+@implements IAsyncDisposable
 @using Giwu.HRMS.Hybrid.Models.Auth
+@using Giwu.HRMS.Hybrid.Components.Pages.Auth
 
 <div class="login-page @(Theme.IsDark ? "dark" : "")"
      style="--primary:@Theme.PrimaryColor;--primary-dark:@Theme.PrimaryDark();--primary-15:@Theme.PrimaryAlpha(0.15);--primary-30:@Theme.PrimaryAlpha(0.30)">
@@ -129,7 +133,7 @@
 
                     <div class="form-row">
                         <GiwuCheckbox @bind-Value="loginModel.RememberMe" Label="Remember me" />
-                        <a href="#" class="forgot-link">Forgot password?</a>
+                        <a href="javascript:void(0)" class="forgot-link" @onclick="OpenForgotPassword">Forgot password?</a>
                     </div>
 
                     @if (!string.IsNullOrEmpty(_error))
@@ -157,6 +161,10 @@
     private bool _busy;
     private string? _error;
 
+    private string? _googleClientId;
+    private DotNetObjectReference<Login>? _selfRef;
+    private bool _googleReady;
+
     protected override async Task OnInitializedAsync()
     {
         if (Auth.IsLoggedIn) { Navigation.NavigateTo("/"); return; }
@@ -164,12 +172,50 @@
 
         // Restore session from stored tokens (silently no-ops if nothing saved)
         await Auth.TryRestoreAsync();
-        if (Auth.IsLoggedIn) Navigation.NavigateTo("/");
+        if (Auth.IsLoggedIn) { Navigation.NavigateTo("/"); return; }
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (firstRender) await ApplyTheme();
+        if (firstRender)
+        {
+            await ApplyTheme();
+            // Fetch Google client ID lazily so a slow/failed API doesn't block the login form.
+            _ = LoadGoogleConfigAsync();
+        }
+
+        // Initialize the GIS bridge once we know the client ID. Repeat init is safe but unnecessary.
+        if (!_googleReady && !string.IsNullOrEmpty(_googleClientId))
+        {
+            try
+            {
+                _selfRef ??= DotNetObjectReference.Create(this);
+                await JS.InvokeAsync<bool>("giwuGoogle.init", _googleClientId, _selfRef);
+                _googleReady = true;
+            }
+            catch
+            {
+                // GIS script not yet loaded or origin not authorized. The Google button
+                // will simply fall through to a friendly error when clicked.
+            }
+        }
+    }
+
+    private async Task LoadGoogleConfigAsync()
+    {
+        try
+        {
+            var cfg = await AuthApi.GoogleConfigAsync();
+            if (cfg.Success && cfg.Value is not null && !string.IsNullOrWhiteSpace(cfg.Value.ClientId))
+            {
+                _googleClientId = cfg.Value.ClientId;
+                await InvokeAsync(StateHasChanged); // re-render so OnAfterRenderAsync re-runs and inits GIS
+            }
+        }
+        catch
+        {
+            // Silent: Google sign-in just stays disabled.
+        }
     }
 
     private async Task HandleLogin()
@@ -185,11 +231,58 @@
         else               _error = error;
     }
 
-    private Task HandleGoogle()
+    private async Task HandleGoogle()
     {
-        // TODO: hook up Google OAuth on the API side first.
-        _error = "Google sign-in is not yet wired up.";
-        return Task.CompletedTask;
+        _error = null;
+
+        if (string.IsNullOrEmpty(_googleClientId))
+        {
+            _error = "Google sign-in isn't configured. Ask an admin to set Google:ClientId.";
+            return;
+        }
+
+        if (!_googleReady)
+        {
+            _error = "Google sign-in isn't ready yet. Please try again in a moment.";
+            return;
+        }
+
+        try
+        {
+            await JS.InvokeVoidAsync("giwuGoogle.prompt");
+        }
+        catch (Exception ex)
+        {
+            _error = $"Could not open Google sign-in: {ex.Message}";
+        }
+    }
+
+    [JSInvokable]
+    public async Task OnGoogleCredential(string idToken)
+    {
+        if (string.IsNullOrEmpty(idToken)) return;
+
+        _busy = true; _error = null;
+        await InvokeAsync(StateHasChanged);
+
+        var error = await Auth.SignInWithGoogleAsync(idToken);
+        _busy = false;
+
+        if (error is null) Navigation.NavigateTo("/");
+        else _error = error;
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task OpenForgotPassword()
+    {
+        var options = new DialogOptions
+        {
+            MaxWidth = MaxWidth.ExtraSmall,
+            FullWidth = true,
+            CloseButton = true,
+            BackdropClick = false,
+        };
+        await DialogService.ShowAsync<ForgotPasswordDialog>(string.Empty, options);
     }
 
     private Task ApplyTheme() =>
@@ -197,4 +290,11 @@
             "data-theme", Theme.IsDark ? "dark" : "light").AsTask();
 
     public void Dispose() => Theme.OnChange -= StateHasChanged;
+
+    public async ValueTask DisposeAsync()
+    {
+        Theme.OnChange -= StateHasChanged;
+        _selfRef?.Dispose();
+        await ValueTask.CompletedTask;
+    }
 }

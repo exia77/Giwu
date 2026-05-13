@@ -1,4 +1,4 @@
-.dash-wrap {
+﻿.dash-wrap {
     display: flex;
     min-height: 100vh;
     background: var(--color-background-tertiary);
@@ -236,14 +236,214 @@ nav { padding: 12px 8px; flex: 1; }
   .role-badge-finance  { background: #FEF3C7; color: #78350F; }
   .role-badge-employee { background: #E5E7EB; color: #374151; }
 
-  /* â”€â”€ Role switcher popover â”€â”€ */
+  /* ── Notifications bell + popover ── */
+  .notif-wrap {
+    position: relative;
+    display: inline-flex;
+  }
+  .notif-activator {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 34px;
+    height: 34px;
+    border: none;
+    background: transparent;
+    color: inherit;
+    border-radius: 999px;
+    cursor: pointer;
+    transition: background .15s;
+  }
+  .notif-activator:hover { background: var(--mud-palette-action-default-hover); }
+  .notif-badge {
+    position: absolute;
+    top: 2px;
+    right: 2px;
+    min-width: 16px;
+    height: 16px;
+    padding: 0 4px;
+    border-radius: 999px;
+    background: #E24B4A;
+    color: #fff;
+    font-size: 10px;
+    font-weight: 600;
+    line-height: 16px;
+    text-align: center;
+    box-shadow: 0 0 0 2px var(--mud-palette-background);
+  }
+  .notif-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 1200;
+    background: transparent;
+  }
+  .notif-popover {
+    position: absolute;
+    top: calc(100% + 8px);
+    right: 0;
+    z-index: 1201;
+    width: 360px;
+    max-width: 90vw;
+    background: var(--mud-palette-surface);
+    color: var(--mud-palette-text-primary);
+    border: 1px solid var(--mud-palette-divider);
+    border-radius: 10px;
+    box-shadow: 0 6px 24px rgba(0,0,0,.18);
+    overflow: hidden;
+  }
+  .notif-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 14px;
+    border-bottom: 1px solid var(--mud-palette-divider);
+  }
+  .notif-title { font-size: 13px; font-weight: 600; }
+  .notif-mark-all {
+    background: transparent;
+    border: none;
+    color: var(--mud-palette-primary);
+    font-size: 11px;
+    font-weight: 500;
+    cursor: pointer;
+    padding: 4px 6px;
+    border-radius: 4px;
+  }
+  .notif-mark-all:hover { background: var(--mud-palette-action-default-hover); }
+  .notif-empty {
+    padding: 32px 16px;
+    text-align: center;
+    opacity: .55;
+    font-size: 12px;
+  }
+  .notif-list {
+    max-height: 420px;
+    overflow-y: auto;
+  }
+  .notif-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    width: 100%;
+    padding: 10px 14px;
+    border: none;
+    background: none;
+    cursor: pointer;
+    text-align: left;
+    font-family: inherit;
+    border-bottom: 1px solid var(--mud-palette-divider);
+    transition: background .1s;
+  }
+  .notif-item:last-child { border-bottom: none; }
+  .notif-item:hover { background: var(--mud-palette-action-default-hover); }
+  .notif-item.unread { background: rgba(var(--mud-palette-primary-rgb, 29,158,117), .05); }
+  .notif-dot {
+    flex-shrink: 0;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--mud-palette-primary);
+    margin-top: 6px;
+  }
+  .notif-dot.read { background: transparent; }
+  .notif-body { flex: 1; min-width: 0; }
+  .notif-item-title { font-size: 13px; font-weight: 500; line-height: 1.3; }
+  .notif-item-body { font-size: 12px; opacity: .7; margin-top: 2px; line-height: 1.4; }
+  .notif-item-time { font-size: 11px; opacity: .5; margin-top: 4px; }
+
+  /* ── Account dropdown ── (manual implementation: activator button +
+     state-controlled popover + click-outside backdrop) */
+  .account-menu-wrap {
+    position: relative;
+    display: inline-block;
+    margin-left: 4px;
+  }
+  .account-menu-activator {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 8px 2px 2px;
+    border: none;
+    background: transparent;
+    border-radius: 999px;
+    cursor: pointer;
+    color: inherit;
+    transition: background .15s;
+  }
+  .account-menu-activator:hover { background: var(--mud-palette-action-default-hover); }
+  .account-menu-chevron {
+    opacity: .55;
+    flex-shrink: 0;
+  }
+
+  /* Plain styled span used inside the account activator (and the menu rows). */
+  .account-avatar-circle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    font-size: .72rem;
+    font-weight: 500;
+    pointer-events: none;
+    flex-shrink: 0;
+  }
+
+  /* Invisible full-viewport backdrop captures clicks outside the popover
+     to close it (click-outside-to-dismiss behavior). */
+  .account-menu-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 1200;
+    background: transparent;
+  }
+
+  /* Sidebar footer slot for the GIWU watermark. SVG is wide (690×210
+     viewBox) so we shrink it to fit the narrow drawer and leave a little
+     padding around it. The border-top mirrors what the user-identity
+     footer used to provide. */
+  .sidebar-watermark {
+    padding: 14px 12px;
+    border-top: 1px solid var(--mud-palette-divider);
+    opacity: .55;
+    display: flex;
+    justify-content: center;
+  }
+  .sidebar-watermark svg {
+    max-width: 100%;
+    height: auto;
+    display: block;
+  }
+
+  /* Anchored popover floating below the activator. min-width matches the
+     content; right:0 anchors to the activator's right edge. */
+  .account-menu-popover {
+    position: absolute;
+    top: calc(100% + 8px);
+    right: 0;
+    z-index: 1201;
+    min-width: 290px;
+    background: var(--mud-palette-surface);
+    color: var(--mud-palette-text-primary);
+    border: 1px solid var(--mud-palette-divider);
+    border-radius: 8px;
+    box-shadow: 0 6px 24px rgba(0,0,0,.18);
+    padding: 0;
+    overflow: hidden;
+  }
+
   .role-switcher-pop {
     min-width: 290px;
     padding: 0;
   }
   .role-switcher-header {
-    padding: 10px 14px 6px;
+    padding: 12px 14px;
     border-bottom: 0.5px solid var(--mud-palette-divider);
+  }
+  .role-switcher-subheader {
+    padding: 8px 14px 2px;
   }
   .role-switcher-row {
     display: flex;
@@ -263,18 +463,27 @@ nav { padding: 12px 8px; flex: 1; }
   .role-switcher-meta { flex: 1; min-width: 0; }
   .role-switcher-name { font-size: 13px; font-weight: 500; line-height: 1.2; }
   .role-switcher-role { margin-top: 3px; }
-  .role-switcher-footer {
-    padding: 8px 14px 10px;
-    border-top: 0.5px solid var(--mud-palette-divider);
-    font-size: 11px;
-    opacity: .65;
+
+  .account-menu-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    padding: 10px 14px;
+    border: none;
+    background: none;
+    cursor: pointer;
+    text-align: left;
+    font-family: inherit;
+    font-size: 13px;
+    color: var(--mud-palette-text-primary);
+    transition: background .1s;
   }
-  .role-switcher-footer a {
-    color: inherit;
-    text-decoration: underline;
-    text-decoration-thickness: 0.5px;
-    text-underline-offset: 2px;
-  }
+  .account-menu-row:hover { background: var(--mud-palette-background-grey); }
+  /* No border-top here — .role-switcher-header above already provides the
+     divider line. Adding another would render as a doubled rule. */
+  .account-menu-signout { }
+
 
   .watermark-wrap {
     position: fixed;

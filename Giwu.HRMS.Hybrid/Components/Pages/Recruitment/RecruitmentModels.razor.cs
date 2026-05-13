@@ -1,6 +1,6 @@
 ﻿namespace Giwu.HRMS.Hybrid.Models;
 
-// â”€â”€â”€ Core entities â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Core entities ──────────────────────────────────────────────
 
 public class JobRequisition
 {
@@ -58,7 +58,7 @@ public class Interview
     public string Status { get; set; } = "Scheduled"; // Scheduled / Completed / Canceled
 }
 
-// â”€â”€â”€ Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Helpers ────────────────────────────────────────────────────
 
 public static class RecruitmentFormatting
 {
@@ -96,7 +96,7 @@ public static class RecruitmentFormatting
         _         => ""
     };
 
-    public static string FmtDate(DateTime? d) => d.HasValue ? d.Value.ToString("MMM d, yyyy") : "â€”";
+    public static string FmtDate(DateTime? d) => d.HasValue ? d.Value.ToString("MMM d, yyyy") : "—";
     public static string FmtDateShort(DateTime d) => d.ToString("MMM d");
     public static string FmtDateTime(DateTime d) => d.ToString("MMM d, h:mm tt");
 
@@ -113,7 +113,7 @@ public static class RecruitmentFormatting
 
     public static string FmtSalary(decimal min, decimal max)
     {
-        string F(decimal v) => v >= 1000 ? $"â‚±{v/1000:F0}k" : $"â‚±{v:F0}";
-        return min == max ? F(min) : $"{F(min)} â€“ {F(max)}";
+        string F(decimal v) => v >= 1000 ? $"₱{v/1000:F0}k" : $"₱{v:F0}";
+        return min == max ? F(min) : $"{F(min)} – {F(max)}";
     }
 }

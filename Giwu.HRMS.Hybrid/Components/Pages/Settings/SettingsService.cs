@@ -11,7 +11,7 @@ namespace Giwu.HRMS.Hybrid.Components.Pages.Settings;
 /// </code>
 ///
 /// In production, persist these to a database, file, or your config store of
-/// choice â€” replace the field-backed properties with reads/writes against your
+/// choice — replace the field-backed properties with reads/writes against your
 /// store and raise OnChange when anything mutates.
 /// </summary>
 public class SettingsService
@@ -57,7 +57,7 @@ public class SettingsService
         Localization.Timezone = "Asia/Manila";
         Localization.DateFormat = DateFormat.UsLong;
         Localization.CurrencyCode = "PHP";
-        Localization.CurrencySymbol = "â‚±";
+        Localization.CurrencySymbol = "₱";
         Localization.WeekStart = WeekStart.Sunday;
         Localization.FiscalYearStartMonth = 1;
 

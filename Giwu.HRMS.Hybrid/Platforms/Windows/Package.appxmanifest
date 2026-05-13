@@ -6,13 +6,13 @@
   xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities"
   IgnorableNamespaces="uap rescap">
 
-  <Identity Name="Giwu.HRMS.Hybrid" Publisher="CN=Giwu HRMS, O=Giwu, C=PH" Version="1.0.0.0" />
+  <Identity Name="Manna.HRIS" Publisher="CN=Manna HRIS" Version="1.0.0.0" />
 
   <mp:PhoneIdentity PhoneProductId="AAEB585A-11FD-4F09-92B2-B327C5315F1B" PhonePublisherId="00000000-0000-0000-0000-000000000000"/>
 
   <Properties>
-    <DisplayName>Giwu HRMS</DisplayName>
-    <PublisherDisplayName>Giwu</PublisherDisplayName>
+    <DisplayName>Manna HRIS</DisplayName>
+    <PublisherDisplayName>Manna</PublisherDisplayName>
     <Logo>$placeholder$.png</Logo>
   </Properties>
 
@@ -28,8 +28,8 @@
   <Applications>
     <Application Id="App" Executable="$targetnametoken$.exe" EntryPoint="$targetentrypoint$">
       <uap:VisualElements
-        DisplayName="Giwu HRMS"
-        Description="Giwu HRMS Hybrid application"
+        DisplayName="Manna HRIS"
+        Description="Manna HRIS"
         Square150x150Logo="$placeholder$.png"
         Square44x44Logo="$placeholder$.png"
         BackgroundColor="transparent">

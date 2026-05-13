@@ -25,6 +25,26 @@ public sealed record ClockOutRequest(
     string Location = "",
     int? BreakMinutes = null);
 
+/// <summary>HR-admin edit of an existing attendance record. Times are
+/// transmitted as TimeOnly?; the server combines them with the record's
+/// stored Date to produce DateTimeOffset. Null clears the value.</summary>
+public sealed record UpdateAttendanceRequest(
+    AttendanceStatus Status,
+    TimeOnly? ClockInTime,
+    TimeOnly? ClockOutTime,
+    string Notes);
+
+/// <summary>HR-admin manual creation of an attendance entry on behalf of an
+/// employee. If a record already exists for (EmployeeId, Date), it is
+/// updated instead. Useful for back-filling missed clock-ins.</summary>
+public sealed record ManualAttendanceEntryRequest(
+    Guid EmployeeId,
+    DateOnly Date,
+    AttendanceStatus Status,
+    TimeOnly? ClockInTime,
+    TimeOnly? ClockOutTime,
+    string Notes);
+
 public sealed record OvertimeRequestDto(
     Guid Id,
     Guid EmployeeId,

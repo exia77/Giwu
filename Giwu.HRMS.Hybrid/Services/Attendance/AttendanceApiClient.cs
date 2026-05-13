@@ -16,6 +16,9 @@ public interface IAttendanceApi
 
     Task<ApiResult<AttendanceRecordDto>> GetTodayAsync(Guid? employeeId = null, CancellationToken ct = default);
 
+    Task<ApiResult<AttendanceRecordDto>> UpdateAsync(Guid id, UpdateAttendanceRequest body, CancellationToken ct = default);
+    Task<ApiResult<AttendanceRecordDto>> CreateManualAsync(ManualAttendanceEntryRequest body, CancellationToken ct = default);
+
     Task<ApiResult<IReadOnlyList<OvertimeRequestDto>>> ListOvertimeAsync(
         ApprovalStatus? status = null, Guid? employeeId = null, bool mineOnly = false, CancellationToken ct = default);
 
@@ -48,6 +51,12 @@ public sealed class AttendanceApiClient(HttpClient http) : IAttendanceApi
         var qs = employeeId.HasValue ? $"?employeeId={employeeId.Value}" : string.Empty;
         return ApiClientCore.GetAsync<AttendanceRecordDto>(http, "/api/attendance/today" + qs, ct);
     }
+
+    public Task<ApiResult<AttendanceRecordDto>> UpdateAsync(Guid id, UpdateAttendanceRequest body, CancellationToken ct = default) =>
+        ApiClientCore.PutAsync<UpdateAttendanceRequest, AttendanceRecordDto>(http, $"/api/attendance/{id}", body, ct);
+
+    public Task<ApiResult<AttendanceRecordDto>> CreateManualAsync(ManualAttendanceEntryRequest body, CancellationToken ct = default) =>
+        ApiClientCore.PostAsync<ManualAttendanceEntryRequest, AttendanceRecordDto>(http, "/api/attendance/manual", body, ct);
 
     public Task<ApiResult<IReadOnlyList<OvertimeRequestDto>>> ListOvertimeAsync(
         ApprovalStatus? status = null, Guid? employeeId = null, bool mineOnly = false, CancellationToken ct = default)

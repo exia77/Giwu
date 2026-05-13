@@ -1,0 +1,235 @@
+@inject Giwu.HRMS.Hybrid.Services.Attendance.IAttendanceApi AttendanceApi
+@inject ISnackbar Snackbar
+@inject RoleAuthService Roles
+@using Giwu.Contracts.Attendance
+@using Giwu.Domain.Attendance
+@using Giwu.HRMS.Hybrid.Services
+
+<MudDialog>
+    <DialogContent>
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
+            <MudSelect T="ApprovalStatus?" @bind-Value="_filter" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true" Style="min-width:180px">
+                <MudSelectItem Value="@((ApprovalStatus?)null)">All statuses</MudSelectItem>
+                <MudSelectItem Value="@((ApprovalStatus?)ApprovalStatus.Pending)">Pending</MudSelectItem>
+                <MudSelectItem Value="@((ApprovalStatus?)ApprovalStatus.Approved)">Approved</MudSelectItem>
+                <MudSelectItem Value="@((ApprovalStatus?)ApprovalStatus.Rejected)">Rejected</MudSelectItem>
+            </MudSelect>
+            <MudButton Size="Size.Small" Variant="Variant.Outlined"
+                       StartIcon="@Icons.Material.Outlined.Refresh"
+                       OnClick="LoadAsync">Refresh</MudButton>
+            <MudSpacer />
+            <MudButton Size="Size.Small" Variant="Variant.Filled" Color="Color.Primary" DisableElevation="true"
+                       StartIcon="@Icons.Material.Outlined.Add"
+                       OnClick="OpenFileForm">File overtime</MudButton>
+        </div>
+
+        @if (_filing)
+        {
+            <MudPaper Class="pa-3 mb-3" Elevation="0" Style="border:1px solid var(--mud-palette-divider);border-radius:8px">
+                <MudText Typo="Typo.subtitle2" Class="fw-medium mb-2">File overtime</MudText>
+                <MudGrid Spacing="2">
+                    <MudItem xs="12" sm="6">
+                        <MudDatePicker @bind-Date="_newDate" Label="Date" Variant="Variant.Outlined" Margin="Margin.Dense" />
+                    </MudItem>
+                    <MudItem xs="6" sm="3">
+                        <MudTextField T="string" Label="Start" @bind-Value="_newStart" InputType="InputType.Time"
+                                      Variant="Variant.Outlined" Margin="Margin.Dense" />
+                    </MudItem>
+                    <MudItem xs="6" sm="3">
+                        <MudTextField T="string" Label="End" @bind-Value="_newEnd" InputType="InputType.Time"
+                                      Variant="Variant.Outlined" Margin="Margin.Dense" />
+                    </MudItem>
+                    <MudItem xs="12" sm="6">
+                        <MudSelect T="OvertimeType" @bind-Value="_newType" Label="Type" Variant="Variant.Outlined" Margin="Margin.Dense">
+                            <MudSelectItem Value="@OvertimeType.Regular">Regular</MudSelectItem>
+                            <MudSelectItem Value="@OvertimeType.RestDay">Rest Day</MudSelectItem>
+                            <MudSelectItem Value="@OvertimeType.RegularHoliday">Regular Holiday</MudSelectItem>
+                            <MudSelectItem Value="@OvertimeType.SpecialHoliday">Special Holiday</MudSelectItem>
+                            <MudSelectItem Value="@OvertimeType.NightDifferential">Night Differential</MudSelectItem>
+                        </MudSelect>
+                    </MudItem>
+                    <MudItem xs="12">
+                        <MudTextField T="string" Label="Reason" @bind-Value="_newReason"
+                                      Variant="Variant.Outlined" Margin="Margin.Dense" Lines="2" />
+                    </MudItem>
+                </MudGrid>
+                <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:8px">
+                    <MudButton Size="Size.Small" OnClick="@(() => _filing = false)">Cancel</MudButton>
+                    <MudButton Size="Size.Small" Variant="Variant.Filled" Color="Color.Primary" DisableElevation="true"
+                               OnClick="SubmitOvertime">Submit</MudButton>
+                </div>
+            </MudPaper>
+        }
+
+        @if (_loading)
+        {
+            <div style="padding:24px;display:flex;justify-content:center">
+                <MudProgressCircular Indeterminate="true" Size="Size.Small" />
+            </div>
+        }
+        else if (_requests.Count == 0)
+        {
+            <MudText Typo="Typo.body2" Style="opacity:.6;text-align:center;padding:18px">
+                No overtime requests.
+            </MudText>
+        }
+        else
+        {
+            <MudTable T="OvertimeRequestDto" Items="@_requests" Dense="true" Hover="true" Elevation="0">
+                <HeaderContent>
+                    <MudTh>Employee</MudTh>
+                    <MudTh>Date</MudTh>
+                    <MudTh>Hours</MudTh>
+                    <MudTh>Type</MudTh>
+                    <MudTh>Reason</MudTh>
+                    <MudTh>Status</MudTh>
+                    @if (IsAdmin)
+                    {
+                        <MudTh Style="text-align:right">Action</MudTh>
+                    }
+                </HeaderContent>
+                <RowTemplate>
+                    <MudTd>@context.EmployeeName</MudTd>
+                    <MudTd>@context.Date.ToString("MMM d, yyyy")</MudTd>
+                    <MudTd>@context.StartTime.ToString("HH:mm") – @context.EndTime.ToString("HH:mm")</MudTd>
+                    <MudTd>@context.Type</MudTd>
+                    <MudTd Style="max-width:200px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">@context.Reason</MudTd>
+                    <MudTd>
+                        <span class="@($"ot-pill ot-pill-{context.Status.ToString().ToLower()}")">
+                            @context.Status
+                        </span>
+                    </MudTd>
+                    @if (IsAdmin)
+                    {
+                        <MudTd Style="text-align:right">
+                            @if (context.Status == ApprovalStatus.Pending)
+                            {
+                                <MudIconButton Icon="@Icons.Material.Outlined.Check" Color="Color.Success" Size="Size.Small"
+                                               OnClick="@(() => ApproveAsync(context.Id))" />
+                                <MudIconButton Icon="@Icons.Material.Outlined.Close" Color="Color.Error" Size="Size.Small"
+                                               OnClick="@(() => RejectAsync(context.Id))" />
+                            }
+                        </MudTd>
+                    }
+                </RowTemplate>
+            </MudTable>
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Close">Close</MudButton>
+    </DialogActions>
+</MudDialog>
+
+<style>
+    .ot-pill {
+        font-size: 10px; font-weight: 500; letter-spacing: .04em; text-transform: uppercase;
+        padding: 2px 8px; border-radius: 100px;
+    }
+    .ot-pill-pending  { background: #FAEEDA; color: #633806; }
+    .ot-pill-approved { background: #DCFCE7; color: #14532D; }
+    .ot-pill-rejected { background: #FCE7E7; color: #791F1F; }
+    .ot-pill-cancelled { background: #E5E7EB; color: #374151; }
+</style>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = default!;
+
+    private bool _loading;
+    private ApprovalStatus? _filter;
+    private List<OvertimeRequestDto> _requests = new();
+
+    private bool _filing;
+    private DateTime? _newDate = DateTime.Today;
+    private string _newStart = "";
+    private string _newEnd = "";
+    private OvertimeType _newType = OvertimeType.Regular;
+    private string _newReason = "";
+
+    private bool IsAdmin => Roles.CurrentUser.Role == Giwu.HRMS.Hybrid.Services.UserRole.HrAdmin;
+
+    protected override async Task OnInitializedAsync() => await LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        _loading = true;
+        var res = await AttendanceApi.ListOvertimeAsync(status: _filter);
+        _loading = false;
+        if (res.Success && res.Value is not null)
+        {
+            _requests = res.Value.ToList();
+        }
+        else
+        {
+            Snackbar.Add(res.ErrorMessage ?? "Failed to load overtime requests.", Severity.Error);
+            _requests = new();
+        }
+    }
+
+    private void OpenFileForm()
+    {
+        _filing = true;
+        _newDate = DateTime.Today;
+        _newStart = "";
+        _newEnd = "";
+        _newType = OvertimeType.Regular;
+        _newReason = "";
+    }
+
+    private async Task SubmitOvertime()
+    {
+        if (_newDate is null || !TimeOnly.TryParse(_newStart, out var start) || !TimeOnly.TryParse(_newEnd, out var end))
+        {
+            Snackbar.Add("Please fill in date, start time, and end time.", Severity.Warning);
+            return;
+        }
+
+        var req = new FileOvertimeRequest(
+            Date:      DateOnly.FromDateTime(_newDate.Value),
+            StartTime: start,
+            EndTime:   end,
+            Type:      _newType,
+            Reason:    _newReason ?? "");
+
+        var res = await AttendanceApi.FileOvertimeAsync(req);
+        if (res.Success)
+        {
+            Snackbar.Add("Overtime request submitted.", Severity.Success);
+            _filing = false;
+            await LoadAsync();
+        }
+        else
+        {
+            Snackbar.Add(res.ErrorMessage ?? "Failed to submit overtime.", Severity.Error);
+        }
+    }
+
+    private async Task ApproveAsync(Guid id)
+    {
+        var res = await AttendanceApi.ApproveOvertimeAsync(id, new ResolveOvertimeRequest(""));
+        if (res.Success)
+        {
+            Snackbar.Add("Overtime approved.", Severity.Success);
+            await LoadAsync();
+        }
+        else
+        {
+            Snackbar.Add(res.ErrorMessage ?? "Failed to approve.", Severity.Error);
+        }
+    }
+
+    private async Task RejectAsync(Guid id)
+    {
+        var res = await AttendanceApi.RejectOvertimeAsync(id, new ResolveOvertimeRequest(""));
+        if (res.Success)
+        {
+            Snackbar.Add("Overtime rejected.", Severity.Info);
+            await LoadAsync();
+        }
+        else
+        {
+            Snackbar.Add(res.ErrorMessage ?? "Failed to reject.", Severity.Error);
+        }
+    }
+
+    private void Close() => MudDialog.Close();
+}
