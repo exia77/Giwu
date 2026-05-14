@@ -28,6 +28,10 @@ namespace Giwu.HRMS.Hybrid
 
         public static MauiApp CreateMauiApp()
         {
+            // QuestPDF community license (free for orgs under $1M/yr revenue).
+            // Must be set before the first PDF render call from the Reports page.
+            QuestPDF.Settings.License = QuestPDF.Infrastructure.LicenseType.Community;
+
             var builder = MauiApp.CreateBuilder();
             builder
                 .UseMauiApp<App>()

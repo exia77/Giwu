@@ -3,13 +3,22 @@
 <MudDialog>
     <DialogContent>
         <MudStack Spacing="3">
-            <MudSelect T="string" Label="Employee" @bind-Value="SelectedEmployeeId"
-                       Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true">
-                @foreach (var emp in AllEmployees)
-                {
-                    <MudSelectItem Value="@emp.EmployeeId">@emp.Name (@emp.Dept)</MudSelectItem>
-                }
-            </MudSelect>
+            @if (CurrentEmployee is not null)
+            {
+                <div class="filing-as">
+                    <MudIcon Icon="@Icons.Material.Outlined.Person" Size="Size.Small" Style="opacity:.6" />
+                    <span class="filing-as-label">Filing as</span>
+                    <span class="filing-as-name">@CurrentEmployee.Name</span>
+                    <span class="filing-as-dept">· @CurrentEmployee.Dept</span>
+                </div>
+            }
+            else
+            {
+                <MudAlert Severity="Severity.Warning" Dense="true">
+                    Your account isn't linked to an employee record, so you can't file leave for yourself.
+                    Contact HR if this is unexpected.
+                </MudAlert>
+            }
 
             <MudSelect T="string" Label="Leave type" @bind-Value="SelectedLeaveTypeId"
                        Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true">
@@ -138,6 +147,19 @@
 </MudDialog>
 
 <style>
+    .filing-as {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 8px 12px;
+        background: var(--mud-palette-background-grey);
+        border-radius: 6px;
+        font-size: 13px;
+    }
+    .filing-as-label { opacity: .6; }
+    .filing-as-name { font-weight: 500; }
+    .filing-as-dept { opacity: .55; font-size: 12px; }
+
     .med-cert-alert { font-size: 12px !important; padding: 6px 10px !important; }
 
     .file-preview {
@@ -183,19 +205,19 @@
 
 @code {
     [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = default!;
-    [Parameter] public List<EmployeeLeaveView> AllEmployees { get; set; } = new();
+
+    /// <summary>The employee filing the leave (always the signed-in user).
+    /// The dropdown was removed because the API derives EmployeeId from the JWT
+    /// — picking someone else here was always misleading.</summary>
+    [Parameter] public EmployeeLeaveView? CurrentEmployee { get; set; }
     [Parameter] public List<LeaveType> AllLeaveTypes { get; set; } = new();
 
-    private string SelectedEmployeeId { get; set; } = "";
     private string SelectedLeaveTypeId { get; set; } = "";
     private DateTime? StartDate { get; set; }
     private DateTime? EndDate { get; set; }
     private bool IsHalfDay { get; set; } = false;
     private string HalfDaySession { get; set; } = "AM";
     private string Reason { get; set; } = "";
-
-    private EmployeeLeaveView? SelectedEmployee =>
-        AllEmployees.FirstOrDefault(e => e.EmployeeId == SelectedEmployeeId);
 
     private LeaveType? SelectedLeaveType =>
         AllLeaveTypes.FirstOrDefault(l => l.Id == SelectedLeaveTypeId);
@@ -208,16 +230,16 @@
     {
         get
         {
-            if (SelectedEmployee == null) return AllLeaveTypes;
+            if (CurrentEmployee == null) return AllLeaveTypes;
             return AllLeaveTypes.Where(lt =>
             {
                 return lt.Category switch
                 {
-                    LeaveCategory.Maternity => SelectedEmployee.Gender == "F",
-                    LeaveCategory.Magna     => SelectedEmployee.Gender == "F",
-                    LeaveCategory.Vawc      => SelectedEmployee.Gender == "F",
-                    LeaveCategory.Paternity => SelectedEmployee.Gender == "M",
-                    LeaveCategory.Sil       => SelectedEmployee.HireDate <= DateTime.Today.AddYears(-1),
+                    LeaveCategory.Maternity => CurrentEmployee.Gender == "F",
+                    LeaveCategory.Magna     => CurrentEmployee.Gender == "F",
+                    LeaveCategory.Vawc      => CurrentEmployee.Gender == "F",
+                    LeaveCategory.Paternity => CurrentEmployee.Gender == "M",
+                    LeaveCategory.Sil       => CurrentEmployee.HireDate <= DateTime.Today.AddYears(-1),
                     _ => true
                 };
             }).ToList();
@@ -225,7 +247,7 @@
     }
 
     private LeaveBalance? CurrentBalance =>
-        SelectedEmployee?.Balances.FirstOrDefault(b => b.LeaveTypeId == SelectedLeaveTypeId);
+        CurrentEmployee?.Balances.FirstOrDefault(b => b.LeaveTypeId == SelectedLeaveTypeId);
 
     private decimal DaysRequested
     {
@@ -237,7 +259,7 @@
     }
 
     private bool CanSubmit =>
-        !string.IsNullOrEmpty(SelectedEmployeeId)
+        CurrentEmployee is not null
         && !string.IsNullOrEmpty(SelectedLeaveTypeId)
         && StartDate.HasValue
         && EndDate.HasValue
@@ -246,7 +268,6 @@
 
     protected override void OnInitialized()
     {
-        if (AllEmployees.Count > 0) SelectedEmployeeId = AllEmployees[0].EmployeeId;
         StartDate = DateTime.Today.AddDays(7);
         EndDate = DateTime.Today.AddDays(7);
     }
@@ -256,7 +277,7 @@
     private void Submit()
     {
         if (!CanSubmit) return;
-        var emp = SelectedEmployee!;
+        var emp = CurrentEmployee!;
         var lt = SelectedLeaveType!;
         var req = new LeaveRequest
         {

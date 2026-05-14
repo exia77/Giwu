@@ -62,8 +62,8 @@ internal sealed class QueueReportRunHandler(
             Status = ReportRunStatus.Completed,
             RanByUserId = user.IsAuthenticated ? user.Id : null,
             RanByDisplay = user.IsAuthenticated ? user.DisplayName : "system",
-            PeriodStart = r.PeriodStart,
-            PeriodEnd = r.PeriodEnd,
+            PeriodStart = AsUtc(r.PeriodStart),
+            PeriodEnd = AsUtc(r.PeriodEnd),
             DepartmentsCsv = string.Join(",", r.Departments ?? Array.Empty<string>()),
             RowCount = rowCount,
             FileSizeBytes = SimulateFileSize(rowCount, r.Format),
@@ -104,5 +104,16 @@ internal sealed class QueueReportRunHandler(
         ReportFormat.Excel => "xlsx",
         ReportFormat.Pdf   => "pdf",
         _ => "txt",
+    };
+
+    // JSON deserialization yields DateTime with Kind=Unspecified, which Npgsql
+    // rejects for `timestamp with time zone` columns. Treat the wire value as
+    // already-UTC (the API contract); convert Local explicitly if it ever shows up.
+    private static DateTime? AsUtc(DateTime? d) => d?.Kind switch
+    {
+        null                    => null,
+        DateTimeKind.Utc        => d,
+        DateTimeKind.Local      => d.Value.ToUniversalTime(),
+        _                       => DateTime.SpecifyKind(d.Value, DateTimeKind.Utc),
     };
 }

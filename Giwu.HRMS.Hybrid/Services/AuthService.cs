@@ -20,6 +20,9 @@ public class AuthService(
     public string UserEmail => CurrentUser?.Email ?? string.Empty;
     public string UserName  => CurrentUser?.Name  ?? string.Empty;
 
+    /// <summary>Cached EmployeeId from the most recent login/refresh/me response.</summary>
+    public Guid? EmployeeId { get; private set; }
+
     public event Action? OnChange;
 
     public async Task<string?> LoginAsync(string email, string password, CancellationToken ct = default)
@@ -50,6 +53,7 @@ public class AuthService(
             resp.User.Roles,
             resp.User.Permissions);
 
+        EmployeeId = resp.User.EmployeeId;
         IsLoggedIn = true;
         OnChange?.Invoke();
         return null;
@@ -69,6 +73,7 @@ public class AuthService(
                 roles.SetCurrentUserFromApi(
                     me.Value.Id.ToString(), me.Value.DisplayName, me.Value.Email,
                     me.Value.Roles, me.Value.Permissions);
+                EmployeeId = me.Value.EmployeeId;
                 IsLoggedIn = true;
                 OnChange?.Invoke();
                 return;
@@ -84,6 +89,7 @@ public class AuthService(
             roles.SetCurrentUserFromApi(
                 r.User.Id.ToString(), r.User.DisplayName, r.User.Email,
                 r.User.Roles, r.User.Permissions);
+            EmployeeId = r.User.EmployeeId;
             IsLoggedIn = true;
             OnChange?.Invoke();
             return;
@@ -103,6 +109,7 @@ public class AuthService(
         }
 
         await tokens.ClearAsync();
+        EmployeeId = null;
         IsLoggedIn = false;
         OnChange?.Invoke();
     }

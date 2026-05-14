@@ -22,12 +22,16 @@ internal sealed class HeadcountSummaryHandler(IApplicationDbContext db)
 
         var byStatus = emps.GroupBy(e => e.Status).ToDictionary(g => g.Key, g => g.Count());
 
-        var deptCounts = await (from d in db.Departments
-                                select new HeadcountByDepartmentDto(
-                                    d.Id, d.Name,
-                                    db.Employees.Count(e => e.DepartmentId == d.Id)))
-                                .OrderByDescending(x => x.Count)
-                                .ToListAsync(ct);
+        // Pull raw rows server-side, sort + project client-side. EF Core can't
+        // translate OrderByDescending on a constructed DTO's property.
+        var rawCounts = await db.Departments
+            .Select(d => new { d.Id, d.Name, Count = db.Employees.Count(e => e.DepartmentId == d.Id) })
+            .ToListAsync(ct);
+
+        var deptCounts = rawCounts
+            .OrderByDescending(x => x.Count)
+            .Select(x => new HeadcountByDepartmentDto(x.Id, x.Name, x.Count))
+            .ToList();
 
         return Result<HeadcountSummaryDto>.Success(new HeadcountSummaryDto(
             TotalEmployees: emps.Count,

@@ -8,6 +8,8 @@
 @inject IJSRuntime JS
 @inject ILeavesApi LeavesApi
 @inject IEmployeesApi EmployeesApi
+@inject Giwu.HRMS.Hybrid.Services.AuthService Auth
+@inject Giwu.HRMS.Hybrid.Services.RoleAuthService RoleAuth
 
 @using Pages.Leaves.Components
 
@@ -892,12 +894,18 @@
         .OrderBy(r => r.EmployeeName)
         .ToList();
 
+    /// <summary>True when the signed-in user is a plain Employee — they should
+    /// only see their own requests, never the org-wide queue.</summary>
+    private bool IsSelfServiceOnly => RoleAuth.CurrentUser.Role == UserRole.Employee;
+
     private IEnumerable<LeaveRequest> FilteredRequests
     {
         get
         {
             var q = (RequestSearch ?? "").Trim().ToLower();
+            var myEmployeeId = Auth.EmployeeId?.ToString();
             return Requests.Where(r =>
+                (!IsSelfServiceOnly || (myEmployeeId is not null && r.EmployeeId == myEmployeeId)) &&
                 (RequestStatusFilter == "All" || StatusLabel(r.Status) == RequestStatusFilter) &&
                 (string.IsNullOrEmpty(RequestTypeFilter) || r.LeaveTypeId == RequestTypeFilter) &&
                 (string.IsNullOrEmpty(q)
@@ -990,9 +998,19 @@
 
     private async Task OpenFileLeaveDialog()
     {
+        // The API always files for the signed-in user's Employee record (JWT 'eid'
+        // claim). Resolve that employee from the loaded list so the dialog can show
+        // gender/tenure-aware leave types and balance hints. If the user isn't mapped
+        // to any employee (e.g. seeded admin), the dialog opens in read-only mode
+        // with a "contact HR" message.
+        var meEmployeeId = Auth.EmployeeId?.ToString();
+        var currentEmployee = meEmployeeId is null
+            ? null
+            : Employees.FirstOrDefault(e => e.EmployeeId == meEmployeeId);
+
         var parameters = new DialogParameters
         {
-            ["AllEmployees"] = Employees,
+            ["CurrentEmployee"] = currentEmployee,
             ["AllLeaveTypes"] = LeaveTypes.Where(l => l.IsActive).ToList(),
         };
         var options = new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true };

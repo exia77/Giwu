@@ -7,6 +7,18 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Giwu.Application.Reports.Persisted;
 
+// JSON deserialization yields DateTime with Kind=Unspecified, which Npgsql
+// rejects for `timestamp with time zone`. Treat the wire value as already-UTC.
+internal static class ScheduleDateTimeNormalize
+{
+    public static DateTime AsUtc(DateTime d) => d.Kind switch
+    {
+        DateTimeKind.Utc   => d,
+        DateTimeKind.Local => d.ToUniversalTime(),
+        _                  => DateTime.SpecifyKind(d, DateTimeKind.Utc),
+    };
+}
+
 // ── List ────────────────────────────────────────────────────────────────────
 public sealed record ListReportSchedulesQuery() : IRequest<Result<IReadOnlyList<ReportScheduleDto>>>;
 
@@ -53,7 +65,7 @@ internal sealed class CreateReportScheduleHandler(IApplicationDbContext db)
             Cadence = r.Cadence,
             RecipientsCsv = string.Join(",", r.Recipients ?? Array.Empty<string>()),
             Format = r.Format,
-            NextRunAt = r.NextRunAt,
+            NextRunAt = ScheduleDateTimeNormalize.AsUtc(r.NextRunAt),
             IsActive = true,
         };
         db.ReportSchedules.Add(s);
@@ -79,7 +91,7 @@ internal sealed class UpdateReportScheduleHandler(IApplicationDbContext db)
         s.Cadence = r.Cadence;
         s.RecipientsCsv = string.Join(",", r.Recipients ?? Array.Empty<string>());
         s.Format = r.Format;
-        s.NextRunAt = r.NextRunAt;
+        s.NextRunAt = ScheduleDateTimeNormalize.AsUtc(r.NextRunAt);
         s.IsActive = r.IsActive;
 
         await db.SaveChangesAsync(ct);

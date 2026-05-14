@@ -73,6 +73,9 @@
         <PackageReference Include="Microsoft.Extensions.Logging.Debug" Version="10.0.0" />
         <PackageReference Include="Microsoft.AspNetCore.SignalR.Client" Version="10.0.0" />
         <PackageReference Include="MudBlazor" Version="9.*" />
+        <!-- Real PDF/Excel export for the Reports page (replaces the CSV-only stub). -->
+        <PackageReference Include="ClosedXML" Version="0.104.*" />
+        <PackageReference Include="QuestPDF" Version="2024.12.*" />
     </ItemGroup>
 
     <ItemGroup>

@@ -6,6 +6,14 @@ public interface IAuthService
     UserSession? CurrentUser { get; }
     string UserEmail { get; }
     string UserName { get; }
+
+    /// <summary>
+    /// The Employee record GUID linked to this user via the JWT "eid" claim, or
+    /// null if the user is not mapped to an employee (e.g. the seeded admin).
+    /// Pages that file leave / submit OT / view personal payslips key off this.
+    /// </summary>
+    Guid? EmployeeId { get; }
+
     event Action? OnChange;
 
     /// <summary>Calls the API. Returns null on success, a user-readable error message on failure.</summary>

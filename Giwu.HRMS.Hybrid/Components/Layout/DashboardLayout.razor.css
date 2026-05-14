@@ -236,6 +236,15 @@ nav { padding: 12px 8px; flex: 1; }
   .role-badge-finance  { background: #FEF3C7; color: #78350F; }
   .role-badge-employee { background: #E5E7EB; color: #374151; }
 
+  /* Flex container around the topbar's right-side controls
+     (week chip, theme toggle, notifications bell, account avatar).
+     Provides consistent gap so the controls don't sit shoulder-to-shoulder. */
+  .topbar-actions {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
   /* ── Notifications bell + popover ── */
   .notif-wrap {
     position: relative;
@@ -248,14 +257,17 @@ nav { padding: 12px 8px; flex: 1; }
     justify-content: center;
     width: 34px;
     height: 34px;
-    border: none;
+    border: 1px solid var(--mud-palette-lines-inputs);
     background: transparent;
-    color: inherit;
+    color: var(--mud-palette-text-primary);
     border-radius: 999px;
     cursor: pointer;
-    transition: background .15s;
+    transition: background .15s, border-color .15s, color .15s;
   }
-  .notif-activator:hover { background: var(--mud-palette-action-default-hover); }
+  .notif-activator:hover {
+    background: var(--mud-palette-action-default-hover);
+    border-color: var(--mud-palette-text-secondary);
+  }
   .notif-badge {
     position: absolute;
     top: 2px;
@@ -357,23 +369,26 @@ nav { padding: 12px 8px; flex: 1; }
   .account-menu-wrap {
     position: relative;
     display: inline-block;
-    margin-left: 4px;
   }
   .account-menu-activator {
     display: inline-flex;
     align-items: center;
     gap: 4px;
     padding: 2px 8px 2px 2px;
-    border: none;
+    border: 1px solid var(--mud-palette-lines-inputs);
     background: transparent;
     border-radius: 999px;
     cursor: pointer;
-    color: inherit;
-    transition: background .15s;
+    color: var(--mud-palette-text-primary);
+    transition: background .15s, border-color .15s;
   }
-  .account-menu-activator:hover { background: var(--mud-palette-action-default-hover); }
+  .account-menu-activator:hover {
+    background: var(--mud-palette-action-default-hover);
+    border-color: var(--mud-palette-text-secondary);
+  }
   .account-menu-chevron {
-    opacity: .55;
+    opacity: .85;
+    color: var(--mud-palette-text-primary);
     flex-shrink: 0;
   }
 

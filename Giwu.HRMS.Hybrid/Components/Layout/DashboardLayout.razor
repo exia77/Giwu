@@ -179,7 +179,9 @@
       <MudText Typo="Typo.h6" Class="fw-semibold" Style="line-height:1.1">@TopbarTitle</MudText>
       <MudText Typo="Typo.caption" Style="opacity:.55">@Today.ToString("dddd, MMMM d, yyyy")</MudText>
     </div>
-    <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Style="font-size:.7rem">
+    <div class="topbar-actions">
+    <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined"
+             Style="font-size:.7rem;border-color:var(--mud-palette-lines-inputs);color:var(--mud-palette-text-primary)">
       Q2 · Week @WeekNumber
     </MudChip>
 
@@ -285,6 +287,7 @@
           </button>
         </div>
       }
+    </div>
     </div>
   </MudAppBar>
 

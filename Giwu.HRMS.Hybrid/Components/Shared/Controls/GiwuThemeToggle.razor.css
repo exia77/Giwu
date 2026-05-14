@@ -22,13 +22,16 @@
     background: var(--form-hover);
 }
 
-/* Inline variant — for placement inside app bars / toolbars (no fixed positioning). */
+/* Inline variant — for placement inside app bars / toolbars (no fixed positioning).
+   Uses --mud-palette-lines-inputs (rgba(0,0,0,.42) light / rgba(255,255,255,.7) dark)
+   instead of --mud-palette-divider so the outline stays visible against the
+   topbar background in light mode. */
 .theme-toggle-inline {
     position: static;
     width: 34px;
     height: 34px;
     border-radius: 50%;
-    border: 1px solid var(--mud-palette-divider, var(--form-border));
+    border: 1px solid var(--mud-palette-lines-inputs, var(--form-border));
     background: transparent;
     color: var(--mud-palette-text-primary, var(--form-sub));
     display: inline-flex;
@@ -40,4 +43,5 @@
 
 .theme-toggle-inline:hover {
     background: var(--mud-palette-action-default-hover, var(--form-hover));
+    border-color: var(--mud-palette-text-secondary, var(--form-border));
 }
