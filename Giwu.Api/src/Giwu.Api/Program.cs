@@ -135,19 +135,26 @@ app.MapEndpoints();
 // the query string (see JwtBearer.OnMessageReceived above).
 app.MapHub<NotificationsHub>("/hubs/notifications").RequireAuthorization();
 
-// ── DB migrate + seed on startup (DEV only) ────────────────────────────────
-if (app.Environment.IsDevelopment())
+// ── DB migrate + seed on startup ───────────────────────────────────────────
+// Migrations and the bootstrap Seeder (roles + admin user) run on every
+// environment so a fresh QA / production database is usable on first boot.
+// The SampleDataSeeder (demo employees, attendance history, payroll, etc.)
+// only runs in Development by default; flip SEED_SAMPLE_DATA=true to get
+// the demo dataset on a QA deploy without rebuilding.
 {
     using var scope = app.Services.CreateScope();
     var db      = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
     var hasher  = scope.ServiceProvider.GetRequiredService<IPasswordHasher>();
     var tenant  = scope.ServiceProvider.GetRequiredService<ITenantContext>();
+
     await db.Database.MigrateAsync();
     await Seeder.SeedAsync(db, hasher, tenant);
 
-    // Optional sample dataset for local dev. Idempotent — only runs on an
-    // empty DB. Comment out to keep the app starting empty.
-    await SampleDataSeeder.SeedAsync(db, hasher);
+    var seedSampleData = app.Environment.IsDevelopment()
+        || string.Equals(Environment.GetEnvironmentVariable("SEED_SAMPLE_DATA"),
+                         "true", StringComparison.OrdinalIgnoreCase);
+    if (seedSampleData)
+        await SampleDataSeeder.SeedAsync(db, hasher);
 }
 
 app.Run();

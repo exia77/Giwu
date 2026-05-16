@@ -1,0 +1,53 @@
+# Build context exclusions for the root Dockerfile.
+# Drops everything the API image doesn't need so the upload to Docker
+# (and to remote builders like Render's) stays small.
+
+# MAUI Hybrid client — not part of the API image.
+Giwu.HRMS.Hybrid/
+
+# Build outputs
+**/bin/
+**/obj/
+**/.vs/
+**/*.user
+**/*.suo
+
+# Git
+.git/
+.gitignore
+.gitattributes
+
+# IDE / OS
+.idea/
+.vscode/
+**/.DS_Store
+**/Thumbs.db
+
+# Claude / agent state
+.claude/
+**/CLAUDE.md
+
+# Compose + dev-only files
+docker-compose.yml
+docker-compose.*.yml
+
+# Docs / readmes — not needed in the image
+README.md
+**/*.md
+LICENSE*
+
+# Test results
+**/TestResults/
+
+# Local secrets — should never ship in an image
+**/appsettings.Development.json
+**/appsettings.Local.json
+**/*.pfx
+**/*.key
+
+# Old / duplicate Dockerfiles (this root Dockerfile is authoritative).
+# Keep deploy/ Dockerfile available locally but don't upload it to the
+# build context.
+Giwu.Api/Dockerfile
+Giwu.Api/deploy/
+deploy/
