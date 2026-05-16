@@ -10,6 +10,7 @@
 @inject IEmployeesApi EmployeesApi
 @inject Giwu.HRMS.Hybrid.Services.AuthService Auth
 @inject Giwu.HRMS.Hybrid.Services.RoleAuthService RoleAuth
+@inject Giwu.HRMS.Hybrid.Services.NavBadgeService NavBadges
 
 @using Pages.Leaves.Components
 
@@ -17,49 +18,49 @@
 
 <PageTitle>Leave &amp; Time Off</PageTitle>
 
+@if (IsSelfServiceOnly)
+{
+    @* ── Employee header: prominent File Leave button, no org-wide widgets ── *@
+    <MudPaper Class="pa-4 mb-4" Elevation="0"
+              Style="border:1px solid var(--mud-palette-divider);border-radius:10px;display:flex;align-items:center;gap:16px;flex-wrap:wrap">
+        <div style="flex:1;min-width:200px">
+            <MudText Typo="Typo.h6" Class="fw-semibold">Leave &amp; Time Off</MudText>
+            <MudText Typo="Typo.body2" Class="giwu-text-muted">
+                File a leave request and track its status below. HR will approve or reject it.
+            </MudText>
+        </div>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" Size="Size.Large"
+                   StartIcon="@Icons.Material.Outlined.Add" DisableElevation="true"
+                   OnClick="OpenFileLeaveDialog">File Leave</MudButton>
+    </MudPaper>
+}
+
+@if (!IsSelfServiceOnly)
+{
+
 @* ═══════════════════════════════════════════════════
-   KPI STRIP
+   KPI STRIP  (HR / Manager / Admin only)
 ═══════════════════════════════════════════════════ *@
 <MudGrid Spacing="3" Class="mb-4">
     <MudItem xs="12" sm="6" md="3">
-        <MudPaper Class="leave-kpi" Elevation="0">
-            <div class="kpi-label">Pending Requests</div>
-            <div class="kpi-value">@PendingCount</div>
-            <div class="kpi-sub">
-                <span class="kpi-dot" style="background:var(--leave-amber)"></span>
-                <span>need approval</span>
-            </div>
-        </MudPaper>
+        <StatCard Label="Pending requests" Value="@PendingCount.ToString()"
+                  Sub="need approval"
+                  Variant="@(PendingCount > 0 ? StatTone.Warning : StatTone.Success)" />
     </MudItem>
     <MudItem xs="12" sm="6" md="3">
-        <MudPaper Class="leave-kpi" Elevation="0">
-            <div class="kpi-label">On Leave Today</div>
-            <div class="kpi-value">@OnLeaveTodayCount</div>
-            <div class="kpi-sub">
-                <span class="kpi-dot" style="background:var(--leave-blue)"></span>
-                <span>@OnLeaveTomorrowCount tomorrow</span>
-            </div>
-        </MudPaper>
+        <StatCard Label="On leave today" Value="@OnLeaveTodayCount.ToString()"
+                  Sub="@($"{OnLeaveTomorrowCount} tomorrow")"
+                  Variant="StatTone.Info" />
     </MudItem>
     <MudItem xs="12" sm="6" md="3">
-        <MudPaper Class="leave-kpi" Elevation="0">
-            <div class="kpi-label">Approved This Month</div>
-            <div class="kpi-value">@ApprovedThisMonthCount</div>
-            <div class="kpi-sub">
-                <span class="kpi-dot" style="background:var(--leave-green)"></span>
-                <span>@TotalDaysThisMonth.ToString("F0") days total</span>
-            </div>
-        </MudPaper>
+        <StatCard Label="Approved this month" Value="@ApprovedThisMonthCount.ToString()"
+                  Sub="@($"{TotalDaysThisMonth:F0} days total")"
+                  Variant="StatTone.Success" />
     </MudItem>
     <MudItem xs="12" sm="6" md="3">
-        <MudPaper Class="leave-kpi" Elevation="0">
-            <div class="kpi-label">Avg VL Balance</div>
-            <div class="kpi-value">@AvgVlBalance.ToString("F1")</div>
-            <div class="kpi-sub">
-                <span class="kpi-dot" style="background:var(--leave-purple)"></span>
-                <span>days available per employee</span>
-            </div>
-        </MudPaper>
+        <StatCard Label="Avg VL balance" Value="@AvgVlBalance.ToString("F1")"
+                  Sub="days available per employee"
+                  Variant="StatTone.Accent" />
     </MudItem>
 </MudGrid>
 
@@ -73,7 +74,7 @@
             <div class="leave-card-header">
                 <div>
                     <MudText Typo="Typo.subtitle2" Class="fw-medium">@CalendarMonth.ToString("MMMM yyyy")</MudText>
-                    <MudText Typo="Typo.caption" Style="opacity:.55">Team availability</MudText>
+                    <MudText Typo="Typo.caption" Class="giwu-text-muted">Team availability</MudText>
                 </div>
                 <MudStack Row="true" Spacing="1">
                     <MudIconButton Icon="@Icons.Material.Outlined.ChevronLeft" Size="Size.Small"
@@ -162,10 +163,9 @@
             </div>
             @if (PendingCount == 0)
             {
-                <div class="leave-empty">
-                    <div class="leave-empty-icon">✓</div>
-                    <MudText Typo="Typo.body2">All caught up.</MudText>
-                </div>
+                <EmptyState Title="All caught up."
+                            Hint="No pending leave requests need approval."
+                            Icon="@Icons.Material.Outlined.CheckCircle" />
             }
             else
             {
@@ -197,8 +197,11 @@
     </MudItem>
 </MudGrid>
 
+} @* end of !IsSelfServiceOnly *@
+
 @* ═══════════════════════════════════════════════════
-   MAIN TABS
+   MAIN TABS — visible for everyone (Employees see only their own requests
+   thanks to the FilteredRequests filter).
 ═══════════════════════════════════════════════════ *@
 <MudPaper Class="leave-card" Elevation="0">
     <MudTabs Elevation="0" Rounded="false" ApplyEffectsToContainer="true"
@@ -211,7 +214,7 @@
             <div class="leave-card-header">
                 <div>
                     <MudText Typo="Typo.subtitle2" Class="fw-medium">All Leave Requests</MudText>
-                    <MudText Typo="Typo.caption" Style="opacity:.55">
+                    <MudText Typo="Typo.caption" Class="giwu-text-muted">
                         @FilteredRequests.Count() of @Requests.Count records
                     </MudText>
                 </div>
@@ -263,7 +266,7 @@
                             <MudAvatar Style="@AvatarStyle(context.EmployeeAv)" Class="leave-av-sm">@context.EmployeeInit</MudAvatar>
                             <div>
                                 <MudText Typo="Typo.body2" Class="fw-medium" Style="line-height:1.2">@context.EmployeeName</MudText>
-                                <MudText Typo="Typo.caption" Style="opacity:.55">@context.Dept</MudText>
+                                <MudText Typo="Typo.caption" Class="giwu-text-muted">@context.Dept</MudText>
                             </div>
                         </div>
                     </MudTd>
@@ -283,12 +286,17 @@
                         <MudStack Row="true" Spacing="1" Justify="Justify.FlexEnd">
                             @if (context.Status == LeaveRequestStatus.Pending)
                             {
-                                <MudButton Size="Size.Small" Variant="Variant.Filled" Color="Color.Success"
-                                           DisableElevation="true" Style="min-width:unset"
-                                           OnClick="@(() => ApproveRequest(context.Id))">Approve</MudButton>
-                                <MudButton Size="Size.Small" Variant="Variant.Outlined" Color="Color.Error"
-                                           Style="min-width:unset"
-                                           OnClick="@(() => OpenRejectDialog(context.Id))">Reject</MudButton>
+                                @* Approve / Reject are HR / Manager actions only.
+                                   Employees can still Cancel their own pending requests. *@
+                                @if (!IsSelfServiceOnly)
+                                {
+                                    <MudButton Size="Size.Small" Variant="Variant.Filled" Color="Color.Success"
+                                               DisableElevation="true" Style="min-width:unset"
+                                               OnClick="@(() => ApproveRequest(context.Id))">Approve</MudButton>
+                                    <MudButton Size="Size.Small" Variant="Variant.Outlined" Color="Color.Error"
+                                               Style="min-width:unset"
+                                               OnClick="@(() => OpenRejectDialog(context.Id))">Reject</MudButton>
+                                }
                                 <MudIconButton Icon="@Icons.Material.Outlined.Cancel" Size="Size.Small"
                                                Title="Cancel request"
                                                OnClick="@(() => CancelRequest(context.Id))" />
@@ -299,10 +307,9 @@
                     </MudTd>
                 </RowTemplate>
                 <NoRecordsContent>
-                    <div class="leave-empty">
-                        <div class="leave-empty-icon">⊘</div>
-                        <MudText Typo="Typo.body2">No requests match your filter.</MudText>
-                    </div>
+                    <EmptyState Title="No requests match your filter."
+                                Hint="Try changing the status or type filter, or clearing the search."
+                                Icon="@Icons.Material.Outlined.SearchOff" />
                 </NoRecordsContent>
                 <PagerContent>
                     <MudTablePager PageSizeOptions="new int[] { 10, 25, 50 }" />
@@ -310,13 +317,16 @@
             </MudTable>
         </MudTabPanel>
 
-        @* ══ BALANCES TAB ══ *@
+        @* ══ BALANCES TAB ══ (HR / Manager / Admin only — Employees only see
+           their own balance via the File Leave dialog preview) *@
+        @if (!IsSelfServiceOnly)
+        {
         <MudTabPanel Text="@($"Balances ({Employees.Count})")"
                      Icon="@Icons.Material.Outlined.AccountBalance">
             <div class="leave-card-header">
                 <div>
                     <MudText Typo="Typo.subtitle2" Class="fw-medium">Leave Balances</MudText>
-                    <MudText Typo="Typo.caption" Style="opacity:.55">
+                    <MudText Typo="Typo.caption" Class="giwu-text-muted">
                         Available days per employee, by leave type
                     </MudText>
                 </div>
@@ -355,7 +365,7 @@
                             <MudAvatar Style="@AvatarStyle(context.Av)" Class="leave-av-sm">@context.Init</MudAvatar>
                             <div>
                                 <MudText Typo="Typo.body2" Class="fw-medium" Style="line-height:1.2">@context.Name</MudText>
-                                <MudText Typo="Typo.caption" Style="opacity:.55">@context.Role</MudText>
+                                <MudText Typo="Typo.caption" Class="giwu-text-muted">@context.Role</MudText>
                             </div>
                         </div>
                     </MudTd>
@@ -451,24 +461,26 @@
                     </MudTd>
                 </RowTemplate>
                 <NoRecordsContent>
-                    <div class="leave-empty">
-                        <div class="leave-empty-icon">⊘</div>
-                        <MudText Typo="Typo.body2">No employees match your filter.</MudText>
-                    </div>
+                    <EmptyState Title="No employees match your filter."
+                                Icon="@Icons.Material.Outlined.SearchOff" />
                 </NoRecordsContent>
                 <PagerContent>
                     <MudTablePager PageSizeOptions="new int[] { 10, 25, 50 }" />
                 </PagerContent>
             </MudTable>
         </MudTabPanel>
+        }
 
-        @* ══ LEAVE TYPES TAB ══ *@
+        @* ══ LEAVE TYPES TAB ══ (HR / Manager / Admin only — Employees don't
+           configure leave types) *@
+        @if (!IsSelfServiceOnly)
+        {
         <MudTabPanel Text="@($"Leave Types ({LeaveTypes.Count(l => l.IsActive)})")"
                      Icon="@Icons.Material.Outlined.Style">
             <div class="leave-card-header">
                 <div>
                     <MudText Typo="Typo.subtitle2" Class="fw-medium">Leave Type Configuration</MudText>
-                    <MudText Typo="Typo.caption" Style="opacity:.55">
+                    <MudText Typo="Typo.caption" Class="giwu-text-muted">
                         PH-mandated and company-defined leave types
                     </MudText>
                 </div>
@@ -545,13 +557,13 @@
                     </MudTd>
                 </RowTemplate>
                 <NoRecordsContent>
-                    <div class="leave-empty">
-                        <div class="leave-empty-icon">⊘</div>
-                        <MudText Typo="Typo.body2">No leave types configured.</MudText>
-                    </div>
+                    <EmptyState Title="No leave types configured."
+                                Hint="Add a leave type so employees can file requests."
+                                Icon="@Icons.Material.Outlined.Inventory2" />
                 </NoRecordsContent>
             </MudTable>
         </MudTabPanel>
+        }
     </MudTabs>
 </MudPaper>
 
@@ -584,21 +596,11 @@
         --leave-grey:         #6B7280;
     }
 
-    /* ── KPI ─────────────────────────────────────────────── */
-    .leave-kpi {
-        padding: 16px;
-        border: 0.5px solid var(--mud-palette-divider);
-        border-radius: 10px;
-        background: var(--mud-palette-background);
-    }
-    .kpi-label { font-size: 10.5px; letter-spacing: .07em; text-transform: uppercase; opacity: .55; margin-bottom: 6px; font-weight: 500; }
-    .kpi-value { font-size: 2rem; font-weight: 500; line-height: 1; margin-bottom: 5px; font-variant-numeric: tabular-nums; }
-    .kpi-sub   { font-size: 11.5px; opacity: .6; display: flex; align-items: center; gap: 5px; }
-    .kpi-dot   { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; display: inline-block; }
+    /* KPI cards moved to the StatCard shared component (tokens.css). */
 
     /* ── Card shell ───────────────────────────────────────── */
     .leave-card {
-        border: 0.5px solid var(--mud-palette-divider);
+        border: 1px solid var(--mud-palette-divider);
         border-radius: 10px;
         overflow: hidden;
         background: var(--mud-palette-background);
@@ -608,7 +610,7 @@
         align-items: center;
         justify-content: space-between;
         padding: 12px 16px;
-        border-bottom: 0.5px solid var(--mud-palette-divider);
+        border-bottom: 1px solid var(--mud-palette-divider);
         gap: 8px;
     }
     .fw-medium { font-weight: 500; }
@@ -694,7 +696,7 @@
     .cal-days { gap: 4px; }
     .cal-day {
         aspect-ratio: 1.15 / 1;
-        border: 0.5px solid var(--mud-palette-divider);
+        border: 1px solid var(--mud-palette-divider);
         border-radius: 6px;
         padding: 4px 5px;
         display: flex;
@@ -751,7 +753,7 @@
         flex-wrap: wrap;
         gap: 14px;
         padding: 0 16px 14px;
-        border-top: 0.5px solid var(--mud-palette-divider);
+        border-top: 1px solid var(--mud-palette-divider);
         padding-top: 10px;
         margin-top: 6px;
     }
@@ -772,7 +774,7 @@
     .pending-row {
         display: flex; align-items: center; gap: 10px;
         padding: 10px 14px;
-        border-bottom: 0.5px solid var(--mud-palette-divider);
+        border-bottom: 1px solid var(--mud-palette-divider);
         cursor: pointer;
         transition: background .1s;
     }
@@ -793,13 +795,12 @@
     .filter-row {
         display: flex; flex-wrap: wrap; align-items: center; gap: 8px;
         padding: 10px 14px;
-        border-bottom: 0.5px solid var(--mud-palette-divider);
+        border-bottom: 1px solid var(--mud-palette-divider);
     }
     .leave-search { max-width: 220px; }
 
     /* ── Empty state ──────────────────────────────────────── */
-    .leave-empty { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 40px 16px; opacity: .55; gap: 8px; }
-    .leave-empty-icon { font-size: 28px; }
+    /* .leave-empty removed — replaced by the EmptyState shared component. */
 
     /* ── Tabs ─────────────────────────────────────────────── */
     .leave-tab-panel { padding: 0 !important; }
@@ -950,6 +951,7 @@
         {
             Snackbar.Add($"Approved leave for {req.EmployeeName}", Severity.Success);
             await ReloadAsync();
+            await NavBadges.RequestRefreshAsync();
         }
         else
         {
@@ -974,6 +976,7 @@
             {
                 Snackbar.Add($"Rejected leave for {req.EmployeeName}", Severity.Warning);
                 await ReloadAsync();
+                await NavBadges.RequestRefreshAsync();
             }
             else
             {
@@ -991,6 +994,7 @@
             ["Request"] = req,
             ["OnApprove"] = EventCallback.Factory.Create<string>(this, ApproveRequest),
             ["OnReject"] = EventCallback.Factory.Create<string>(this, async rid => await OpenRejectDialog(rid)),
+            ["CanResolve"] = !IsSelfServiceOnly,
         };
         var options = new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true };
         await DialogService.ShowAsync<LeaveRequestDetailDialog>("Leave Request", parameters, options);
@@ -1037,6 +1041,7 @@
             {
                 Snackbar.Add($"Filed {req.LeaveTypeCode} for {req.EmployeeName}", Severity.Success);
                 await ReloadAsync();
+                await NavBadges.RequestRefreshAsync();
             }
             else
             {
@@ -1104,6 +1109,7 @@
         {
             Snackbar.Add($"Cancelled leave for {req.EmployeeName}", Severity.Info);
             await ReloadAsync();
+            await NavBadges.RequestRefreshAsync();
         }
         else
         {
@@ -1200,8 +1206,34 @@
         { _loadError = typesTask.Result.ErrorMessage ?? "Failed to load leave types"; return; }
         if (!requestsTask.Result.Success || requestsTask.Result.Value is null)
         { _loadError = requestsTask.Result.ErrorMessage ?? "Failed to load leave requests"; return; }
-        if (!employeesTask.Result.Success || employeesTask.Result.Value is null)
-        { _loadError = employeesTask.Result.ErrorMessage ?? "Failed to load employees"; return; }
+
+        // Employee role can't list other employees (403). When that happens,
+        // synthesize a one-entry list with just the signed-in user so the File
+        // Leave dialog still has something to bind to. HR/Manager/Admin get the
+        // full list and the page works as before.
+        var employeesOk = employeesTask.Result.Success && employeesTask.Result.Value is not null;
+        if (!employeesOk && IsSelfServiceOnly && Auth.EmployeeId is Guid selfEid)
+        {
+            Employees = new List<EmployeeLeaveView>
+            {
+                new()
+                {
+                    EmployeeId = selfEid.ToString(),
+                    Name       = string.IsNullOrWhiteSpace(Auth.UserName) ? Auth.UserEmail : Auth.UserName,
+                    Init       = MakeInitialsFromFullName(Auth.UserName),
+                    Av         = "primary",
+                    Role       = "",
+                    Dept       = "",
+                    Gender     = "",
+                    HireDate   = DateTime.Today.AddYears(-1),  // permissive: lets SIL show; API still validates
+                },
+            };
+        }
+        else if (!employeesOk)
+        {
+            _loadError = employeesTask.Result.ErrorMessage ?? "Failed to load employees";
+            return;
+        }
 
         LeaveTypes = typesTask.Result.Value.Select(MapType).ToList();
 
@@ -1213,7 +1245,9 @@
 
         var requestsByEmp = Requests.GroupBy(r => r.EmployeeId).ToDictionary(g => g.Key, g => g.ToList());
 
-        Employees = employeesTask.Result.Value.Items.Select(e =>
+        if (!employeesOk) return;  // self-service fallback already populated Employees above
+
+        Employees = employeesTask.Result.Value!.Items.Select(e =>
         {
             var view = new EmployeeLeaveView
             {

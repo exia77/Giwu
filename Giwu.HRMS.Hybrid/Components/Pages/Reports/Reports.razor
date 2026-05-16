@@ -18,6 +18,9 @@
 @inject IPayrollApi PayrollApi
 @inject IRecruitmentApi RecruitmentApi
 @inject IBenefitsApi BenefitsApi
+@inject Giwu.HRMS.Hybrid.Services.ThemeService Theme
+@inject Giwu.HRMS.Hybrid.Components.Pages.Settings.SettingsService AppSettings
+@inject Giwu.HRMS.Hybrid.Services.RoleAuthService RoleAuth
 
 @using Pages.Reports.Components
 
@@ -30,7 +33,7 @@
     <div class="rep-card-header">
         <div>
             <MudText Typo="Typo.subtitle2" Class="fw-medium">Live HR Snapshot</MudText>
-            <MudText Typo="Typo.caption" Style="opacity:.55">
+            <MudText Typo="Typo.caption" Class="giwu-text-muted">
                 @if (LiveLoading)
                 {
                     <span>Loading from API…</span>
@@ -51,45 +54,28 @@
     </div>
     <MudGrid Spacing="3" Class="px-3 pb-3">
         <MudItem xs="12" sm="6" md="3">
-            <div class="kpi-label">Headcount</div>
-            <div class="kpi-value">@(Headcount?.TotalEmployees.ToString("N0") ?? "—")</div>
-            <div class="kpi-sub">
-                <span class="kpi-dot" style="background:var(--rep-green)"></span>
-                <span>@(Headcount is null ? "" : $"{Headcount.Active} active · {Headcount.Departments} depts")</span>
-            </div>
+            <StatCard Label="Headcount"
+                      Value="@(Headcount?.TotalEmployees.ToString("N0") ?? "—")"
+                      Sub="@(Headcount is null ? "" : $"{Headcount.Active} active · {Headcount.Departments} depts")"
+                      Variant="StatTone.Success" />
         </MudItem>
         <MudItem xs="12" sm="6" md="3">
-            <div class="kpi-label">Attendance (last 30d)</div>
-            <div class="kpi-value">@(Attendance?.Present.ToString("N0") ?? "—")</div>
-            <div class="kpi-sub">
-                <span class="kpi-dot" style="background:var(--rep-blue)"></span>
-                <span>
-                    @(Attendance is null ? "" :
-                        $"{Attendance.Late} late · {Attendance.Absent} absent · {Attendance.AverageHoursPerDay:0.0}h/day")
-                </span>
-            </div>
+            <StatCard Label="Attendance (last 30d)"
+                      Value="@(Attendance?.Present.ToString("N0") ?? "—")"
+                      Sub="@(Attendance is null ? "" : $"{Attendance.Late} late · {Attendance.Absent} absent · {Attendance.AverageHoursPerDay:0.0}h/day")"
+                      Variant="StatTone.Info" />
         </MudItem>
         <MudItem xs="12" sm="6" md="3">
-            <div class="kpi-label">Leave Requests</div>
-            <div class="kpi-value">@(Leave?.TotalRequests.ToString("N0") ?? "—")</div>
-            <div class="kpi-sub">
-                <span class="kpi-dot" style="background:var(--rep-purple)"></span>
-                <span>
-                    @(Leave is null ? "" :
-                        $"{Leave.Pending} pending · {Leave.Approved} approved · {Leave.DaysApprovedThisMonth:0.#}d this mo")
-                </span>
-            </div>
+            <StatCard Label="Leave requests"
+                      Value="@(Leave?.TotalRequests.ToString("N0") ?? "—")"
+                      Sub="@(Leave is null ? "" : $"{Leave.Pending} pending · {Leave.Approved} approved · {Leave.DaysApprovedThisMonth:0.#}d this mo")"
+                      Variant="StatTone.Accent" />
         </MudItem>
         <MudItem xs="12" sm="6" md="3">
-            <div class="kpi-label">Payroll (YTD)</div>
-            <div class="kpi-value">@(Payroll is null ? "—" : $"₱{Payroll.TotalNet:N0}")</div>
-            <div class="kpi-sub">
-                <span class="kpi-dot" style="background:var(--rep-amber)"></span>
-                <span>
-                    @(Payroll is null ? "" :
-                        $"{Payroll.PayPeriods} periods · {Payroll.Payslips} payslips")
-                </span>
-            </div>
+            <StatCard Label="Payroll (YTD)"
+                      Value="@(Payroll is null ? "—" : $"₱{Payroll.TotalNet:N0}")"
+                      Sub="@(Payroll is null ? "" : $"{Payroll.PayPeriods} periods · {Payroll.Payslips} payslips")"
+                      Variant="StatTone.Warning" />
         </MudItem>
     </MudGrid>
 </MudPaper>
@@ -99,44 +85,24 @@
 ═══════════════════════════════════════════════════ *@
 <MudGrid Spacing="3" Class="mb-4">
     <MudItem xs="12" sm="6" md="3">
-        <MudPaper Class="rep-kpi" Elevation="0">
-            <div class="kpi-label">Reports Available</div>
-            <div class="kpi-value">@ReportDefinitions.Count</div>
-            <div class="kpi-sub">
-                <span class="kpi-dot" style="background:var(--rep-green)"></span>
-                <span>across @CategoriesUsedCount categories</span>
-            </div>
-        </MudPaper>
+        <StatCard Label="Reports available" Value="@ReportDefinitions.Count.ToString()"
+                  Sub="@($"across {CategoriesUsedCount} categories")"
+                  Variant="StatTone.Success" />
     </MudItem>
     <MudItem xs="12" sm="6" md="3">
-        <MudPaper Class="rep-kpi" Elevation="0">
-            <div class="kpi-label">Generated This Month</div>
-            <div class="kpi-value">@GeneratedThisMonthCount</div>
-            <div class="kpi-sub">
-                <span class="kpi-dot" style="background:var(--rep-blue)"></span>
-                <span>@RecentSuccessfulRuns successful</span>
-            </div>
-        </MudPaper>
+        <StatCard Label="Generated this month" Value="@GeneratedThisMonthCount.ToString()"
+                  Sub="@($"{RecentSuccessfulRuns} successful")"
+                  Variant="StatTone.Info" />
     </MudItem>
     <MudItem xs="12" sm="6" md="3">
-        <MudPaper Class="rep-kpi" Elevation="0">
-            <div class="kpi-label">Scheduled Reports</div>
-            <div class="kpi-value">@ActiveScheduleCount</div>
-            <div class="kpi-sub">
-                <span class="kpi-dot" style="background:var(--rep-purple)"></span>
-                <span>@TotalRecipientsCount recipients total</span>
-            </div>
-        </MudPaper>
+        <StatCard Label="Scheduled reports" Value="@ActiveScheduleCount.ToString()"
+                  Sub="@($"{TotalRecipientsCount} recipients total")"
+                  Variant="StatTone.Accent" />
     </MudItem>
     <MudItem xs="12" sm="6" md="3">
-        <MudPaper Class="rep-kpi" Elevation="0">
-            <div class="kpi-label">Compliance Due Soon</div>
-            <div class="kpi-value">@ComplianceDueSoonCount</div>
-            <div class="kpi-sub">
-                <span class="kpi-dot" style="background:var(--rep-amber)"></span>
-                <span>within 30 days</span>
-            </div>
-        </MudPaper>
+        <StatCard Label="Compliance due soon" Value="@ComplianceDueSoonCount.ToString()"
+                  Sub="within 30 days"
+                  Variant="@(ComplianceDueSoonCount > 0 ? StatTone.Warning : StatTone.Success)" />
     </MudItem>
 </MudGrid>
 
@@ -150,10 +116,13 @@
             <div class="rep-card-header">
                 <div>
                     <MudText Typo="Typo.subtitle2" Class="fw-medium">Compliance Calendar</MudText>
-                    <MudButton Variant="Variant.Text" Size="Size.Small"
-                               StartIcon="@Icons.Material.Outlined.Add"
-                               OnClick="OpenAddComplianceDialog">Add</MudButton>
-                    <MudText Typo="Typo.caption" Style="opacity:.55">Statutory filing deadlines</MudText>
+                    @if (RoleAuth.Can("reports.run"))
+                    {
+                        <MudButton Variant="Variant.Text" Size="Size.Small"
+                                   StartIcon="@Icons.Material.Outlined.Add"
+                                   OnClick="OpenAddComplianceDialog">Add</MudButton>
+                    }
+                    <MudText Typo="Typo.caption" Class="giwu-text-muted">Statutory filing deadlines</MudText>
                 </div>
                 <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Style="height:20px;font-size:.7rem">
                     Next 60 days
@@ -167,10 +136,8 @@
             }
             @if (upcoming.Count == 0)
             {
-                <div class="rep-empty">
-                    <div class="rep-empty-icon">✓</div>
-                    <MudText Typo="Typo.body2">No filings due in the next 60 days.</MudText>
-                </div>
+                <EmptyState Title="No filings due in the next 60 days."
+                            Icon="@Icons.Material.Outlined.CheckCircle" />
             }
             else
             {
@@ -192,17 +159,20 @@
                                 @c.PeriodCovered · @DaysUntilLabel(c.DueDate)
                             </div>
                         </div>
-                        <MudStack Row="true" Spacing="1" @onclick:stopPropagation="true">
-                            <MudIconButton Icon="@Icons.Material.Outlined.Edit" Size="Size.Small"
-                                           Title="Edit"
-                                           OnClick="@(() => OpenEditComplianceDialog(c.Id))" />
-                            <MudIconButton Icon="@Icons.Material.Outlined.CheckCircle" Size="Size.Small"
-                                           Title="Mark as filed" Color="Color.Success"
-                                           OnClick="@(() => MarkComplianceFiled(c.Id))" />
-                            <MudIconButton Icon="@Icons.Material.Outlined.PlayArrow" Size="Size.Small"
-                                           Title="Run filing report" Color="Color.Primary"
-                                           OnClick="@(() => RunComplianceReport(c.Id))" />
-                        </MudStack>
+                        @if (RoleAuth.Can("reports.run"))
+                        {
+                            <MudStack Row="true" Spacing="1" @onclick:stopPropagation="true">
+                                <MudIconButton Icon="@Icons.Material.Outlined.Edit" Size="Size.Small"
+                                               Title="Edit"
+                                               OnClick="@(() => OpenEditComplianceDialog(c.Id))" />
+                                <MudIconButton Icon="@Icons.Material.Outlined.CheckCircle" Size="Size.Small"
+                                               Title="Mark as filed" Color="Color.Success"
+                                               OnClick="@(() => MarkComplianceFiled(c.Id))" />
+                                <MudIconButton Icon="@Icons.Material.Outlined.PlayArrow" Size="Size.Small"
+                                               Title="Run filing report" Color="Color.Primary"
+                                               OnClick="@(() => RunComplianceReport(c.Id))" />
+                            </MudStack>
+                        }
                     </div>
                 }
             }
@@ -222,10 +192,9 @@
             }
             @if (recent.Count == 0)
             {
-                <div class="rep-empty">
-                    <div class="rep-empty-icon">—</div>
-                    <MudText Typo="Typo.body2">No runs yet.</MudText>
-                </div>
+                <EmptyState Title="No runs yet."
+                            Hint="Run a report to see it here."
+                            Icon="@Icons.Material.Outlined.History" />
             }
             else
             {
@@ -267,13 +236,16 @@
             <div class="rep-card-header">
                 <div>
                     <MudText Typo="Typo.subtitle2" Class="fw-medium">Available Reports</MudText>
-                    <MudText Typo="Typo.caption" Style="opacity:.55">
+                    <MudText Typo="Typo.caption" Class="giwu-text-muted">
                         Click any card to configure and run
                     </MudText>
                 </div>
-                <MudButton Variant="Variant.Outlined" Size="Size.Small"
-                           StartIcon="@Icons.Material.Outlined.Add"
-                           OnClick="OpenCustomReportDialog">Custom Report</MudButton>
+                @if (RoleAuth.Can("reports.run"))
+                {
+                    <MudButton Variant="Variant.Outlined" Size="Size.Small"
+                               StartIcon="@Icons.Material.Outlined.Add"
+                               OnClick="OpenCustomReportDialog">Custom Report</MudButton>
+                }
             </div>
 
             <div class="catalog-filter-row">
@@ -293,17 +265,20 @@
 
             @if (FilteredDefinitions.Count == 0)
             {
-                <div class="rep-empty">
-                    <div class="rep-empty-icon">⊘</div>
-                    <MudText Typo="Typo.body2">No reports match your filter.</MudText>
-                </div>
+                <EmptyState Title="No reports match your filter."
+                            Icon="@Icons.Material.Outlined.SearchOff" />
             }
             else
             {
                 <div class="catalog-grid">
                     @foreach (var def in FilteredDefinitions)
                     {
-                        <div class="catalog-card" @onclick="@(() => OpenRunReportDialog(def.Id))">
+                        @* Card click runs a report — requires reports.run. For
+                            read-only viewers (Manager) the card stays visible
+                            but the click is a no-op and the cursor goes to
+                            default to signal it isn't actionable. *@
+                        <div class="catalog-card @(RoleAuth.Can("reports.run") ? "is-runnable" : "is-readonly")"
+                             @onclick="@(() => HandleCatalogClick(def.Id))">
                             <div class="catalog-card-head">
                                 <div class="@($"catalog-icon {CategoryBadgeClass(def.Category)}")">
                                     <MudIcon Icon="@CategoryIcon(def.Category)" Size="Size.Small" />
@@ -324,7 +299,7 @@
                                         @CategoryLabel(def.Category)
                                     </span>
                                 </div>
-                                @if (def.IsCustom)
+                                @if (def.IsCustom && RoleAuth.Can("reports.run"))
                                 {
                                     <div class="catalog-card-actions" @onclick:stopPropagation="true">
                                         <MudIconButton Icon="@Icons.Material.Outlined.Edit" Size="Size.Small"
@@ -341,7 +316,7 @@
                                 @if (!string.IsNullOrEmpty(def.RegulatoryReference))
                                 {
                                     <span class="catalog-ref">
-                                        <MudIcon Icon="@Icons.Material.Outlined.Gavel" Size="Size.Small" Style="opacity:.6" />
+                                        <MudIcon Icon="@Icons.Material.Outlined.Gavel" Size="Size.Small" Class="giwu-text-muted" />
                                         @def.RegulatoryReference
                                     </span>
                                 }
@@ -368,13 +343,16 @@
             <div class="rep-card-header">
                 <div>
                     <MudText Typo="Typo.subtitle2" Class="fw-medium">Scheduled Reports</MudText>
-                    <MudText Typo="Typo.caption" Style="opacity:.55">
+                    <MudText Typo="Typo.caption" Class="giwu-text-muted">
                         Reports that run automatically on a recurring basis
                     </MudText>
                 </div>
-                <MudButton Variant="Variant.Filled" Color="Color.Primary" Size="Size.Small"
-                           StartIcon="@Icons.Material.Outlined.AddAlert" DisableElevation="true"
-                           OnClick="OpenAddScheduleDialog">Add Schedule</MudButton>
+                @if (RoleAuth.Can("reports.run"))
+                {
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary" Size="Size.Small"
+                               StartIcon="@Icons.Material.Outlined.AddAlert" DisableElevation="true"
+                               OnClick="OpenAddScheduleDialog">Add Schedule</MudButton>
+                }
             </div>
 
             <MudTable T="ReportSchedule" Items="@Schedules" Dense="true" Hover="true"
@@ -442,27 +420,29 @@
                         }
                     </MudTd>
                     <MudTd DataLabel="Actions" Style="text-align:right">
-                        <MudStack Row="true" Spacing="1" Justify="Justify.FlexEnd">
-                            <MudIconButton Icon="@(context.IsActive ? Icons.Material.Outlined.Pause : Icons.Material.Outlined.PlayArrow)"
-                                           Size="Size.Small"
-                                           Title="@(context.IsActive ? "Pause" : "Resume")"
-                                           OnClick="@(() => ToggleSchedule(context.Id))" />
-                            <MudIconButton Icon="@Icons.Material.Outlined.Edit" Size="Size.Small"
-                                           OnClick="@(() => OpenEditScheduleDialog(context.Id))" />
-                            <MudIconButton Icon="@Icons.Material.Outlined.PlayCircle" Size="Size.Small"
-                                           Title="Run now" Color="Color.Primary"
-                                           OnClick="@(() => RunScheduleNow(context.Id))" />
-                            <MudIconButton Icon="@Icons.Material.Outlined.Delete" Size="Size.Small" Color="Color.Error"
-                                           Title="Delete schedule"
-                                           OnClick="@(() => DeleteSchedule(context.Id))" />
-                        </MudStack>
+                        @if (RoleAuth.Can("reports.run"))
+                        {
+                            <MudStack Row="true" Spacing="1" Justify="Justify.FlexEnd">
+                                <MudIconButton Icon="@(context.IsActive ? Icons.Material.Outlined.Pause : Icons.Material.Outlined.PlayArrow)"
+                                               Size="Size.Small"
+                                               Title="@(context.IsActive ? "Pause" : "Resume")"
+                                               OnClick="@(() => ToggleSchedule(context.Id))" />
+                                <MudIconButton Icon="@Icons.Material.Outlined.Edit" Size="Size.Small"
+                                               OnClick="@(() => OpenEditScheduleDialog(context.Id))" />
+                                <MudIconButton Icon="@Icons.Material.Outlined.PlayCircle" Size="Size.Small"
+                                               Title="Run now" Color="Color.Primary"
+                                               OnClick="@(() => RunScheduleNow(context.Id))" />
+                                <MudIconButton Icon="@Icons.Material.Outlined.Delete" Size="Size.Small" Color="Color.Error"
+                                               Title="Delete schedule"
+                                               OnClick="@(() => DeleteSchedule(context.Id))" />
+                            </MudStack>
+                        }
                     </MudTd>
                 </RowTemplate>
                 <NoRecordsContent>
-                    <div class="rep-empty">
-                        <div class="rep-empty-icon">⊘</div>
-                        <MudText Typo="Typo.body2">No scheduled reports configured.</MudText>
-                    </div>
+                    <EmptyState Title="No scheduled reports configured."
+                                Hint="Schedule a report to run on a recurring cadence."
+                                Icon="@Icons.Material.Outlined.Schedule" />
                 </NoRecordsContent>
                 <PagerContent>
                     <MudTablePager PageSizeOptions="new int[] { 10, 25, 50 }" />
@@ -476,7 +456,7 @@
             <div class="rep-card-header">
                 <div>
                     <MudText Typo="Typo.subtitle2" Class="fw-medium">Run History</MudText>
-                    <MudText Typo="Typo.caption" Style="opacity:.55">
+                    <MudText Typo="Typo.caption" Class="giwu-text-muted">
                         @FilteredRuns.Count() of @Runs.Count runs
                     </MudText>
                 </div>
@@ -525,7 +505,7 @@
                                 <MudText Typo="Typo.body2" Class="fw-medium" Style="line-height:1.2">@context.DefinitionName</MudText>
                                 @if (!string.IsNullOrEmpty(context.ScheduleId))
                                 {
-                                    <MudText Typo="Typo.caption" Style="opacity:.55">scheduled</MudText>
+                                    <MudText Typo="Typo.caption" Class="giwu-text-muted">scheduled</MudText>
                                 }
                             </div>
                         </div>
@@ -586,10 +566,8 @@
                     </MudTd>
                 </RowTemplate>
                 <NoRecordsContent>
-                    <div class="rep-empty">
-                        <div class="rep-empty-icon">⊘</div>
-                        <MudText Typo="Typo.body2">No runs match your filter.</MudText>
-                    </div>
+                    <EmptyState Title="No runs match your filter."
+                                Icon="@Icons.Material.Outlined.SearchOff" />
                 </NoRecordsContent>
                 <PagerContent>
                     <MudTablePager PageSizeOptions="new int[] { 10, 25, 50, 100 }" />
@@ -627,19 +605,10 @@
         --rep-teal-text:    #084040;
     }
 
-    .rep-kpi {
-        padding: 16px;
-        border: 0.5px solid var(--mud-palette-divider);
-        border-radius: 10px;
-        background: var(--mud-palette-background);
-    }
-    .kpi-label { font-size: 10.5px; letter-spacing: .07em; text-transform: uppercase; opacity: .55; margin-bottom: 6px; font-weight: 500; }
-    .kpi-value { font-size: 2rem; font-weight: 500; line-height: 1; margin-bottom: 5px; font-variant-numeric: tabular-nums; }
-    .kpi-sub   { font-size: 11.5px; opacity: .6; display: flex; align-items: center; gap: 5px; }
-    .kpi-dot   { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; display: inline-block; }
+    /* KPI cards moved to the StatCard shared component (tokens.css). */
 
     .rep-card {
-        border: 0.5px solid var(--mud-palette-divider);
+        border: 1px solid var(--mud-palette-divider);
         border-radius: 10px;
         overflow: hidden;
         background: var(--mud-palette-background);
@@ -647,7 +616,7 @@
     .rep-card-header {
         display: flex; align-items: center; justify-content: space-between;
         padding: 12px 16px;
-        border-bottom: 0.5px solid var(--mud-palette-divider);
+        border-bottom: 1px solid var(--mud-palette-divider);
         gap: 8px;
     }
     .fw-medium { font-weight: 500; }
@@ -703,7 +672,7 @@
     .compliance-row {
         display: flex; align-items: center; gap: 12px;
         padding: 10px 14px;
-        border-bottom: 0.5px solid var(--mud-palette-divider);
+        border-bottom: 1px solid var(--mud-palette-divider);
         cursor: pointer; transition: background .1s;
     }
     .compliance-row:last-child { border-bottom: none; }
@@ -727,7 +696,7 @@
     .recent-row {
         display: flex; align-items: center; gap: 10px;
         padding: 10px 14px;
-        border-bottom: 0.5px solid var(--mud-palette-divider);
+        border-bottom: 1px solid var(--mud-palette-divider);
         cursor: pointer; transition: background .1s;
     }
     .recent-row:last-child { border-bottom: none; }
@@ -753,17 +722,19 @@
         padding: 16px;
     }
     .catalog-card {
-        border: 0.5px solid var(--mud-palette-divider);
+        border: 1px solid var(--mud-palette-divider);
         border-radius: 10px;
         padding: 14px;
-        cursor: pointer;
         transition: border-color .1s, box-shadow .1s;
         display: flex; flex-direction: column; gap: 10px;
     }
-    .catalog-card:hover {
+    /* Only roles with reports.run can click cards to run a report. */
+    .catalog-card.is-runnable { cursor: pointer; }
+    .catalog-card.is-runnable:hover {
         border-color: var(--rep-green);
         box-shadow: 0 1px 3px rgba(0,0,0,.05);
     }
+    .catalog-card.is-readonly { cursor: default; opacity: 0.85; }
     .catalog-card-head { display: flex; gap: 10px; align-items: flex-start; }
     .catalog-card-actions { display: flex; gap: 2px; margin-left: auto; flex-shrink: 0; }
     .catalog-card-actions .mud-icon-button { padding: 4px; }
@@ -787,7 +758,7 @@
     .catalog-card-footer {
         display: flex; justify-content: space-between; align-items: center;
         gap: 8px; margin-top: 4px; padding-top: 8px;
-        border-top: 0.5px solid var(--mud-palette-divider);
+        border-top: 1px solid var(--mud-palette-divider);
     }
     .catalog-ref {
         display: inline-flex; align-items: center; gap: 4px;
@@ -805,12 +776,11 @@
     .catalog-filter-row {
         display: flex; flex-wrap: wrap; align-items: center; gap: 8px;
         padding: 10px 14px;
-        border-bottom: 0.5px solid var(--mud-palette-divider);
+        border-bottom: 1px solid var(--mud-palette-divider);
     }
     .rep-search { max-width: 260px; }
 
-    .rep-empty { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 40px 16px; opacity: .55; gap: 8px; }
-    .rep-empty-icon { font-size: 28px; }
+    /* .rep-empty removed — replaced by the EmptyState shared component. */
 
     .rep-tab-panel { padding: 0 !important; }
     .rep-tab-item  { min-width: unset !important; text-transform: none !important; font-size: 13px !important; }
@@ -885,6 +855,13 @@
     }
 
     // ─── Actions ────────────────────────────────────────────────
+
+    /// <summary>Catalog-card click handler. Read-only roles (e.g. Manager
+    /// with reports.view but not reports.run) get a no-op; their UI is
+    /// already styled as non-actionable via .catalog-card.is-readonly.</summary>
+    private Task HandleCatalogClick(string defId) =>
+        RoleAuth.Can("reports.run") ? OpenRunReportDialog(defId) : Task.CompletedTask;
+
     private async Task OpenRunReportDialog(string defId)
     {
         var def = ReportDefinitions.FirstOrDefault(d => d.Id == defId);
@@ -1293,7 +1270,12 @@
                     realSize = content.LongLength;
                     break;
                 case ReportFormat.Pdf:
-                    content = ReportExporter.BuildPdf(def.Name, csv.Csv);
+                    content = ReportExporter.BuildPdf(
+                        def.Name,
+                        csv.Csv,
+                        companyName: Theme.CompanyName,
+                        periodText: BuildPeriodText(run),
+                        accentHex: AppSettings.AccentColor);
                     realSize = content.LongLength;
                     break;
                 default:
@@ -1490,6 +1472,19 @@
         var needsQuoting = value.Contains(',') || value.Contains('"') || value.Contains('\n');
         var escaped = value.Replace("\"", "\"\"");
         return needsQuoting ? $"\"{escaped}\"" : escaped;
+    }
+
+    /// <summary>Renders the run's PeriodStart/PeriodEnd as "MMM d – MMM d, yyyy"
+    /// for the PDF header. Returns null when the run isn't date-scoped so the
+    /// PDF exporter can omit the Period row entirely.</summary>
+    private static string? BuildPeriodText(ReportRun run)
+    {
+        if (!run.PeriodStart.HasValue || !run.PeriodEnd.HasValue) return null;
+        var s = run.PeriodStart.Value;
+        var e = run.PeriodEnd.Value;
+        return s.Year == e.Year
+            ? $"{s:MMM d} – {e:MMM d, yyyy}"
+            : $"{s:MMM d, yyyy} – {e:MMM d, yyyy}";
     }
 
     private sealed record CsvPayload(string Csv, int RowCount, long SizeBytes);

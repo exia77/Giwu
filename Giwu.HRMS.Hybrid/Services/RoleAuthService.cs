@@ -161,6 +161,14 @@ public class RoleAuthService : IRoleAuthService
     /// <summary>Permission keys received from the JWT (e.g. "leave.request.approve").</summary>
     public HashSet<string> ApiPermissions { get; private set; } = new();
 
+    /// <summary>
+    /// True if the signed-in user's JWT carries the given API permission key.
+    /// Use this to gate write-level UI controls (Add/Edit/Delete buttons) so
+    /// users don't see actions that would 403 on submit.
+    /// </summary>
+    /// <example><c>@if (RoleAuth.Can("employees.manage")) { ... Add button ... }</c></example>
+    public bool Can(string permissionKey) => ApiPermissions.Contains(permissionKey);
+
     private static string MakeInitials(string displayName, string email)
     {
         var src = string.IsNullOrWhiteSpace(displayName) ? email : displayName;

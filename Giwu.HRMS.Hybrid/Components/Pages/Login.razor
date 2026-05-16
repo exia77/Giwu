@@ -233,6 +233,7 @@
 
     private async Task HandleGoogle()
     {
+        if (_busy) return;
         _error = null;
 
         if (string.IsNullOrEmpty(_googleClientId))
@@ -241,19 +242,21 @@
             return;
         }
 
-        if (!_googleReady)
-        {
-            _error = "Google sign-in isn't ready yet. Please try again in a moment.";
-            return;
-        }
-
+        _busy = true;
+        await InvokeAsync(StateHasChanged);
         try
         {
-            await JS.InvokeVoidAsync("giwuGoogle.prompt");
+            // The GIS popup can't run inside the MAUI WebView (Google rejects the
+            // 0.0.0.0 origin), so we kick the user out to the system browser and
+            // poll the API until the server-side callback completes the flow.
+            var error = await Auth.SignInWithGoogleSystemBrowserAsync();
+            if (error is null) Navigation.NavigateTo("/");
+            else _error = error;
         }
-        catch (Exception ex)
+        finally
         {
-            _error = $"Could not open Google sign-in: {ex.Message}";
+            _busy = false;
+            await InvokeAsync(StateHasChanged);
         }
     }
 

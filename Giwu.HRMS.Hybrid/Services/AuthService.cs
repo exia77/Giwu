@@ -37,6 +37,48 @@ public class AuthService(
         return await CompleteLoginAsync(result, "Google sign-in failed");
     }
 
+    public async Task<string?> SignInWithGoogleSystemBrowserAsync(CancellationToken ct = default)
+    {
+        var start = await api.GoogleOAuthStartAsync(ct);
+        if (!start.Success || start.Value is null)
+            return start.ErrorMessage ?? "Could not start Google sign-in.";
+
+        // Open Google's auth page in the user's default browser. The user signs in
+        // there; our /api/auth/google/callback completes the flow on the server.
+        try
+        {
+            await Microsoft.Maui.ApplicationModel.Browser.Default.OpenAsync(
+                start.Value.AuthorizationUrl,
+                Microsoft.Maui.ApplicationModel.BrowserLaunchMode.External);
+        }
+        catch (Exception ex)
+        {
+            return $"Could not open the browser: {ex.Message}";
+        }
+
+        // Poll the server until the user finishes (or cancels, or 2 minutes pass).
+        var sessionId = start.Value.SessionId;
+        var deadline = DateTimeOffset.UtcNow.AddMinutes(2);
+        while (DateTimeOffset.UtcNow < deadline)
+        {
+            try { await Task.Delay(TimeSpan.FromSeconds(2), ct); }
+            catch (TaskCanceledException) { return "Sign-in cancelled."; }
+
+            var poll = await api.GoogleOAuthPollAsync(sessionId, ct);
+            if (!poll.Success || poll.Value is null) continue; // transient network blip — keep trying
+            if (!poll.Value.Ready) continue;                   // user still finishing in the browser
+
+            if (poll.Value.Login is null)
+                return poll.Value.ErrorMessage ?? "Google sign-in failed.";
+
+            return await CompleteLoginAsync(
+                new AuthCallResult<LoginResponse>(true, poll.Value.Login, null),
+                "Google sign-in failed");
+        }
+
+        return "Sign-in timed out. Try again.";
+    }
+
     private async Task<string?> CompleteLoginAsync(AuthCallResult<LoginResponse> result, string defaultError)
     {
         if (!result.Success || result.Value is null)

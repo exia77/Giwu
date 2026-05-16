@@ -1,0 +1,33 @@
+@*  Action toolbar with optional dividers between groups. Stays scannable
+    when 5+ actions are needed (Attendance page had this problem).
+
+    Usage:
+        <Toolbar>
+            <ToolbarGroup>
+                <MudIconButton ... />
+                <MudIconButton ... />
+            </ToolbarGroup>
+            <ToolbarDivider />
+            <ToolbarGroup>
+                <MudButton ...>Add</MudButton>
+            </ToolbarGroup>
+        </Toolbar>                                                  *@
+
+<div class="giwu-toolbar @(Wrap ? "is-wrap" : "")">@ChildContent</div>
+
+@code {
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    /// <summary>Allow groups to wrap to a second line on narrow viewports.
+    /// Defaults to true; set false if the parent already constrains width.</summary>
+    [Parameter] public bool Wrap { get; set; } = true;
+}
+
+<style>
+    .giwu-toolbar {
+        display: flex;
+        align-items: center;
+        gap: var(--giwu-space-3);
+    }
+    .giwu-toolbar.is-wrap { flex-wrap: wrap; }
+</style>

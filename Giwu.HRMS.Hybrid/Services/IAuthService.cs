@@ -22,6 +22,13 @@ public interface IAuthService
     /// <summary>Exchanges a Google ID token for a session. Same contract as <see cref="LoginAsync"/>.</summary>
     Task<string?> SignInWithGoogleAsync(string idToken, CancellationToken ct = default);
 
+    /// <summary>
+    /// MAUI-friendly Google sign-in: starts a server-side OAuth flow, opens the
+    /// system browser, and polls until the user finishes signing in (or cancels,
+    /// or times out). Returns null on success, or a human-readable error message.
+    /// </summary>
+    Task<string?> SignInWithGoogleSystemBrowserAsync(CancellationToken ct = default);
+
     /// <summary>Restores a session from stored tokens at app startup. No-op if no tokens or expired.</summary>
     Task TryRestoreAsync(CancellationToken ct = default);
 

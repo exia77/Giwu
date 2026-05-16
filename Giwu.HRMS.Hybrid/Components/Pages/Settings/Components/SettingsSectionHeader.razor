@@ -11,7 +11,7 @@
         </div>
         @if (!string.IsNullOrEmpty(Description))
         {
-            <MudText Typo="Typo.body2" Style="opacity:.6" Class="mt-1">@Description</MudText>
+            <MudText Typo="Typo.body2" Class="mt-1 giwu-text-muted">@Description</MudText>
         }
     </div>
     @if (OnSave.HasDelegate || OnReset.HasDelegate)

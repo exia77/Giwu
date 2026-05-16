@@ -31,14 +31,26 @@ public static class AttendanceFormatting
         _         => ""
     };
 
+    /// <summary>Maps a status string to the new design-token pill class.
+    /// Use with <c>giwu-pill</c>: <c>&lt;span class="giwu-pill @PillToneClass(s)"&gt;</c></summary>
+    public static string PillToneClass(string s) => s switch
+    {
+        "Present" => "success",
+        "Absent"  => "danger",
+        "Late"    => "warning",
+        "Leave"   => "accent",
+        "WFH"     => "info",
+        _         => "neutral",
+    };
+
     public static string AvatarStyle(string av) => av switch
     {
-        "green"   => "background:var(--att-green-light);color:var(--att-green-text)",
-        "blue"    => "background:var(--att-blue-light);color:var(--att-blue-text)",
-        "amber"   => "background:var(--att-amber-light);color:var(--att-amber-text)",
-        "red"     => "background:var(--att-red-light);color:var(--att-red-text)",
-        "purple"  => "background:var(--att-purple-light);color:var(--att-purple-text)",
-        "primary" => "background:var(--att-green-light);color:var(--att-green-text)",
+        "green"   => "background:var(--giwu-status-success-bg);color:var(--giwu-status-success-fg)",
+        "blue"    => "background:var(--giwu-status-info-bg);color:var(--giwu-status-info-fg)",
+        "amber"   => "background:var(--giwu-status-warning-bg);color:var(--giwu-status-warning-fg)",
+        "red"     => "background:var(--giwu-status-danger-bg);color:var(--giwu-status-danger-fg)",
+        "purple"  => "background:var(--giwu-status-accent-bg);color:var(--giwu-status-accent-fg)",
+        "primary" => "background:var(--giwu-status-success-bg);color:var(--giwu-status-success-fg)",
         _         => ""
     };
 

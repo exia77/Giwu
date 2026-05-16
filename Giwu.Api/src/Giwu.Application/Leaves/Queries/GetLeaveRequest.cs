@@ -7,7 +7,7 @@ namespace Giwu.Application.Leaves.Queries;
 
 public sealed record GetLeaveRequestQuery(Guid Id) : IRequest<Result<LeaveRequestDto>>;
 
-internal sealed class GetLeaveRequestHandler(IApplicationDbContext db)
+internal sealed class GetLeaveRequestHandler(IApplicationDbContext db, ICurrentUser user)
     : IRequestHandler<GetLeaveRequestQuery, Result<LeaveRequestDto>>
 {
     public async Task<Result<LeaveRequestDto>> Handle(GetLeaveRequestQuery q, CancellationToken ct)
@@ -24,9 +24,14 @@ internal sealed class GetLeaveRequestHandler(IApplicationDbContext db)
                 r.Reason, r.Status, r.CreatedAt)
         ).FirstOrDefaultAsync(ct);
 
-        return dto is null
-            ? Result<LeaveRequestDto>.NotFound()
-            : Result<LeaveRequestDto>.Success(dto);
+        if (dto is null) return Result<LeaveRequestDto>.NotFound();
+
+        // Callers without leave.request.view.all may only read their own records.
+        if (!user.Permissions.Contains("leave.request.view.all")
+            && dto.EmployeeId != user.EmployeeId)
+            return Result<LeaveRequestDto>.Forbidden();
+
+        return Result<LeaveRequestDto>.Success(dto);
     }
 }
 

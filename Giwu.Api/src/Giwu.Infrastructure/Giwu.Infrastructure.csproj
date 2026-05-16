@@ -16,6 +16,7 @@
     <PackageReference Include="BCrypt.Net-Next" Version="4.0.3" />
     <PackageReference Include="MailKit" Version="4.13.0" />
     <PackageReference Include="Google.Apis.Auth" Version="1.68.0" />
+    <PackageReference Include="Stripe.net" Version="48.*" />
   </ItemGroup>
   <PropertyGroup>
     <!-- Suppress NU1903 for System.Security.Cryptography.Xml: pulled transitively by

@@ -34,7 +34,18 @@ internal sealed class ListLeaveRequestsHandler(
         if (q.Status.HasValue)
             query = query.Where(x => x.r.Status == q.Status.Value);
 
-        if (q.MineOnly && user.EmployeeId is { } eid)
+        // Auto-scope: callers without leave.request.view.all see only their own
+        // leave requests, regardless of how they invoked the endpoint. Matches
+        // the AttendanceQueries pattern so Employee role can't enumerate the
+        // tenant's leaves by omitting mineOnly.
+        var canSeeAll = user.Permissions.Contains("leave.request.view.all");
+        if (!canSeeAll)
+        {
+            if (user.EmployeeId is not { } selfEid)
+                return Result<PagedResult<LeaveRequestDto>>.Forbidden();
+            query = query.Where(x => x.r.EmployeeId == selfEid);
+        }
+        else if (q.MineOnly && user.EmployeeId is { } eid)
             query = query.Where(x => x.r.EmployeeId == eid);
         else if (q.EmployeeId.HasValue)
             query = query.Where(x => x.r.EmployeeId == q.EmployeeId.Value);

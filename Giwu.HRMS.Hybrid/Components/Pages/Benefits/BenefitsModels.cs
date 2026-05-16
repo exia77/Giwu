@@ -180,12 +180,12 @@ public static class BenefitsFormatting
 
     public static string AvatarStyle(string av) => av switch
     {
-        "green"   => "background:var(--ben-green-light);color:var(--ben-green-text)",
-        "blue"    => "background:var(--ben-blue-light);color:var(--ben-blue-text)",
-        "amber"   => "background:var(--ben-amber-light);color:var(--ben-amber-text)",
-        "red"     => "background:var(--ben-red-light);color:var(--ben-red-text)",
-        "purple"  => "background:var(--ben-purple-light);color:var(--ben-purple-text)",
-        "primary" => "background:var(--ben-green-light);color:var(--ben-green-text)",
+        "green"   => "background:var(--giwu-status-success-bg);color:var(--giwu-status-success-fg)",
+        "blue"    => "background:var(--giwu-status-info-bg);color:var(--giwu-status-info-fg)",
+        "amber"   => "background:var(--giwu-status-warning-bg);color:var(--giwu-status-warning-fg)",
+        "red"     => "background:var(--giwu-status-danger-bg);color:var(--giwu-status-danger-fg)",
+        "purple"  => "background:var(--giwu-status-accent-bg);color:var(--giwu-status-accent-fg)",
+        "primary" => "background:var(--giwu-status-success-bg);color:var(--giwu-status-success-fg)",
         _ => ""
     };
 

@@ -87,12 +87,12 @@ public static class RecruitmentFormatting
 
     public static string AvatarStyle(string av) => av switch
     {
-        "green"   => "background:var(--rec-green-light);color:var(--rec-green-text)",
-        "blue"    => "background:var(--rec-blue-light);color:var(--rec-blue-text)",
-        "amber"   => "background:var(--rec-amber-light);color:var(--rec-amber-text)",
-        "red"     => "background:var(--rec-red-light);color:var(--rec-red-text)",
-        "purple"  => "background:var(--rec-purple-light);color:var(--rec-purple-text)",
-        "primary" => "background:var(--rec-green-light);color:var(--rec-green-text)",
+        "green"   => "background:var(--giwu-status-success-bg);color:var(--giwu-status-success-fg)",
+        "blue"    => "background:var(--giwu-status-info-bg);color:var(--giwu-status-info-fg)",
+        "amber"   => "background:var(--giwu-status-warning-bg);color:var(--giwu-status-warning-fg)",
+        "red"     => "background:var(--giwu-status-danger-bg);color:var(--giwu-status-danger-fg)",
+        "purple"  => "background:var(--giwu-status-accent-bg);color:var(--giwu-status-accent-fg)",
+        "primary" => "background:var(--giwu-status-success-bg);color:var(--giwu-status-success-fg)",
         _         => ""
     };
 

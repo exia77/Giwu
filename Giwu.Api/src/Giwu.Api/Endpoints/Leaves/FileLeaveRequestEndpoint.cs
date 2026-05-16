@@ -10,9 +10,13 @@ namespace Giwu.Api.Endpoints.Leaves;
 
 public sealed class FileLeaveRequestEndpoint : IEndpoint
 {
+    // Self-service leave filing — available to any authenticated user linked
+    // to an Employee (Manager/HR/Finance also take vacations). The handler
+    // enforces the EmployeeId check; the endpoint just requires auth. Mirrors
+    // the same fix applied to /api/attendance/clock-in.
     public void Map(IEndpointRouteBuilder app) =>
         app.MapPost("/api/leave-requests", Handle)
-           .RequireAuthorization(Permissions.Leaves.FileSelf)
+           .RequireAuthorization()
            .WithTags("Leaves")
            .WithSummary("File a new leave request for the signed-in employee");
 

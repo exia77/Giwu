@@ -21,6 +21,12 @@ public interface IAuthApi
 
     Task<AuthCallResult<LoginResponse>> GoogleSignInAsync(GoogleSignInRequest request, CancellationToken ct = default);
     Task<AuthCallResult<GoogleConfigDto>> GoogleConfigAsync(CancellationToken ct = default);
+
+    /// <summary>Kicks off the server-side OAuth flow — returns the session id + Google auth URL.</summary>
+    Task<AuthCallResult<GoogleOAuthStartDto>> GoogleOAuthStartAsync(CancellationToken ct = default);
+
+    /// <summary>Polls the OAuth session — returns Ready=true when the user has finished signing in.</summary>
+    Task<AuthCallResult<GoogleOAuthPollDto>> GoogleOAuthPollAsync(string sessionId, CancellationToken ct = default);
 }
 
 public sealed record AuthCallResult<T>(bool Success, T? Value, string? ErrorMessage)
@@ -102,6 +108,44 @@ public sealed class AuthApiClient(HttpClient http) : IAuthApi
         catch (Exception ex)
         {
             return AuthCallResult<GoogleConfigDto>.Fail(ex.Message);
+        }
+    }
+
+    public async Task<AuthCallResult<GoogleOAuthStartDto>> GoogleOAuthStartAsync(CancellationToken ct = default)
+    {
+        try
+        {
+            var res = await http.GetAsync("/api/auth/google/start", ct);
+            if (!res.IsSuccessStatusCode)
+                return AuthCallResult<GoogleOAuthStartDto>.Fail($"HTTP {(int)res.StatusCode}");
+
+            var dto = await res.Content.ReadFromJsonAsync<GoogleOAuthStartDto>(JsonOpts, ct);
+            return dto is null
+                ? AuthCallResult<GoogleOAuthStartDto>.Fail("Empty response body")
+                : AuthCallResult<GoogleOAuthStartDto>.Ok(dto);
+        }
+        catch (Exception ex)
+        {
+            return AuthCallResult<GoogleOAuthStartDto>.Fail(ex.Message);
+        }
+    }
+
+    public async Task<AuthCallResult<GoogleOAuthPollDto>> GoogleOAuthPollAsync(string sessionId, CancellationToken ct = default)
+    {
+        try
+        {
+            var res = await http.GetAsync($"/api/auth/google/poll?session={Uri.EscapeDataString(sessionId)}", ct);
+            if (!res.IsSuccessStatusCode)
+                return AuthCallResult<GoogleOAuthPollDto>.Fail($"HTTP {(int)res.StatusCode}");
+
+            var dto = await res.Content.ReadFromJsonAsync<GoogleOAuthPollDto>(JsonOpts, ct);
+            return dto is null
+                ? AuthCallResult<GoogleOAuthPollDto>.Fail("Empty response body")
+                : AuthCallResult<GoogleOAuthPollDto>.Ok(dto);
+        }
+        catch (Exception ex)
+        {
+            return AuthCallResult<GoogleOAuthPollDto>.Fail(ex.Message);
         }
     }
 

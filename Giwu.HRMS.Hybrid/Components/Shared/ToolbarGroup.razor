@@ -1,0 +1,16 @@
+@*  Logical grouping inside a <Toolbar>. Buttons inside share spacing
+    and are visually separated from sibling groups by <ToolbarDivider />. *@
+
+<div class="giwu-toolbar-group">@ChildContent</div>
+
+@code {
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+}
+
+<style>
+    .giwu-toolbar-group {
+        display: flex;
+        align-items: center;
+        gap: var(--giwu-space-2);
+    }
+</style>

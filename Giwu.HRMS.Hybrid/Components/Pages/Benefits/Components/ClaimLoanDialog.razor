@@ -11,7 +11,7 @@
                 </MudAvatar>
                 <div style="flex:1;min-width:0">
                     <MudText Typo="Typo.subtitle2" Class="fw-medium">@Working.EmployeeName</MudText>
-                    <MudText Typo="Typo.caption" Style="opacity:.55">
+                    <MudText Typo="Typo.caption" Class="giwu-text-muted">
                         Filed @FmtDate(Working.RequestedOn)
                     </MudText>
                 </div>
@@ -189,7 +189,7 @@
                             <span>Total to repay</span>
                             <span class="num">@Money(Working.Amount)</span>
                         </div>
-                        <div class="loan-preview-row" style="opacity:.6;font-size:11.5px;border-top:0.5px solid var(--mud-palette-divider);padding-top:6px;margin-top:4px">
+                        <div class="loan-preview-row" style="opacity:.6;font-size:11.5px;border-top:1px solid var(--mud-palette-divider);padding-top:6px;margin-top:4px">
                             <span>Repaid via payroll deduction starting next pay run.</span>
                             <span></span>
                         </div>
@@ -224,7 +224,7 @@
         margin-bottom: 14px;
     }
     .req-summary {
-        border: 0.5px solid var(--mud-palette-divider);
+        border: 1px solid var(--mud-palette-divider);
         border-radius: 8px;
         overflow: hidden;
         margin-bottom: 12px;
@@ -233,7 +233,7 @@
         display: flex; justify-content: space-between;
         padding: 8px 12px;
         font-size: 13px;
-        border-bottom: 0.5px solid var(--mud-palette-divider);
+        border-bottom: 1px solid var(--mud-palette-divider);
     }
     .req-summary-row:last-child { border-bottom: none; }
     .req-summary-key { opacity: .55; }
@@ -255,7 +255,7 @@
 
     .req-actions-section {
         padding-top: 12px;
-        border-top: 0.5px solid var(--mud-palette-divider);
+        border-top: 1px solid var(--mud-palette-divider);
         margin-top: 12px;
     }
     .req-actions-label {

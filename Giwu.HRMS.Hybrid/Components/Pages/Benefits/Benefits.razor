@@ -11,6 +11,8 @@
 @inject IDialogService DialogService
 @inject IBenefitsApi BenefitsApi
 @inject IEmployeesApi EmployeesApi
+@inject Giwu.HRMS.Hybrid.Services.RoleAuthService RoleAuth
+@inject Giwu.HRMS.Hybrid.Services.NavBadgeService NavBadges
 
 
 
@@ -24,44 +26,24 @@
 ═══════════════════════════════════════════════════ *@
 <MudGrid Spacing="3" Class="mb-4">
     <MudItem xs="12" sm="6" md="3">
-        <MudPaper Class="ben-kpi" Elevation="0">
-            <div class="kpi-label">Active Programs</div>
-            <div class="kpi-value">@ActiveProgramCount</div>
-            <div class="kpi-sub">
-                <span class="kpi-dot" style="background:var(--ben-green)"></span>
-                <span>across @CategoryCount categories</span>
-            </div>
-        </MudPaper>
+        <StatCard Label="Active programs" Value="@ActiveProgramCount.ToString()"
+                  Sub="@($"across {CategoryCount} categories")"
+                  Variant="StatTone.Success" />
     </MudItem>
     <MudItem xs="12" sm="6" md="3">
-        <MudPaper Class="ben-kpi" Elevation="0">
-            <div class="kpi-label">Total Enrollments</div>
-            <div class="kpi-value">@ActiveEnrollmentCount</div>
-            <div class="kpi-sub">
-                <span class="kpi-dot" style="background:var(--ben-blue)"></span>
-                <span>@CoveredEmployeeCount of @TotalEmployees covered</span>
-            </div>
-        </MudPaper>
+        <StatCard Label="Total enrollments" Value="@ActiveEnrollmentCount.ToString()"
+                  Sub="@($"{CoveredEmployeeCount} of {TotalEmployees} covered")"
+                  Variant="StatTone.Info" />
     </MudItem>
     <MudItem xs="12" sm="6" md="3">
-        <MudPaper Class="ben-kpi" Elevation="0">
-            <div class="kpi-label">Monthly Cost</div>
-            <div class="kpi-value">@MoneyCompact(MonthlyEmployerCost)</div>
-            <div class="kpi-sub">
-                <span class="kpi-dot" style="background:var(--ben-amber)"></span>
-                <span>employer share</span>
-            </div>
-        </MudPaper>
+        <StatCard Label="Monthly cost" Value="@MoneyCompact(MonthlyEmployerCost)"
+                  Sub="employer share"
+                  Variant="StatTone.Warning" />
     </MudItem>
     <MudItem xs="12" sm="6" md="3">
-        <MudPaper Class="ben-kpi" Elevation="0">
-            <div class="kpi-label">Pending Requests</div>
-            <div class="kpi-value">@PendingRequestCount</div>
-            <div class="kpi-sub">
-                <span class="kpi-dot" style="background:var(--ben-purple)"></span>
-                <span>claims &amp; loans</span>
-            </div>
-        </MudPaper>
+        <StatCard Label="Pending requests" Value="@PendingRequestCount.ToString()"
+                  Sub="claims & loans"
+                  Variant="@(PendingRequestCount > 0 ? StatTone.Warning : StatTone.Success)" />
     </MudItem>
 </MudGrid>
 
@@ -75,7 +57,7 @@
             <div class="ben-card-header">
                 <div>
                     <MudText Typo="Typo.subtitle2" Class="fw-medium">Coverage by Category</MudText>
-                    <MudText Typo="Typo.caption" Style="opacity:.55">% of workforce enrolled</MudText>
+                    <MudText Typo="Typo.caption" Class="giwu-text-muted">% of workforce enrolled</MudText>
                 </div>
             </div>
             <div class="coverage-wrap">
@@ -89,10 +71,9 @@
                 }
                 @if (categoriesInUse.Count == 0)
                 {
-                    <div class="ben-empty">
-                        <div class="ben-empty-icon">—</div>
-                        <MudText Typo="Typo.body2">No programs configured yet.</MudText>
-                    </div>
+                    <EmptyState Title="No programs configured yet."
+                                Hint="Create a benefit program to start tracking coverage."
+                                Icon="@Icons.Material.Outlined.HealthAndSafety" />
                 }
                 else
                 {
@@ -107,7 +88,7 @@
                         var pct = TotalEmployees == 0 ? 0 : (int)Math.Round(enrolledCount / (double)TotalEmployees * 100);
                         <div class="cov-row">
                             <div class="cov-label">
-                                <MudIcon Icon="@CategoryIcon(cat)" Size="Size.Small" Style="opacity:.65" />
+                                <MudIcon Icon="@CategoryIcon(cat)" Size="Size.Small" Class="giwu-text-muted" />
                                 <span>@CategoryLabel(cat)</span>
                             </div>
                             <div class="cov-track">
@@ -141,10 +122,9 @@
             }
             @if (pending.Count == 0 && upcoming.Count == 0)
             {
-                <div class="ben-empty">
-                    <div class="ben-empty-icon">✓</div>
-                    <MudText Typo="Typo.body2">All caught up.</MudText>
-                </div>
+                <EmptyState Title="All caught up."
+                            Hint="No pending claims or loans waiting on a decision."
+                            Icon="@Icons.Material.Outlined.CheckCircle" />
             }
             else
             {
@@ -156,7 +136,7 @@
                             <MudText Typo="Typo.body2" Class="fw-medium">
                                 @RequestTypeLabel(req.Type) — @Money(req.Amount)
                             </MudText>
-                            <MudText Typo="Typo.caption" Style="opacity:.55">
+                            <MudText Typo="Typo.caption" Class="giwu-text-muted">
                                 @req.EmployeeName · @req.ProgramName · @RelativeTime(req.RequestedOn)
                             </MudText>
                         </div>
@@ -172,7 +152,7 @@
                         </MudAvatar>
                         <div class="activity-meta">
                             <MudText Typo="Typo.body2" Class="fw-medium">@prog.Name renewal</MudText>
-                            <MudText Typo="Typo.caption" Style="opacity:.55">
+                            <MudText Typo="Typo.caption" Class="giwu-text-muted">
                                 @prog.Provider · due @FmtDate(prog.RenewalDate)
                             </MudText>
                         </div>
@@ -198,13 +178,16 @@
             <div class="ben-card-header">
                 <div>
                     <MudText Typo="Typo.subtitle2" Class="fw-medium">Benefit Programs</MudText>
-                    <MudText Typo="Typo.caption" Style="opacity:.55">
+                    <MudText Typo="Typo.caption" Class="giwu-text-muted">
                         @FilteredPrograms.Count() of @Programs.Count programs
                     </MudText>
                 </div>
-                <MudButton Variant="Variant.Filled" Color="Color.Primary" Size="Size.Small"
-                           StartIcon="@Icons.Material.Outlined.Add" DisableElevation="true"
-                           OnClick="OpenCreateProgramDialog">Add Program</MudButton>
+                @if (RoleAuth.Can("benefits.manage"))
+                {
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary" Size="Size.Small"
+                               StartIcon="@Icons.Material.Outlined.Add" DisableElevation="true"
+                               OnClick="OpenCreateProgramDialog">Add Program</MudButton>
+                }
             </div>
 
             <div class="filter-row">
@@ -252,7 +235,7 @@
                                 </div>
                                 @if (context.Tiers.Count > 0)
                                 {
-                                    <MudText Typo="Typo.caption" Style="opacity:.55">@context.Tiers.Count tiers</MudText>
+                                    <MudText Typo="Typo.caption" Class="giwu-text-muted">@context.Tiers.Count tiers</MudText>
                                 }
                             </div>
                         </div>
@@ -288,17 +271,18 @@
                             <MudIconButton Icon="@Icons.Material.Outlined.Visibility" Size="Size.Small"
                                            Title="View"
                                            OnClick="@(() => OpenProgramDetailDialog(context.Id))" />
-                            <MudIconButton Icon="@Icons.Material.Outlined.Edit" Size="Size.Small"
-                                           Title="Edit"
-                                           OnClick="@(() => OpenEditProgramDialog(context.Id))" />
+                            @if (RoleAuth.Can("benefits.manage"))
+                            {
+                                <MudIconButton Icon="@Icons.Material.Outlined.Edit" Size="Size.Small"
+                                               Title="Edit"
+                                               OnClick="@(() => OpenEditProgramDialog(context.Id))" />
+                            }
                         </MudStack>
                     </MudTd>
                 </RowTemplate>
                 <NoRecordsContent>
-                    <div class="ben-empty">
-                        <div class="ben-empty-icon">⊘</div>
-                        <MudText Typo="Typo.body2">No programs match your filter.</MudText>
-                    </div>
+                    <EmptyState Title="No programs match your filter."
+                                Icon="@Icons.Material.Outlined.SearchOff" />
                 </NoRecordsContent>
                 <PagerContent>
                     <MudTablePager PageSizeOptions="new int[] { 10, 25, 50 }" />
@@ -312,13 +296,16 @@
             <div class="ben-card-header">
                 <div>
                     <MudText Typo="Typo.subtitle2" Class="fw-medium">Employee Enrollments</MudText>
-                    <MudText Typo="Typo.caption" Style="opacity:.55">
+                    <MudText Typo="Typo.caption" Class="giwu-text-muted">
                         @CoveredEmployeeCount of @TotalEmployees enrolled in at least one program
                     </MudText>
                 </div>
-                <MudButton Variant="Variant.Filled" Color="Color.Primary" Size="Size.Small"
-                           StartIcon="@Icons.Material.Outlined.GroupAdd" DisableElevation="true"
-                           OnClick="OpenBulkEnrollDialog">Bulk Enroll</MudButton>
+                @if (RoleAuth.Can("benefits.manage"))
+                {
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary" Size="Size.Small"
+                               StartIcon="@Icons.Material.Outlined.GroupAdd" DisableElevation="true"
+                               OnClick="OpenBulkEnrollDialog">Bulk Enroll</MudButton>
+                }
             </div>
 
             <div class="filter-row">
@@ -353,7 +340,7 @@
                             <MudAvatar Style="@AvatarStyle(context.Av)" Class="ben-av-sm">@context.Init</MudAvatar>
                             <div>
                                 <MudText Typo="Typo.body2" Class="fw-medium" Style="line-height:1.2">@context.Name</MudText>
-                                <MudText Typo="Typo.caption" Style="opacity:.55">@context.Role</MudText>
+                                <MudText Typo="Typo.caption" Class="giwu-text-muted">@context.Role</MudText>
                             </div>
                         </div>
                     </MudTd>
@@ -408,10 +395,8 @@
                     </MudTd>
                 </RowTemplate>
                 <NoRecordsContent>
-                    <div class="ben-empty">
-                        <div class="ben-empty-icon">⊘</div>
-                        <MudText Typo="Typo.body2">No employees match your filter.</MudText>
-                    </div>
+                    <EmptyState Title="No employees match your filter."
+                                Icon="@Icons.Material.Outlined.SearchOff" />
                 </NoRecordsContent>
                 <PagerContent>
                     <MudTablePager PageSizeOptions="new int[] { 10, 25, 50 }" />
@@ -425,7 +410,7 @@
             <div class="ben-card-header">
                 <div>
                     <MudText Typo="Typo.subtitle2" Class="fw-medium">Claims &amp; Loan Activity</MudText>
-                    <MudText Typo="Typo.caption" Style="opacity:.55">
+                    <MudText Typo="Typo.caption" Class="giwu-text-muted">
                         @FilteredRequests.Count() of @Requests.Count records
                     </MudText>
                 </div>
@@ -495,7 +480,7 @@
                     </MudTd>
                     <MudTd DataLabel="Actions" Style="text-align:right">
                         <MudStack Row="true" Spacing="1" Justify="Justify.FlexEnd">
-                            @if (context.Status == BenefitRequestStatus.Pending)
+                            @if (context.Status == BenefitRequestStatus.Pending && RoleAuth.Can("benefits.manage"))
                             {
                                 <MudButton Size="Size.Small" Variant="Variant.Filled" Color="Color.Success"
                                            DisableElevation="true" Style="min-width:unset"
@@ -510,10 +495,8 @@
                     </MudTd>
                 </RowTemplate>
                 <NoRecordsContent>
-                    <div class="ben-empty">
-                        <div class="ben-empty-icon">⊘</div>
-                        <MudText Typo="Typo.body2">No requests match your filter.</MudText>
-                    </div>
+                    <EmptyState Title="No requests match your filter."
+                                Icon="@Icons.Material.Outlined.SearchOff" />
                 </NoRecordsContent>
                 <PagerContent>
                     <MudTablePager PageSizeOptions="new int[] { 10, 25, 50 }" />
@@ -552,21 +535,11 @@
         --ben-teal-text:    #084040;
     }
 
-    /* ── KPI ─────────────────────────────────────────────── */
-    .ben-kpi {
-        padding: 16px;
-        border: 0.5px solid var(--mud-palette-divider);
-        border-radius: 10px;
-        background: var(--mud-palette-background);
-    }
-    .kpi-label { font-size: 10.5px; letter-spacing: .07em; text-transform: uppercase; opacity: .55; margin-bottom: 6px; font-weight: 500; }
-    .kpi-value { font-size: 1.9rem; font-weight: 500; line-height: 1; margin-bottom: 5px; font-variant-numeric: tabular-nums; }
-    .kpi-sub   { font-size: 11.5px; opacity: .6; display: flex; align-items: center; gap: 5px; }
-    .kpi-dot   { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; display: inline-block; }
+    /* KPI cards moved to the StatCard shared component (tokens.css). */
 
     /* ── Card shell ──────────────────────────────────────── */
     .ben-card {
-        border: 0.5px solid var(--mud-palette-divider);
+        border: 1px solid var(--mud-palette-divider);
         border-radius: 10px;
         overflow: hidden;
         background: var(--mud-palette-background);
@@ -576,7 +549,7 @@
         align-items: center;
         justify-content: space-between;
         padding: 12px 16px;
-        border-bottom: 0.5px solid var(--mud-palette-divider);
+        border-bottom: 1px solid var(--mud-palette-divider);
         gap: 8px;
     }
     .fw-medium { font-weight: 500; }
@@ -668,7 +641,7 @@
     .activity-item {
         display: flex; align-items: center; gap: 12px;
         padding: 10px 16px;
-        border-bottom: 0.5px solid var(--mud-palette-divider);
+        border-bottom: 1px solid var(--mud-palette-divider);
         cursor: pointer; transition: background .1s;
     }
     .activity-item:last-child { border-bottom: none; }
@@ -681,7 +654,7 @@
     .filter-row {
         display: flex; flex-wrap: wrap; align-items: center; gap: 8px;
         padding: 10px 14px;
-        border-bottom: 0.5px solid var(--mud-palette-divider);
+        border-bottom: 1px solid var(--mud-palette-divider);
     }
     .ben-search { max-width: 260px; }
 
@@ -700,8 +673,7 @@
     }
 
     /* ── Empty state ─────────────────────────────────────── */
-    .ben-empty { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 40px 16px; opacity: .55; gap: 8px; }
-    .ben-empty-icon { font-size: 28px; }
+    /* .ben-empty removed — replaced by the EmptyState shared component. */
 
     /* ── Tabs ────────────────────────────────────────────── */
     .ben-tab-panel { padding: 0 !important; }
@@ -1041,6 +1013,7 @@
         {
             Snackbar.Add($"Approved {RequestTypeLabel(req.Type).ToLower()} for {req.EmployeeName}", Severity.Success);
             await ReloadAsync();
+            await NavBadges.RequestRefreshAsync();
         }
         else
         {
@@ -1060,6 +1033,7 @@
         {
             Snackbar.Add($"Rejected request for {req.EmployeeName}", Severity.Warning);
             await ReloadAsync();
+            await NavBadges.RequestRefreshAsync();
         }
         else
         {

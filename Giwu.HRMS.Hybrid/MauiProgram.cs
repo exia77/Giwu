@@ -47,6 +47,10 @@ namespace Giwu.HRMS.Hybrid
             builder.Services.AddSingleton<RoleAuthService>();
             builder.Services.AddSingleton<IRoleAuthService>(sp => sp.GetRequiredService<RoleAuthService>());
 
+            // Pub/sub for sidebar attention-badge recomputation after page
+            // mutations. Singleton so every page + the layout share one bus.
+            builder.Services.AddSingleton<NavBadgeService>();
+
             builder.Services.AddSingleton<ThemeService>();
             builder.Services.AddSingleton<IThemeService>(sp => sp.GetRequiredService<ThemeService>());
 

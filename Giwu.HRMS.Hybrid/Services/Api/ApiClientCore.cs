@@ -129,18 +129,34 @@ internal static class ApiClientCore
             return "Validation failed";
         }
 
+        // Most non-OK responses from this API are `{ "message": "..." }`. Try to
+        // surface that text so the UI shows the server's reason (e.g. "You've
+        // reached the Basic plan's 10-employee limit") instead of a generic "HTTP 402".
+        try
+        {
+            var body = await res.Content.ReadFromJsonAsync<ApiMessageEnvelope>(JsonOpts, ct);
+            if (!string.IsNullOrWhiteSpace(body?.Message)) return body!.Message!;
+        }
+        catch { /* fall through to status-code defaults */ }
+
         return res.StatusCode switch
         {
-            HttpStatusCode.NotFound      => "Not found",
-            HttpStatusCode.Forbidden     => "You do not have permission to perform this action",
-            HttpStatusCode.Unauthorized  => "Authentication required",
-            HttpStatusCode.Conflict      => "Conflict with current state",
-            _                            => $"HTTP {(int)res.StatusCode}",
+            HttpStatusCode.NotFound        => "Not found",
+            HttpStatusCode.Forbidden       => "You do not have permission to perform this action",
+            HttpStatusCode.Unauthorized    => "Authentication required",
+            HttpStatusCode.Conflict        => "Conflict with current state",
+            HttpStatusCode.PaymentRequired => "Subscription upgrade required",
+            _                              => $"HTTP {(int)res.StatusCode}",
         };
     }
 
     private sealed class ValidationProblemDetails
     {
         public Dictionary<string, string[]>? Errors { get; set; }
+    }
+
+    private sealed class ApiMessageEnvelope
+    {
+        public string? Message { get; set; }
     }
 }

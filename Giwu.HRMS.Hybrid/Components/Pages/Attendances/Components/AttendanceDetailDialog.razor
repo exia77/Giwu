@@ -1,4 +1,5 @@
 ﻿@using static Giwu.HRMS.Hybrid.Models.AttendanceFormatting
+@inject Giwu.HRMS.Hybrid.Services.RoleAuthService RoleAuth
 
 <MudDialog>
     <DialogContent>
@@ -6,7 +7,7 @@
             <MudAvatar Style="@($"width:42px;height:42px;font-size:13px;{AvatarStyle(Emp.Av)}")">@Emp.Init</MudAvatar>
             <div>
                 <MudText Typo="Typo.subtitle2" Class="fw-medium">@Emp.Name</MudText>
-                <MudText Typo="Typo.caption" Style="opacity:.55">@Emp.Role · @Emp.Dept</MudText>
+                <MudText Typo="Typo.caption" Class="giwu-text-muted">@Emp.Role · @Emp.Dept</MudText>
             </div>
         </div>
 
@@ -48,9 +49,14 @@
     </DialogContent>
     <DialogActions>
         <MudButton OnClick="Close">Close</MudButton>
-        <MudButton Variant="Variant.Filled" Color="Color.Primary" DisableElevation="true" OnClick="EditClicked">
-            Edit Record
-        </MudButton>
+        @* Edit requires attendance.manage. Read-only viewers (Manager,
+            HrSpecialist) see Close only. *@
+        @if (RoleAuth.Can("attendance.manage"))
+        {
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" DisableElevation="true" OnClick="EditClicked">
+                Edit Record
+            </MudButton>
+        }
     </DialogActions>
 </MudDialog>
 
@@ -61,7 +67,7 @@
         justify-content: space-between;
         align-items: center;
         padding: 8px 0;
-        border-bottom: 0.5px solid var(--mud-palette-divider);
+        border-bottom: 1px solid var(--mud-palette-divider);
         font-size: 13px;
     }
     .att-info-row:last-child { border-bottom: none; }

@@ -1,5 +1,6 @@
 using FluentValidation;
 using Giwu.Application.Common;
+using Giwu.Application.Subscriptions;
 using Giwu.Contracts.Employees;
 using Giwu.Domain.Common;
 using Giwu.Domain.Organization;
@@ -31,12 +32,18 @@ public sealed class CreateEmployeeValidator : AbstractValidator<CreateEmployeeCo
     }
 }
 
-internal sealed class CreateEmployeeHandler(IApplicationDbContext db)
+internal sealed class CreateEmployeeHandler(IApplicationDbContext db, ITierLimits tiers)
     : IRequestHandler<CreateEmployeeCommand, Result<EmployeeDto>>
 {
     public async Task<Result<EmployeeDto>> Handle(CreateEmployeeCommand cmd, CancellationToken ct)
     {
         var r = cmd.Request;
+
+        // Subscription-tier check before we look at anything else — refuse cheaply
+        // when the tenant is at their plan limit.
+        var tierCheck = await tiers.CheckEmployeeCreationAsync(ct);
+        if (tierCheck.Kind == ResultKind.PaymentRequired)
+            return Result<EmployeeDto>.PaymentRequired(tierCheck.Message);
 
         var dept = await db.Departments.FirstOrDefaultAsync(d => d.Id == r.DepartmentId, ct);
         if (dept is null) return Result<EmployeeDto>.NotFound("Department not found");

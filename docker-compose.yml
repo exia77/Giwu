@@ -53,6 +53,18 @@ services:
       - Auth__Audience=giwu-hrms-clients
       - Auth__Key=a84fb8b9bb84774a55564b1c614265b536ddcf91193a8abe2f4ae5a36b8c1862
       - Auth__AccessTokenMinutes=15
+      # Google SSO — leave blank to disable; the sign-in button shows "not configured" until set.
+      - Google__ClientId=${GOOGLE_CLIENT_ID:-}
+      - Google__ClientSecret=${GOOGLE_CLIENT_SECRET:-}
+      - Google__RedirectUri=${GOOGLE_REDIRECT_URI:-http://localhost:5080/api/auth/google/callback}
+      # Stripe — leave blank to disable billing; checkout endpoint will return 403 with a clear message.
+      - Stripe__SecretKey=${STRIPE_SECRET_KEY:-}
+      - Stripe__WebhookSecret=${STRIPE_WEBHOOK_SECRET:-}
+      - Stripe__Prices__Basic=${STRIPE_PRICE_BASIC:-}
+      - Stripe__Prices__Pro=${STRIPE_PRICE_PRO:-}
+      - Stripe__Prices__Enterprise=${STRIPE_PRICE_ENTERPRISE:-}
+      - Stripe__SuccessUrl=${STRIPE_SUCCESS_URL:-http://localhost:5080/billing/success}
+      - Stripe__CancelUrl=${STRIPE_CANCEL_URL:-http://localhost:5080/billing/cancel}
     depends_on:
       postgres:
         condition: service_healthy

@@ -95,6 +95,53 @@ public interface IEmailSender
     Task SendAsync(string toEmail, string toName, string subject, string htmlBody, CancellationToken ct = default);
 }
 
+/// <summary>
+/// Talks to the payment provider (Stripe). Kept behind an interface so we
+/// can swap to PayMongo or stub it for tests without touching handlers.
+/// </summary>
+public interface IBillingService
+{
+    /// <summary>True when the provider is configured (secret key + price IDs set).</summary>
+    bool IsConfigured { get; }
+
+    /// <summary>
+    /// Creates a Stripe Checkout Session for the target tier. Returns the URL the
+    /// user should be redirected to. Lazily creates a Stripe Customer for the tenant
+    /// on first call and stores the id on <c>Tenant.BillingCustomerId</c>.
+    /// </summary>
+    Task<string> CreateCheckoutSessionAsync(
+        Giwu.Domain.Tenancy.SubscriptionTier targetTier,
+        Guid tenantId,
+        string tenantName,
+        string? tenantEmail,
+        CancellationToken ct = default);
+
+    /// <summary>
+    /// Verifies a Stripe webhook signature and returns a normalized event the
+    /// handler can act on. Returns null if the payload/signature is invalid —
+    /// callers MUST treat that as a 400.
+    /// </summary>
+    BillingWebhookEvent? VerifyWebhook(string payload, string stripeSignatureHeader);
+
+    /// <summary>
+    /// Maps a Stripe Price ID back to one of our subscription tiers. Used by the
+    /// webhook handler to know what tier the user just paid for.
+    /// </summary>
+    Giwu.Domain.Tenancy.SubscriptionTier? TierForPriceId(string priceId);
+}
+
+/// <summary>
+/// Provider-agnostic shape the webhook handler reasons about. Today only
+/// Stripe is wired in; if we add PayMongo later it'd emit the same shape.
+/// </summary>
+public sealed record BillingWebhookEvent(
+    string EventId,
+    string Type,
+    string? CustomerId,
+    string? PriceId,
+    string? SubscriptionStatus,
+    DateTimeOffset? CurrentPeriodEndsAt);
+
 public interface IGoogleTokenVerifier
 {
     /// <summary>
@@ -102,6 +149,21 @@ public interface IGoogleTokenVerifier
     /// Returns null if the token is invalid, expired, or for a different audience.
     /// </summary>
     Task<GoogleUserInfo?> VerifyAsync(string idToken, CancellationToken ct = default);
+}
+
+/// <summary>
+/// Exchanges a Google OAuth authorization code (server-side flow) for an ID
+/// token. Used by the MAUI Hybrid client because its WebView origin can't run
+/// the in-app GIS popup — the system browser handles the auth dance instead.
+/// </summary>
+public interface IGoogleCodeExchanger
+{
+    /// <summary>
+    /// Calls Google's token endpoint with the authorization code. Returns the
+    /// id_token on success, null if the code is invalid/expired or the exchange
+    /// otherwise failed.
+    /// </summary>
+    Task<string?> ExchangeCodeForIdTokenAsync(string code, CancellationToken ct = default);
 }
 
 public sealed record GoogleUserInfo(

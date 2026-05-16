@@ -1,0 +1,16 @@
+@*  Thin vertical divider between toolbar groups. Hidden on narrow
+    viewports so wrapped groups don't get a stray vertical bar. *@
+
+<span class="giwu-toolbar-divider" aria-hidden="true"></span>
+
+<style>
+    .giwu-toolbar-divider {
+        width: 1px;
+        height: 22px;
+        background: var(--mud-palette-divider);
+        flex-shrink: 0;
+    }
+    @@media (max-width: 600px) {
+        .giwu-toolbar-divider { display: none; }
+    }
+</style>

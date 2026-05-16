@@ -4,6 +4,7 @@
 @inject ISnackbar Snackbar
 @inject IEmployeesApi EmployeesApi
 @inject IDepartmentsApi DepartmentsApi
+@inject Giwu.HRMS.Hybrid.Services.RoleAuthService RoleAuth
 
 @using Giwu.Contracts.Departments
 @using Giwu.Contracts.Employees
@@ -55,13 +56,18 @@
 
     <MudSpacer />
 
-    <MudButton Variant="Variant.Filled" Color="Color.Primary"
-               StartIcon="@Icons.Material.Outlined.PersonAdd"
-               Size="Size.Small"
-               Style="border-radius:8px;text-transform:none"
-               OnClick="OpenAddDialog">
-        Add employee
-    </MudButton>
+    @* "Add employee" requires employees.manage — hidden for read-only roles
+        (e.g. Manager has employees.view but not .manage). *@
+    @if (RoleAuth.Can("employees.manage"))
+    {
+        <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                   StartIcon="@Icons.Material.Outlined.PersonAdd"
+                   Size="Size.Small"
+                   Style="border-radius:8px;text-transform:none"
+                   OnClick="OpenAddDialog">
+            Add employee
+        </MudButton>
+    }
 </div>
 
 @* ── Summary chips ── *@
@@ -71,23 +77,22 @@
         <div style="@($"display:flex;align-items:center;gap:6px;padding:5px 12px;border-radius:20px;border:1px solid var(--mud-palette-divider);background:{s.Bg}")">
             <div style="@($"width:7px;height:7px;border-radius:50%;background:{s.Dot}")"></div>
             <MudText Typo="Typo.caption" Style="font-weight:500">@s.Label</MudText>
-            <MudText Typo="Typo.caption" Style="opacity:.6">@s.Count</MudText>
+            <MudText Typo="Typo.caption" Class="giwu-text-muted">@s.Count</MudText>
         </div>
     }
 </div>
 
 @* ── Table ── *@
-<MudPaper Elevation="0"
-          Style="border:1px solid var(--mud-palette-divider);border-radius:10px;overflow:hidden">
+<div class="giwu-surface">
     @if (_loading)
     {
-        <div style="padding:32px;display:flex;justify-content:center">
-            <MudProgressCircular Indeterminate="true" Size="Size.Medium" />
+        <div class="giwu-p-4">
+            <LoadingSkeleton Variant="LoadingSkeleton.Shape.List" Rows="6" />
         </div>
     }
     else if (_loadError is not null)
     {
-        <div style="padding:24px">
+        <div class="giwu-p-4">
             <MudAlert Severity="Severity.Error" Variant="Variant.Outlined">@_loadError</MudAlert>
         </div>
     }
@@ -114,7 +119,7 @@
                         </MudAvatar>
                         <div>
                             <MudText Typo="Typo.body2" Style="font-weight:600;line-height:1.2">@context.Name</MudText>
-                            <MudText Typo="Typo.caption" Style="opacity:.45">@context.Email</MudText>
+                            <MudText Typo="Typo.caption" Class="giwu-text-faint">@context.Email</MudText>
                         </div>
                     </div>
                 </MudTd>
@@ -127,29 +132,32 @@
                         @context.Status
                     </MudChip>
                 </MudTd>
-                <MudTd><MudText Typo="Typo.body2" Style="opacity:.6">@context.JoinDate</MudText></MudTd>
+                <MudTd><MudText Typo="Typo.body2" Class="giwu-text-muted">@context.JoinDate</MudText></MudTd>
                 <MudTd>
                     <div style="display:flex;gap:2px">
                         <MudIconButton Icon="@Icons.Material.Outlined.OpenInNew"
                                        Size="Size.Small" Title="View profile"
                                        OnClick="() => OpenViewDialog(context)" />
-                        <MudIconButton Icon="@Icons.Material.Outlined.Edit"
-                                       Size="Size.Small" Title="Edit"
-                                       OnClick="() => OpenEditDialog(context)" />
-                        <MudIconButton Icon="@Icons.Material.Outlined.DeleteOutline"
-                                       Size="Size.Small" Title="Remove"
-                                       Color="Color.Error"
-                                       OnClick="() => OpenDeleteDialog(context)" />
+                        @if (RoleAuth.Can("employees.manage"))
+                        {
+                            <MudIconButton Icon="@Icons.Material.Outlined.Edit"
+                                           Size="Size.Small" Title="Edit"
+                                           OnClick="() => OpenEditDialog(context)" />
+                            <MudIconButton Icon="@Icons.Material.Outlined.DeleteOutline"
+                                           Size="Size.Small" Title="Remove"
+                                           Color="Color.Error"
+                                           OnClick="() => OpenDeleteDialog(context)" />
+                        }
                     </div>
                 </MudTd>
             </RowTemplate>
         </MudTable>
     }
-</MudPaper>
+</div>
 
 @* ── Pagination row ── *@
 <div style="display:flex;justify-content:space-between;align-items:center;margin-top:16px;flex-wrap:wrap;gap:8px;padding-bottom:60px">
-    <MudText Typo="Typo.caption" Style="opacity:.55">
+    <MudText Typo="Typo.caption" Class="giwu-text-muted">
         Showing @FilteredEmployees.Count() of @_total employees
     </MudText>
     <MudPagination Count="@_totalPages"

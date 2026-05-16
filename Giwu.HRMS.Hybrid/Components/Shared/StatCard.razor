@@ -1,0 +1,110 @@
+@*  Single source of truth for KPI / stat cards across all dashboards.
+    Replaces the per-page .att-kpi / .leave-kpi / .pa-4 MudPaper patterns.
+
+    Usage:
+        <StatCard Label="Pending requests" Value="@count.ToString()"
+                  Sub="@(count > 0 ? "awaiting approval" : "none pending")"
+                  Variant="@(count > 0 ? StatCard.Tone.Warning : StatCard.Tone.Success)" />
+
+    Click-to-filter usage:
+        <StatCard Label="Absent" Value="0" Sub="0 unexcused"
+                  Variant="StatCard.Tone.Danger"
+                  Active="@(_filter == "Absent")"
+                  OnClick="@(() => SetFilter("Absent"))" />                       *@
+
+<div class="@CssClass" @onclick="HandleClick" @attributes="AdditionalAttributes">
+    <div class="giwu-stat-label">@Label</div>
+    <div class="giwu-stat-value">@Value</div>
+    @if (!string.IsNullOrEmpty(Sub) || SubContent is not null)
+    {
+        <div class="giwu-stat-sub">
+            @if (Variant != StatTone.Neutral)
+            {
+                <span class="giwu-stat-dot @ToneClass"></span>
+            }
+            @if (SubContent is not null) { @SubContent }
+            else { <span>@Sub</span> }
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired] public string Label { get; set; } = "";
+    [Parameter, EditorRequired] public string Value { get; set; } = "";
+    [Parameter] public string Sub { get; set; } = "";
+    [Parameter] public RenderFragment? SubContent { get; set; }
+    [Parameter] public StatTone Variant { get; set; } = StatTone.Neutral;
+    [Parameter] public bool Active { get; set; }
+    [Parameter] public EventCallback OnClick { get; set; }
+
+    [Parameter(CaptureUnmatchedValues = true)]
+    public Dictionary<string, object>? AdditionalAttributes { get; set; }
+
+    private bool IsClickable => OnClick.HasDelegate;
+
+    private string CssClass =>
+        "giwu-stat" +
+        (IsClickable ? " is-clickable" : "") +
+        (Active ? " is-active" : "");
+
+    private string ToneClass => Variant switch
+    {
+        StatTone.Success => "tone-success",
+        StatTone.Warning => "tone-warning",
+        StatTone.Danger  => "tone-danger",
+        StatTone.Info    => "tone-info",
+        StatTone.Accent  => "tone-accent",
+        _                => "",
+    };
+
+    private Task HandleClick() => IsClickable ? OnClick.InvokeAsync() : Task.CompletedTask;
+}
+
+<style>
+    .giwu-stat {
+        padding: var(--giwu-space-5);
+        border: var(--giwu-border);
+        border-radius: var(--giwu-radius-lg);
+        background: var(--mud-palette-background);
+        user-select: none;
+        transition: background-color var(--giwu-dur-fast), border-color var(--giwu-dur-fast);
+    }
+    .giwu-stat.is-clickable { cursor: pointer; }
+    .giwu-stat.is-clickable:hover { border-color: var(--mud-palette-primary); }
+    .giwu-stat.is-active {
+        border-color: var(--mud-palette-primary);
+        background: color-mix(in srgb, var(--mud-palette-primary) 8%, transparent);
+    }
+
+    .giwu-stat-label {
+        font-size: var(--giwu-fs-sm);
+        font-weight: var(--giwu-fw-semibold);
+        opacity: var(--giwu-opacity-muted);
+        margin-bottom: var(--giwu-space-2);
+    }
+    .giwu-stat-value {
+        font-size: var(--giwu-fs-3xl);
+        font-weight: var(--giwu-fw-semibold);
+        line-height: 1;
+        margin-bottom: var(--giwu-space-2);
+        letter-spacing: -0.02em;
+    }
+    .giwu-stat-sub {
+        display: flex;
+        align-items: center;
+        gap: var(--giwu-space-2);
+        font-size: var(--giwu-fs-sm);
+        opacity: var(--giwu-opacity-muted);
+    }
+    .giwu-stat-dot {
+        width: 7px; height: 7px;
+        border-radius: 50%;
+        flex-shrink: 0;
+        display: inline-block;
+    }
+    .giwu-stat-dot.tone-success { background: var(--giwu-status-success-solid); }
+    .giwu-stat-dot.tone-warning { background: var(--giwu-status-warning-solid); }
+    .giwu-stat-dot.tone-danger  { background: var(--giwu-status-danger-solid); }
+    .giwu-stat-dot.tone-info    { background: var(--giwu-status-info-solid); }
+    .giwu-stat-dot.tone-accent  { background: var(--giwu-status-accent-solid); }
+</style>

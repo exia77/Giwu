@@ -1,0 +1,65 @@
+@*  Consistent empty state for tables, lists, search-no-results.
+    Replaces the per-page `<div class="att-empty">` etc.
+
+    Usage:
+        <EmptyState Title="No records match your filter."
+                    Hint="Try clearing filters or changing the date range."
+                    Icon="@Icons.Material.Outlined.SearchOff" />
+
+    Without the hint:
+        <EmptyState Title="You haven't filed any requests yet." /> *@
+
+<div class="giwu-empty">
+    @if (!string.IsNullOrEmpty(Icon))
+    {
+        <MudIcon Icon="@Icon" Size="Size.Large" Class="giwu-empty-icon" />
+    }
+    else
+    {
+        <div class="giwu-empty-icon-fallback">⊘</div>
+    }
+    <div class="giwu-empty-title">@Title</div>
+    @if (!string.IsNullOrEmpty(Hint))
+    {
+        <div class="giwu-empty-hint">@Hint</div>
+    }
+    @if (ActionContent is not null)
+    {
+        <div class="giwu-empty-action">@ActionContent</div>
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired] public string Title { get; set; } = "";
+    [Parameter] public string Hint { get; set; } = "";
+    [Parameter] public string Icon { get; set; } = "";
+    [Parameter] public RenderFragment? ActionContent { get; set; }
+}
+
+<style>
+    .giwu-empty {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: var(--giwu-space-8) var(--giwu-space-4);
+        gap: var(--giwu-space-3);
+        text-align: center;
+    }
+    .giwu-empty-icon { opacity: var(--giwu-opacity-faint); }
+    .giwu-empty-icon-fallback {
+        font-size: 32px;
+        opacity: var(--giwu-opacity-faint);
+    }
+    .giwu-empty-title {
+        font-size: var(--giwu-fs-lg);
+        font-weight: var(--giwu-fw-medium);
+        opacity: var(--giwu-opacity-strong);
+    }
+    .giwu-empty-hint {
+        font-size: var(--giwu-fs-sm);
+        opacity: var(--giwu-opacity-muted);
+        max-width: 320px;
+    }
+    .giwu-empty-action { margin-top: var(--giwu-space-2); }
+</style>

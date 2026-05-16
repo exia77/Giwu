@@ -1,0 +1,301 @@
+@using Giwu.Contracts.Tenancy
+@using Giwu.Domain.Tenancy
+@using Giwu.HRMS.Hybrid.Services.Tenancy
+@inject ITenancyApi TenancyApi
+@inject ISnackbar Snackbar
+
+<div class="billing-section">
+    @if (Sub is null)
+    {
+        <div class="billing-loading">
+            <MudProgressCircular Indeterminate="true" Size="Size.Small" />
+            <span>Loading subscription…</span>
+        </div>
+    }
+    else
+    {
+        <div class="billing-current">
+            <div class="billing-current-head">
+                <div>
+                    <div class="billing-tier-label">Current Plan</div>
+                    <div class="billing-tier-name">@Sub.TierLabel</div>
+                    <div class="billing-status @StatusClass(Sub.Status)">@Sub.Status</div>
+                </div>
+                <div class="billing-usage">
+                    <div class="billing-usage-label">Employees</div>
+                    <div class="billing-usage-count">
+                        <span class="@(IsOver ? "over-limit" : "")">@Sub.EmployeeCount</span>
+                        <span class="billing-usage-of">/ @LimitLabel</span>
+                    </div>
+                    @if (Sub.EmployeeLimit is int lim)
+                    {
+                        <div class="billing-progress">
+                            <div class="billing-progress-fill @(IsOver ? "over" : "")"
+                                 style="width:@(Math.Min(100, (Sub.EmployeeCount * 100.0) / Math.Max(1, lim)))%"></div>
+                        </div>
+                    }
+                </div>
+            </div>
+            @if (IsOver)
+            {
+                <MudAlert Severity="Severity.Warning" Class="mt-3" Dense="true">
+                    You're <strong>@(Sub.EmployeeCount - Sub.EmployeeLimit) over</strong> the @Sub.TierLabel plan's
+                    @Sub.EmployeeLimit-employee limit. New employee creation is blocked until you upgrade or
+                    remove existing employees.
+                </MudAlert>
+            }
+        </div>
+
+        <MudText Typo="Typo.subtitle2" Class="fw-medium mt-5 mb-2">Available Plans</MudText>
+        <MudText Typo="Typo.caption" Class="d-block mb-3 giwu-text-muted">
+            Switching is instant for demo purposes. In production, this would go through Stripe Checkout.
+        </MudText>
+
+        <div class="plan-grid">
+            @foreach (var p in Plans)
+            {
+                <div class="plan-card @(p.Tier == Sub.Tier ? "current" : "")">
+                    <div class="plan-card-head">
+                        <div class="plan-card-name">@p.Name</div>
+                        @if (p.Tier == Sub.Tier)
+                        {
+                            <span class="plan-card-badge">Current</span>
+                        }
+                    </div>
+                    <div class="plan-card-price">
+                        @if (p.PriceMonthly is decimal price)
+                        {
+                            <span class="plan-price-amount">₱@price.ToString("N0")</span>
+                            <span class="plan-price-period">/ month</span>
+                        }
+                        else
+                        {
+                            <span class="plan-price-amount">Custom</span>
+                        }
+                    </div>
+                    <ul class="plan-card-features">
+                        <li><strong>@p.EmployeeLimitText</strong> employees</li>
+                        @foreach (var f in p.Features)
+                        {
+                            <li>@f</li>
+                        }
+                    </ul>
+                    @if (p.Tier == Sub.Tier)
+                    {
+                        <MudButton Disabled="true" Variant="Variant.Outlined" FullWidth="true"
+                                   DisableElevation="true" Size="Size.Small">Current Plan</MudButton>
+                    }
+                    else
+                    {
+                        <MudButton Variant="Variant.Filled" Color="Color.Primary" FullWidth="true"
+                                   DisableElevation="true" Size="Size.Small"
+                                   OnClick="@(() => StartCheckoutAsync(p.Tier))"
+                                   Disabled="@_switching">
+                            @(p.Tier > Sub.Tier ? "Upgrade" : "Downgrade")
+                        </MudButton>
+                    }
+                </div>
+            }
+        </div>
+    }
+</div>
+
+<style>
+    .billing-section { display: flex; flex-direction: column; }
+    .billing-loading {
+        display: flex; align-items: center; gap: 10px;
+        padding: 24px; opacity: .6; font-size: 13px;
+    }
+
+    .billing-current {
+        background: var(--mud-palette-surface);
+        border: 1px solid var(--mud-palette-divider);
+        border-radius: 10px;
+        padding: 18px 20px;
+    }
+    .billing-current-head {
+        display: flex; justify-content: space-between; gap: 24px;
+        align-items: flex-start; flex-wrap: wrap;
+    }
+    .billing-tier-label {
+        font-size: 11px; letter-spacing: .06em; text-transform: uppercase;
+        opacity: .55;
+    }
+    .billing-tier-name { font-size: 22px; font-weight: 600; margin-top: 2px; }
+    .billing-status {
+        display: inline-block; margin-top: 6px;
+        font-size: 11px; padding: 2px 9px; border-radius: 100px;
+        background: var(--set-green-light); color: var(--set-green-text);
+    }
+    .billing-status.warn { background: var(--set-amber-light); color: var(--set-amber-text); }
+    .billing-status.bad  { background: var(--set-red-light);   color: var(--set-red-text);   }
+
+    .billing-usage { min-width: 200px; text-align: right; }
+    .billing-usage-label {
+        font-size: 11px; letter-spacing: .06em; text-transform: uppercase;
+        opacity: .55;
+    }
+    .billing-usage-count { font-size: 22px; font-weight: 600; margin-top: 2px; }
+    .billing-usage-count .over-limit { color: var(--set-red); }
+    .billing-usage-of { font-size: 13px; opacity: .55; font-weight: 400; margin-left: 4px; }
+    .billing-progress {
+        margin-top: 8px;
+        height: 6px;
+        background: var(--mud-palette-background-grey);
+        border-radius: 3px;
+        overflow: hidden;
+    }
+    .billing-progress-fill {
+        height: 100%;
+        background: var(--set-green);
+        transition: width .25s;
+    }
+    .billing-progress-fill.over { background: var(--set-red); }
+
+    .plan-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 12px;
+    }
+    .plan-card {
+        background: var(--mud-palette-surface);
+        border: 1px solid var(--mud-palette-divider);
+        border-radius: 10px;
+        padding: 16px;
+        display: flex; flex-direction: column;
+    }
+    .plan-card.current { border-color: var(--set-green); border-width: 1.5px; }
+    .plan-card-head {
+        display: flex; justify-content: space-between; align-items: center;
+        margin-bottom: 8px;
+    }
+    .plan-card-name { font-size: 14px; font-weight: 600; }
+    .plan-card-badge {
+        font-size: 10px; padding: 1px 7px; border-radius: 100px;
+        background: var(--set-green-light); color: var(--set-green-text);
+        font-weight: 500;
+    }
+    .plan-card-price { margin-bottom: 12px; }
+    .plan-price-amount { font-size: 22px; font-weight: 600; }
+    .plan-price-period { font-size: 12px; opacity: .55; margin-left: 4px; }
+    .plan-card-features {
+        list-style: none; padding: 0; margin: 0 0 14px;
+        font-size: 12.5px; line-height: 1.7; opacity: .8;
+        flex: 1;
+    }
+    .plan-card-features li::before {
+        content: "✓ "; color: var(--set-green); font-weight: 600;
+    }
+
+    @@media (max-width: 800px) {
+        .plan-grid { grid-template-columns: 1fr; }
+        .billing-usage { text-align: left; }
+    }
+</style>
+
+@code {
+    private SubscriptionDto? Sub;
+    private bool _switching;
+
+    private record PlanOption(
+        SubscriptionTier Tier,
+        string Name,
+        decimal? PriceMonthly,
+        string EmployeeLimitText,
+        string[] Features);
+
+    private static readonly PlanOption[] Plans = new[]
+    {
+        new PlanOption(SubscriptionTier.Basic, "Basic", 2_500m, "Up to 10",
+            new[] { "Core HR + attendance", "Leave & time off", "Email support" }),
+        new PlanOption(SubscriptionTier.Pro, "Pro", 8_000m, "Up to 50",
+            new[] { "Everything in Basic", "Recruitment + custom reports", "Payroll + benefits", "Priority support" }),
+        new PlanOption(SubscriptionTier.Enterprise, "Enterprise", null, "Unlimited",
+            new[] { "Everything in Pro", "SSO + advanced security", "Unlimited audit retention", "Dedicated success manager" }),
+    };
+
+    protected override async Task OnInitializedAsync() => await LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        var res = await TenancyApi.GetSubscriptionAsync();
+        if (res.Success && res.Value is not null)
+        {
+            Sub = res.Value;
+        }
+        else
+        {
+            Snackbar.Add(res.ErrorMessage ?? "Failed to load subscription.", Severity.Error);
+        }
+    }
+
+    /// <summary>
+    /// Begins a Stripe Checkout flow. Opens the hosted URL in the system browser
+    /// (works in the Hybrid WebView2 — anchor click with target=_blank routes
+    /// through the OS browser). Falls back to the dev-only "switch instantly"
+    /// path if the server reports Stripe isn't configured yet.
+    /// </summary>
+    private async Task StartCheckoutAsync(SubscriptionTier tier)
+    {
+        if (Sub is null || tier == Sub.Tier) return;
+        _switching = true;
+        try
+        {
+            var res = await TenancyApi.CreateCheckoutSessionAsync(tier);
+            if (res.Success && res.Value is not null && !string.IsNullOrEmpty(res.Value.Url))
+            {
+                await Microsoft.Maui.ApplicationModel.Browser.Default.OpenAsync(
+                    res.Value.Url, Microsoft.Maui.ApplicationModel.BrowserLaunchMode.External);
+                Snackbar.Add("Opening Stripe Checkout in your browser…", Severity.Info);
+                return;
+            }
+
+            // Stripe not configured on the server (403 with "not configured" message).
+            // Fall back to the dev-only ChangeTier endpoint so the demo still works
+            // before the admin adds Stripe keys. Production should never reach this
+            // branch because the server enforces the same check.
+            var notConfigured = (res.ErrorMessage ?? "").Contains("not configured", StringComparison.OrdinalIgnoreCase);
+            if (notConfigured)
+            {
+                Snackbar.Add("Stripe not configured — switching instantly (dev mode).", Severity.Info);
+                await SwitchToFallback(tier);
+            }
+            else
+            {
+                Snackbar.Add(res.ErrorMessage ?? "Checkout failed.", Severity.Warning);
+            }
+        }
+        finally
+        {
+            _switching = false;
+        }
+    }
+
+    private async Task SwitchToFallback(SubscriptionTier tier)
+    {
+        var res = await TenancyApi.ChangeTierAsync(tier);
+        if (res.Success && res.Value is not null)
+        {
+            Sub = res.Value;
+            Snackbar.Add($"Switched to {Sub.TierLabel} plan (dev mode).", Severity.Success);
+        }
+        else
+        {
+            Snackbar.Add(res.ErrorMessage ?? "Failed to switch plans.", Severity.Error);
+        }
+    }
+
+    private bool IsOver => Sub?.EmployeeLimit is int lim && Sub.EmployeeCount > lim;
+
+    private string LimitLabel => Sub?.EmployeeLimit?.ToString() ?? "∞";
+
+    private static string StatusClass(SubscriptionStatus s) => s switch
+    {
+        SubscriptionStatus.Active    => "",
+        SubscriptionStatus.Trial     => "",
+        SubscriptionStatus.PastDue   => "warn",
+        SubscriptionStatus.Cancelled => "bad",
+        SubscriptionStatus.Suspended => "bad",
+        _ => "",
+    };
+}

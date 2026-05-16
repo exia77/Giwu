@@ -21,44 +21,24 @@
 ═══════════════════════════════════════════════════ *@
 <MudGrid Spacing="3" Class="mb-4">
     <MudItem xs="12" sm="6" md="3">
-        <MudPaper Class="pay-kpi" Elevation="0">
-            <div class="kpi-label">Current Period Payroll</div>
-            <div class="kpi-value">@MoneyCompact(CurrentRunGross)</div>
-            <div class="kpi-sub">
-                <span class="kpi-dot" style="background:var(--pay-green)"></span>
-                <span>Net: @MoneyCompact(CurrentRunNet)</span>
-            </div>
-        </MudPaper>
+        <StatCard Label="Current period payroll" Value="@MoneyCompact(CurrentRunGross)"
+                  Sub="@($"Net: {MoneyCompact(CurrentRunNet)}")"
+                  Variant="StatTone.Success" />
     </MudItem>
     <MudItem xs="12" sm="6" md="3">
-        <MudPaper Class="pay-kpi" Elevation="0">
-            <div class="kpi-label">Employees on Payroll</div>
-            <div class="kpi-value">@CurrentRun.Slips.Count</div>
-            <div class="kpi-sub">
-                <span class="kpi-dot" style="background:var(--pay-blue)"></span>
-                <span>@EditedSlipCount adjustments made</span>
-            </div>
-        </MudPaper>
+        <StatCard Label="Employees on payroll" Value="@CurrentRun.Slips.Count.ToString()"
+                  Sub="@($"{EditedSlipCount} adjustments made")"
+                  Variant="StatTone.Info" />
     </MudItem>
     <MudItem xs="12" sm="6" md="3">
-        <MudPaper Class="pay-kpi" Elevation="0">
-            <div class="kpi-label">Statutory Deductions</div>
-            <div class="kpi-value">@MoneyCompact(CurrentRunDeductions)</div>
-            <div class="kpi-sub">
-                <span class="kpi-dot" style="background:var(--pay-amber)"></span>
-                <span>SSS + PhilHealth + HDMF + WHT</span>
-            </div>
-        </MudPaper>
+        <StatCard Label="Statutory deductions" Value="@MoneyCompact(CurrentRunDeductions)"
+                  Sub="SSS + PhilHealth + HDMF + WHT"
+                  Variant="StatTone.Warning" />
     </MudItem>
     <MudItem xs="12" sm="6" md="3">
-        <MudPaper Class="pay-kpi" Elevation="0">
-            <div class="kpi-label">YTD Payroll Cost</div>
-            <div class="kpi-value">@MoneyCompact(YtdPayrollCost)</div>
-            <div class="kpi-sub">
-                <span class="kpi-dot" style="background:var(--pay-purple)"></span>
-                <span>@ReleasedRunCount runs released</span>
-            </div>
-        </MudPaper>
+        <StatCard Label="YTD payroll cost" Value="@MoneyCompact(YtdPayrollCost)"
+                  Sub="@($"{ReleasedRunCount} runs released")"
+                  Variant="StatTone.Accent" />
     </MudItem>
 </MudGrid>
 
@@ -72,7 +52,7 @@
             <div class="pay-card-header">
                 <div>
                     <MudText Typo="Typo.subtitle2" Class="fw-medium">Current Pay Run</MudText>
-                    <MudText Typo="Typo.caption" Style="opacity:.55">
+                    <MudText Typo="Typo.caption" Class="giwu-text-muted">
                         @CurrentRun.Period · @FmtPeriodRange(CurrentRun.PeriodStart, CurrentRun.PeriodEnd)
                     </MudText>
                 </div>
@@ -170,10 +150,8 @@
             </div>
             @if (AllRuns.Count <= 1)
             {
-                <div class="pay-empty">
-                    <div class="pay-empty-icon">—</div>
-                    <MudText Typo="Typo.body2">No previous runs yet.</MudText>
-                </div>
+                <EmptyState Title="No previous runs yet."
+                            Icon="@Icons.Material.Outlined.History" />
             }
             else
             {
@@ -183,7 +161,7 @@
                     <div class="history-item" @onclick="@(() => ViewHistoricalRun(run.Id))">
                         <div class="history-meta">
                             <MudText Typo="Typo.body2" Class="fw-medium">@run.Period</MudText>
-                            <MudText Typo="Typo.caption" Style="opacity:.55">
+                            <MudText Typo="Typo.caption" Class="giwu-text-muted">
                                 @run.Slips.Count employees · @Money(total)
                             </MudText>
                         </div>
@@ -208,7 +186,7 @@
             <div class="pay-card-header">
                 <div>
                     <MudText Typo="Typo.subtitle2" Class="fw-medium">@CurrentRun.Period Payroll Lines</MudText>
-                    <MudText Typo="Typo.caption" Style="opacity:.55">
+                    <MudText Typo="Typo.caption" Class="giwu-text-muted">
                         @FilteredSlips.Count() of @CurrentRun.Slips.Count employees
                     </MudText>
                 </div>
@@ -268,7 +246,7 @@
                                         <span class="pay-edited-dot" title="Manually adjusted"></span>
                                     }
                                 </div>
-                                <MudText Typo="Typo.caption" Style="opacity:.55">@context.Role</MudText>
+                                <MudText Typo="Typo.caption" Class="giwu-text-muted">@context.Role</MudText>
                             </div>
                         </div>
                     </MudTd>
@@ -296,10 +274,8 @@
                     </MudTd>
                 </RowTemplate>
                 <NoRecordsContent>
-                    <div class="pay-empty">
-                        <div class="pay-empty-icon">⊘</div>
-                        <MudText Typo="Typo.body2">No employees match your filter.</MudText>
-                    </div>
+                    <EmptyState Title="No employees match your filter."
+                                Icon="@Icons.Material.Outlined.SearchOff" />
                 </NoRecordsContent>
                 <PagerContent>
                     <MudTablePager PageSizeOptions="new int[] { 10, 25, 50, 100 }" />
@@ -325,7 +301,7 @@
             <div class="pay-card-header">
                 <div>
                     <MudText Typo="Typo.subtitle2" Class="fw-medium">Pay Run History</MudText>
-                    <MudText Typo="Typo.caption" Style="opacity:.55">All past pay runs</MudText>
+                    <MudText Typo="Typo.caption" Class="giwu-text-muted">All past pay runs</MudText>
                 </div>
             </div>
 
@@ -346,7 +322,7 @@
                     <MudTd DataLabel="Period">
                         <div>
                             <MudText Typo="Typo.body2" Class="fw-medium" Style="line-height:1.2">@context.Period</MudText>
-                            <MudText Typo="Typo.caption" Style="opacity:.55">
+                            <MudText Typo="Typo.caption" Class="giwu-text-muted">
                                 @FmtPeriodRange(context.PeriodStart, context.PeriodEnd)
                             </MudText>
                         </div>
@@ -369,10 +345,9 @@
                     </MudTd>
                 </RowTemplate>
                 <NoRecordsContent>
-                    <div class="pay-empty">
-                        <div class="pay-empty-icon">—</div>
-                        <MudText Typo="Typo.body2">No pay runs yet.</MudText>
-                    </div>
+                    <EmptyState Title="No pay runs yet."
+                                Hint="Start a new pay run to begin processing payroll."
+                                Icon="@Icons.Material.Outlined.PointOfSale" />
                 </NoRecordsContent>
             </MudTable>
         </MudTabPanel>
@@ -402,21 +377,11 @@
         --pay-blue-text:    #0C447C;
     }
 
-    /* ── KPI ──────────────────────────────────────────────── */
-    .pay-kpi {
-        padding: 16px;
-        border: 0.5px solid var(--mud-palette-divider);
-        border-radius: 10px;
-        background: var(--mud-palette-background);
-    }
-    .kpi-label { font-size: 10.5px; letter-spacing: .07em; text-transform: uppercase; opacity: .55; margin-bottom: 6px; font-weight: 500; }
-    .kpi-value { font-size: 1.9rem; font-weight: 500; line-height: 1; margin-bottom: 5px; font-variant-numeric: tabular-nums; }
-    .kpi-sub   { font-size: 11.5px; opacity: .6; display: flex; align-items: center; gap: 5px; }
-    .kpi-dot   { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; display: inline-block; }
+    /* KPI cards moved to the StatCard shared component (tokens.css). */
 
     /* ── Card shell ───────────────────────────────────────── */
     .pay-card {
-        border: 0.5px solid var(--mud-palette-divider);
+        border: 1px solid var(--mud-palette-divider);
         border-radius: 10px;
         overflow: hidden;
         background: var(--mud-palette-background);
@@ -426,7 +391,7 @@
         align-items: center;
         justify-content: space-between;
         padding: 12px 16px;
-        border-bottom: 0.5px solid var(--mud-palette-divider);
+        border-bottom: 1px solid var(--mud-palette-divider);
         gap: 8px;
     }
     .fw-medium { font-weight: 500; }
@@ -512,7 +477,7 @@
         align-items: center;
         gap: 8px;
         padding: 12px 16px 16px;
-        border-top: 0.5px solid var(--mud-palette-divider);
+        border-top: 1px solid var(--mud-palette-divider);
         flex-wrap: wrap;
     }
     .pay-released-alert {
@@ -524,7 +489,7 @@
     .history-item {
         display: flex; align-items: center; gap: 10px;
         padding: 11px 16px;
-        border-bottom: 0.5px solid var(--mud-palette-divider);
+        border-bottom: 1px solid var(--mud-palette-divider);
         cursor: pointer;
         transition: background .1s;
     }
@@ -536,7 +501,7 @@
     .filter-row {
         display: flex; flex-wrap: wrap; align-items: center; gap: 8px;
         padding: 10px 14px;
-        border-bottom: 0.5px solid var(--mud-palette-divider);
+        border-bottom: 1px solid var(--mud-palette-divider);
     }
     .pay-search { max-width: 260px; }
 
@@ -550,13 +515,12 @@
     /* ── Totals row in footer ──────────────────────────────── */
     .pay-mud-table .pay-totals-cell {
         background: var(--mud-palette-background-grey) !important;
-        border-top: 0.5px solid var(--mud-palette-divider);
+        border-top: 1px solid var(--mud-palette-divider);
         font-size: 13px !important;
     }
 
     /* ── Empty state ───────────────────────────────────────── */
-    .pay-empty { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 40px 16px; opacity: .55; gap: 8px; }
-    .pay-empty-icon { font-size: 28px; }
+    /* .pay-empty removed — replaced by the EmptyState shared component. */
 
     /* ── Tabs ──────────────────────────────────────────────── */
     .pay-tab-panel { padding: 0 !important; }

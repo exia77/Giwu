@@ -9,7 +9,7 @@
             </MudAvatar>
             <div style="flex:1;min-width:0">
                 <MudText Typo="Typo.subtitle1" Class="fw-medium">@Candidate.Name</MudText>
-                <MudText Typo="Typo.caption" Style="opacity:.55">
+                <MudText Typo="Typo.caption" Class="giwu-text-muted">
                     @(Job?.Title ?? "—") · Applied @RelativeTime(Candidate.AppliedOn)
                 </MudText>
             </div>
@@ -74,7 +74,7 @@
                 @foreach (var iv in Interviews.Where(i => i.Status == "Scheduled"))
                 {
                     <div class="iv-row">
-                        <MudIcon Icon="@Icons.Material.Outlined.Event" Size="Size.Small" Style="opacity:.6" />
+                        <MudIcon Icon="@Icons.Material.Outlined.Event" Size="Size.Small" Class="giwu-text-muted" />
                         <div style="flex:1;min-width:0">
                             <div style="font-size:13px">@iv.Kind · @FmtDateTime(iv.ScheduledAt)</div>
                             <div style="font-size:11px;opacity:.55">
@@ -183,7 +183,7 @@
     .iv-row {
         display: flex; align-items: center; gap: 10px;
         padding: 8px 0;
-        border-bottom: 0.5px solid var(--mud-palette-divider);
+        border-bottom: 1px solid var(--mud-palette-divider);
     }
     .iv-row:last-child { border-bottom: none; }
 

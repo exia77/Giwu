@@ -1,6 +1,7 @@
 using System.Reflection;
 using FluentValidation;
 using Giwu.Application.Common.Behaviors;
+using Giwu.Application.Subscriptions;
 using MediatR;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -19,6 +20,8 @@ public static class DependencyInjection
         });
 
         services.AddValidatorsFromAssembly(assembly);
+
+        services.AddScoped<ITierLimits, TierLimits>();
         return services;
     }
 }

@@ -11,11 +11,15 @@ using MediatR;
 
 namespace Giwu.Api.Endpoints.Attendance;
 
+// Self clock-in/out is a self-service action available to any authenticated user
+// linked to an Employee — Managers, HR, Finance can all clock themselves in/out
+// the same way Employees do (interim until biometric capture is wired). The
+// handler enforces the EmployeeId check; the endpoint just requires auth.
 public sealed class ClockInEndpoint : IEndpoint
 {
     public void Map(IEndpointRouteBuilder app) =>
         app.MapPost("/api/attendance/clock-in", Handle)
-           .RequireAuthorization(Permissions.Attendance.ViewSelf)
+           .RequireAuthorization()
            .WithTags("Attendance");
 
     private static async Task<IResult> Handle(ClockInRequest body, IMediator m, CancellationToken ct) =>
@@ -26,7 +30,7 @@ public sealed class ClockOutEndpoint : IEndpoint
 {
     public void Map(IEndpointRouteBuilder app) =>
         app.MapPost("/api/attendance/clock-out", Handle)
-           .RequireAuthorization(Permissions.Attendance.ViewSelf)
+           .RequireAuthorization()
            .WithTags("Attendance");
 
     private static async Task<IResult> Handle(ClockOutRequest body, IMediator m, CancellationToken ct) =>

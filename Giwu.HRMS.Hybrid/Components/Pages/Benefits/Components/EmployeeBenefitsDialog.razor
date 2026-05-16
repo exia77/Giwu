@@ -9,7 +9,7 @@
             </MudAvatar>
             <div style="flex:1;min-width:0">
                 <MudText Typo="Typo.subtitle1" Class="fw-medium">@View.Name</MudText>
-                <MudText Typo="Typo.caption" Style="opacity:.55">
+                <MudText Typo="Typo.caption" Class="giwu-text-muted">
                     @View.Role · @View.Dept · Hired @FmtDate(View.HireDate)
                 </MudText>
             </div>
@@ -21,7 +21,7 @@
             <MudTabPanel Text="@($"Enrollments ({ActiveEnrollments.Count})")"
                          Icon="@Icons.Material.Outlined.CardGiftcard">
                 <div class="emp-section-actions">
-                    <MudText Typo="Typo.caption" Style="opacity:.6">
+                    <MudText Typo="Typo.caption" Class="giwu-text-muted">
                         Monthly contribution: <strong>@Money(MonthlyContribution)</strong>
                     </MudText>
                     <MudSpacer />
@@ -34,7 +34,7 @@
                                 <MudMenuItem OnClick="@(() => EnrollIn(prog))">
                                     <div style="display:flex;align-items:center;gap:8px">
                                         <MudIcon Icon="@CategoryIcon(prog.Category)" Size="Size.Small"
-                                                 Style="opacity:.65" />
+                                                 Class="giwu-text-muted" />
                                         <span>@prog.Name</span>
                                     </div>
                                 </MudMenuItem>
@@ -45,10 +45,8 @@
 
                 @if (View.Enrollments.Count == 0)
                 {
-                    <div class="ben-empty">
-                        <div class="ben-empty-icon">—</div>
-                        <MudText Typo="Typo.body2">Not enrolled in any programs.</MudText>
-                    </div>
+                    <EmptyState Title="Not enrolled in any programs."
+                                Icon="@Icons.Material.Outlined.HealthAndSafety" />
                 }
                 else
                 {
@@ -100,7 +98,7 @@
             <MudTabPanel Text="@($"Dependents ({View.Dependents.Count})")"
                          Icon="@Icons.Material.Outlined.FamilyRestroom">
                 <div class="emp-section-actions">
-                    <MudText Typo="Typo.caption" Style="opacity:.6">
+                    <MudText Typo="Typo.caption" Class="giwu-text-muted">
                         Dependents may be enrolled in HMO programs separately.
                     </MudText>
                     <MudSpacer />
@@ -156,10 +154,8 @@
 
                 @if (View.Dependents.Count == 0 && !ShowDependentForm)
                 {
-                    <div class="ben-empty">
-                        <div class="ben-empty-icon">—</div>
-                        <MudText Typo="Typo.body2">No dependents on file.</MudText>
-                    </div>
+                    <EmptyState Title="No dependents on file."
+                                Icon="@Icons.Material.Outlined.PeopleOutline" />
                 }
                 else
                 {
@@ -169,7 +165,7 @@
                             <div class="dep-rel-pill">@dep.Relationship</div>
                             <div class="dep-meta">
                                 <MudText Typo="Typo.body2" Class="fw-medium">@dep.Name</MudText>
-                                <MudText Typo="Typo.caption" Style="opacity:.55">
+                                <MudText Typo="Typo.caption" Class="giwu-text-muted">
                                     @AgeFromBirthdate(dep.BirthDate) yrs · @dep.Gender · b. @FmtDate(dep.BirthDate)
                                 </MudText>
                             </div>
@@ -190,10 +186,8 @@
                          Icon="@Icons.Material.Outlined.History">
                 @if (View.Requests.Count == 0)
                 {
-                    <div class="ben-empty">
-                        <div class="ben-empty-icon">—</div>
-                        <MudText Typo="Typo.body2">No claim or loan history.</MudText>
-                    </div>
+                    <EmptyState Title="No claim or loan history."
+                                Icon="@Icons.Material.Outlined.History" />
                 }
                 else
                 {
@@ -249,7 +243,7 @@
     .enr-row {
         display: flex; align-items: center; gap: 12px;
         padding: 10px 12px;
-        border: 0.5px solid var(--mud-palette-divider);
+        border: 1px solid var(--mud-palette-divider);
         border-radius: 8px;
         margin-bottom: 8px;
     }
@@ -291,7 +285,7 @@
     .dep-row {
         display: flex; align-items: center; gap: 12px;
         padding: 10px 12px;
-        border: 0.5px solid var(--mud-palette-divider);
+        border: 1px solid var(--mud-palette-divider);
         border-radius: 8px;
         margin-bottom: 8px;
     }
@@ -312,7 +306,7 @@
     .req-row {
         display: flex; gap: 12px;
         padding: 10px 12px;
-        border-bottom: 0.5px solid var(--mud-palette-divider);
+        border-bottom: 1px solid var(--mud-palette-divider);
     }
     .req-row:last-child { border-bottom: none; }
     .req-date {

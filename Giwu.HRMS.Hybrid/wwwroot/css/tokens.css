@@ -1,0 +1,187 @@
+/* ─────────────────────────────────────────────────────────────────
+   Giwu HRMS design tokens
+   Central CSS variables used by shared components and page styles.
+   Reference these instead of hard-coding values per page so changes
+   propagate everywhere.
+
+   Naming convention:  --giwu-<category>-<modifier>
+   Categories:  space, radius, border, fs (font-size), fw (weight),
+                opacity, status (semantic colors), shadow, dur (duration)
+───────────────────────────────────────────────────────────────── */
+
+:root {
+    /* ── Spacing (4px base) ─────────────────────────────────────── */
+    --giwu-space-1: 4px;
+    --giwu-space-2: 8px;
+    --giwu-space-3: 12px;
+    --giwu-space-4: 16px;
+    --giwu-space-5: 20px;
+    --giwu-space-6: 24px;
+    --giwu-space-7: 32px;
+    --giwu-space-8: 48px;
+
+    /* ── Radii ──────────────────────────────────────────────────── */
+    --giwu-radius-sm: 6px;
+    --giwu-radius-md: 10px;
+    --giwu-radius-lg: 14px;
+    --giwu-radius-pill: 999px;
+
+    /* ── Borders ────────────────────────────────────────────────── */
+    /* 1px (never 0.5px — blurry on Windows non-Retina DPI scaling) */
+    --giwu-border: 1px solid var(--mud-palette-divider);
+
+    /* ── Type sizes ─────────────────────────────────────────────── */
+    --giwu-fs-xs: 11px;
+    --giwu-fs-sm: 12px;
+    --giwu-fs-md: 13px;
+    --giwu-fs-lg: 14px;
+    --giwu-fs-xl: 16px;
+    --giwu-fs-2xl: 22px;
+    --giwu-fs-3xl: 32px;
+
+    /* ── Type weights ───────────────────────────────────────────── */
+    --giwu-fw-regular: 400;
+    --giwu-fw-medium: 500;
+    --giwu-fw-semibold: 600;
+
+    /* ── Opacities (legibility-safe defaults) ──────────────────── */
+    /* Bumped up from the legacy 0.55 so secondary text stays readable
+       on the dark theme. */
+    --giwu-opacity-strong: 0.85;
+    --giwu-opacity-muted: 0.65;
+    --giwu-opacity-faint: 0.45;
+
+    /* ── Touch targets ──────────────────────────────────────────── */
+    /* Material/Apple guidance: 44px minimum tap target. Apply to
+       icon-only controls and primary actions. */
+    --giwu-touch-min: 44px;
+
+    /* ── Motion ─────────────────────────────────────────────────── */
+    --giwu-dur-fast: 120ms;
+    --giwu-dur-base: 200ms;
+
+    /* ── Shadows ────────────────────────────────────────────────── */
+    --giwu-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.04);
+    --giwu-shadow-md: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+/* ── Semantic status colors ─────────────────────────────────────
+   Each status has a -bg (subtle fill) and -fg (legible text) for
+   both light and dark themes. Pages should reference these rather
+   than re-defining the same green/red/amber per page.
+─────────────────────────────────────────────────────────────── */
+:root,
+[data-theme="light"] {
+    --giwu-status-success-bg: #E1F5EE;
+    --giwu-status-success-fg: #085041;
+    --giwu-status-success-solid: #1D9E75;
+
+    --giwu-status-warning-bg: #FAEEDA;
+    --giwu-status-warning-fg: #633806;
+    --giwu-status-warning-solid: #BA7517;
+
+    --giwu-status-danger-bg: #FCEBEB;
+    --giwu-status-danger-fg: #791F1F;
+    --giwu-status-danger-solid: #E24B4A;
+
+    --giwu-status-info-bg: #E6F1FB;
+    --giwu-status-info-fg: #0C447C;
+    --giwu-status-info-solid: #185FA5;
+
+    --giwu-status-accent-bg: #EEEDFE;
+    --giwu-status-accent-fg: #3C3489;
+    --giwu-status-accent-solid: #534AB7;
+}
+
+[data-theme="dark"] {
+    --giwu-status-success-bg: rgba(29, 158, 117, 0.18);
+    --giwu-status-success-fg: #6abf87;
+    --giwu-status-success-solid: #1D9E75;
+
+    --giwu-status-warning-bg: rgba(186, 117, 23, 0.22);
+    --giwu-status-warning-fg: #e0a866;
+    --giwu-status-warning-solid: #BA7517;
+
+    --giwu-status-danger-bg: rgba(226, 75, 74, 0.22);
+    --giwu-status-danger-fg: #ea8585;
+    --giwu-status-danger-solid: #E24B4A;
+
+    --giwu-status-info-bg: rgba(24, 95, 165, 0.22);
+    --giwu-status-info-fg: #7baee8;
+    --giwu-status-info-solid: #185FA5;
+
+    --giwu-status-accent-bg: rgba(83, 74, 183, 0.22);
+    --giwu-status-accent-fg: #a8a0e8;
+    --giwu-status-accent-solid: #534AB7;
+}
+
+/* ─────────────────────────────────────────────────────────────────
+   Reusable utility classes built on the tokens.
+   Use these on plain <div>/<span> to compose page sections — saves
+   creating a custom class per page for the same patterns.
+───────────────────────────────────────────────────────────────── */
+
+/* Surface = card/panel background w/ border + radius */
+.giwu-surface {
+    background: var(--mud-palette-background);
+    border: var(--giwu-border);
+    border-radius: var(--giwu-radius-lg);
+    overflow: hidden;
+}
+
+/* Text helpers */
+.giwu-text-muted  { opacity: var(--giwu-opacity-muted); }
+.giwu-text-faint  { opacity: var(--giwu-opacity-faint); }
+.giwu-text-strong { opacity: var(--giwu-opacity-strong); }
+
+.giwu-fw-medium   { font-weight: var(--giwu-fw-medium); }
+.giwu-fw-semibold { font-weight: var(--giwu-fw-semibold); }
+
+/* Padding helpers (avoid Style="padding:Xpx" everywhere) */
+.giwu-p-3 { padding: var(--giwu-space-3); }
+.giwu-p-4 { padding: var(--giwu-space-4); }
+.giwu-p-5 { padding: var(--giwu-space-5); }
+.giwu-p-6 { padding: var(--giwu-space-6); }
+.giwu-px-4 { padding-left: var(--giwu-space-4); padding-right: var(--giwu-space-4); }
+.giwu-py-3 { padding-top: var(--giwu-space-3); padding-bottom: var(--giwu-space-3); }
+
+.giwu-gap-1 { gap: var(--giwu-space-1); }
+.giwu-gap-2 { gap: var(--giwu-space-2); }
+.giwu-gap-3 { gap: var(--giwu-space-3); }
+.giwu-gap-4 { gap: var(--giwu-space-4); }
+
+/* Status pills — sentence case, not uppercase */
+.giwu-pill {
+    display: inline-flex;
+    align-items: center;
+    font-size: var(--giwu-fs-xs);
+    font-weight: var(--giwu-fw-semibold);
+    padding: 3px 10px;
+    border-radius: var(--giwu-radius-pill);
+    white-space: nowrap;
+    letter-spacing: 0.01em;
+}
+.giwu-pill.success { background: var(--giwu-status-success-bg); color: var(--giwu-status-success-fg); }
+.giwu-pill.warning { background: var(--giwu-status-warning-bg); color: var(--giwu-status-warning-fg); }
+.giwu-pill.danger  { background: var(--giwu-status-danger-bg);  color: var(--giwu-status-danger-fg); }
+.giwu-pill.info    { background: var(--giwu-status-info-bg);    color: var(--giwu-status-info-fg); }
+.giwu-pill.accent  { background: var(--giwu-status-accent-bg);  color: var(--giwu-status-accent-fg); }
+.giwu-pill.neutral { background: var(--mud-palette-action-default-hover); color: var(--mud-palette-text-primary); opacity: var(--giwu-opacity-strong); }
+
+/* Section label — sentence case at 12px replaces the legacy uppercase
+   10.5px / .07em pattern. Kept available as .giwu-section-label-upper
+   if a specific page needs uppercase for emphasis. */
+.giwu-section-label {
+    font-size: var(--giwu-fs-sm);
+    font-weight: var(--giwu-fw-semibold);
+    opacity: var(--giwu-opacity-muted);
+    margin-bottom: var(--giwu-space-2);
+}
+.giwu-section-label-upper {
+    font-size: var(--giwu-fs-xs);
+    font-weight: var(--giwu-fw-semibold);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    opacity: var(--giwu-opacity-muted);
+    margin-bottom: var(--giwu-space-2);
+}

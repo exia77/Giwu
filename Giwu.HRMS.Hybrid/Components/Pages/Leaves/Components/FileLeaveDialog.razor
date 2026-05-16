@@ -6,7 +6,7 @@
             @if (CurrentEmployee is not null)
             {
                 <div class="filing-as">
-                    <MudIcon Icon="@Icons.Material.Outlined.Person" Size="Size.Small" Style="opacity:.6" />
+                    <MudIcon Icon="@Icons.Material.Outlined.Person" Size="Size.Small" Class="giwu-text-muted" />
                     <span class="filing-as-label">Filing as</span>
                     <span class="filing-as-name">@CurrentEmployee.Name</span>
                     <span class="filing-as-dept">· @CurrentEmployee.Dept</span>
@@ -35,18 +35,23 @@
                 }
             </MudSelect>
 
-            <MudGrid Spacing="2">
-                <MudItem xs="6">
-                    <MudDatePicker Label="Start date" @bind-Date="StartDate"
-                                   MinDate="DateTime.Today.AddYears(-1)"
-                                   Variant="Variant.Outlined" Margin="Margin.Dense" />
-                </MudItem>
-                <MudItem xs="6">
-                    <MudDatePicker Label="End date" @bind-Date="EndDate"
-                                   MinDate="StartDate ?? DateTime.Today"
-                                   Variant="Variant.Outlined" Margin="Margin.Dense" />
-                </MudItem>
-            </MudGrid>
+            @* Raw HTML date inputs — neither MudDatePicker nor MudTextField+InputType.Date
+               opens a picker reliably inside WebView2. A plain <input type="date">
+               uses the WebView's native chrome and works every time. *@
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+                <div class="fl-date">
+                    <label class="fl-date-label">Start date</label>
+                    <input type="date" class="fl-date-input"
+                           value="@StartDateStr"
+                           @onchange="@(e => OnStartDateChanged(e.Value?.ToString() ?? ""))" />
+                </div>
+                <div class="fl-date">
+                    <label class="fl-date-label">End date</label>
+                    <input type="date" class="fl-date-input"
+                           value="@EndDateStr"
+                           @onchange="@(e => OnEndDateChanged(e.Value?.ToString() ?? ""))" />
+                </div>
+            </div>
 
             @if (StartDate.HasValue && EndDate.HasValue && StartDate.Value.Date == EndDate.Value.Date)
             {
@@ -156,6 +161,35 @@
         border-radius: 6px;
         font-size: 13px;
     }
+
+    /* Native date inputs styled to look like MudBlazor's outlined fields. */
+    .fl-date { display: flex; flex-direction: column; gap: 4px; }
+    .fl-date-label {
+        font-size: 11.5px;
+        color: var(--mud-palette-text-secondary);
+        letter-spacing: .02em;
+        padding-left: 2px;
+    }
+    .fl-date-input {
+        appearance: none;
+        -webkit-appearance: none;
+        font: inherit;
+        font-size: 13px;
+        height: 36px;
+        padding: 0 10px;
+        border: 1px solid var(--mud-palette-lines-inputs);
+        border-radius: 4px;
+        background: var(--mud-palette-surface);
+        color: var(--mud-palette-text-primary);
+        outline: none;
+        cursor: pointer;
+    }
+    .fl-date-input:focus { border-color: var(--mud-palette-primary); }
+    .fl-date-input::-webkit-calendar-picker-indicator {
+        cursor: pointer;
+        opacity: .7;
+    }
+    .fl-date-input::-webkit-calendar-picker-indicator:hover { opacity: 1; }
     .filing-as-label { opacity: .6; }
     .filing-as-name { font-weight: 500; }
     .filing-as-dept { opacity: .55; font-size: 12px; }
@@ -181,7 +215,7 @@
         font-size: 13px;
     }
     .file-preview-row-result {
-        border-top: 0.5px solid var(--mud-palette-divider);
+        border-top: 1px solid var(--mud-palette-divider);
         padding-top: 8px;
         margin-top: 4px;
         font-weight: 500;
@@ -218,6 +252,24 @@
     private bool IsHalfDay { get; set; } = false;
     private string HalfDaySession { get; set; } = "AM";
     private string Reason { get; set; } = "";
+
+    // The native <input type=date> wants ISO yyyy-MM-dd strings. These two
+    // shims keep the existing DateTime? state untouched.
+    private string StartDateStr => StartDate?.ToString("yyyy-MM-dd") ?? "";
+    private string EndDateStr   => EndDate?.ToString("yyyy-MM-dd")   ?? "";
+
+    private void OnStartDateChanged(string raw)
+    {
+        StartDate = DateTime.TryParse(raw, out var d) ? d.Date : null;
+        // If end is now before start, snap it forward so the form stays consistent.
+        if (StartDate is not null && (EndDate is null || EndDate < StartDate))
+            EndDate = StartDate;
+    }
+
+    private void OnEndDateChanged(string raw)
+    {
+        EndDate = DateTime.TryParse(raw, out var d) ? d.Date : null;
+    }
 
     private LeaveType? SelectedLeaveType =>
         AllLeaveTypes.FirstOrDefault(l => l.Id == SelectedLeaveTypeId);

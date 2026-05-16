@@ -1,5 +1,6 @@
 using Giwu.Application.Common;
 using Giwu.Infrastructure.Auth;
+using Giwu.Infrastructure.Billing;
 using Giwu.Infrastructure.Email;
 using Giwu.Infrastructure.Persistence;
 using Giwu.Infrastructure.Persistence.Interceptors;
@@ -48,8 +49,13 @@ public static class DependencyInjection
 
         services.Configure<GoogleOptions>(config.GetSection("Google"));
         services.AddSingleton<IGoogleTokenVerifier, GoogleTokenVerifier>();
+        services.AddSingleton<Giwu.Application.Auth.Google.IGoogleOAuthFlow, GoogleOAuthFlow>();
+        services.AddHttpClient<IGoogleCodeExchanger, GoogleCodeExchanger>();
 
         services.Configure<AppUrlOptions>(config.GetSection("AppUrl"));
+
+        services.Configure<StripeOptions>(config.GetSection("Stripe"));
+        services.AddScoped<IBillingService, StripeBillingService>();
 
         return services;
     }

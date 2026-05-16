@@ -253,12 +253,12 @@ public static class PayrollFormatting
 
     public static string AvatarStyle(string av) => av switch
     {
-        "green"   => "background:var(--pay-green-light);color:var(--pay-green-text)",
-        "blue"    => "background:var(--pay-blue-light);color:var(--pay-blue-text)",
-        "amber"   => "background:var(--pay-amber-light);color:var(--pay-amber-text)",
-        "red"     => "background:var(--pay-red-light);color:var(--pay-red-text)",
-        "purple"  => "background:var(--pay-purple-light);color:var(--pay-purple-text)",
-        "primary" => "background:var(--pay-green-light);color:var(--pay-green-text)",
+        "green"   => "background:var(--giwu-status-success-bg);color:var(--giwu-status-success-fg)",
+        "blue"    => "background:var(--giwu-status-info-bg);color:var(--giwu-status-info-fg)",
+        "amber"   => "background:var(--giwu-status-warning-bg);color:var(--giwu-status-warning-fg)",
+        "red"     => "background:var(--giwu-status-danger-bg);color:var(--giwu-status-danger-fg)",
+        "purple"  => "background:var(--giwu-status-accent-bg);color:var(--giwu-status-accent-fg)",
+        "primary" => "background:var(--giwu-status-success-bg);color:var(--giwu-status-success-fg)",
         _         => ""
     };
 

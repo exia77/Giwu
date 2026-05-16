@@ -9,7 +9,7 @@
             </MudAvatar>
             <div style="flex:1;min-width:0">
                 <MudText Typo="Typo.subtitle1" Class="fw-medium">@Employee.Name</MudText>
-                <MudText Typo="Typo.caption" Style="opacity:.55">
+                <MudText Typo="Typo.caption" Class="giwu-text-muted">
                     @Employee.Role · @Employee.Dept · Hired @FmtDate(Employee.HireDate)
                 </MudText>
             </div>
@@ -22,10 +22,8 @@
                          Icon="@Icons.Material.Outlined.AccountBalance">
                 @if (Employee.Balances.Count == 0)
                 {
-                    <div class="leave-empty">
-                        <div class="leave-empty-icon">—</div>
-                        <MudText Typo="Typo.body2">No balances on record yet.</MudText>
-                    </div>
+                    <EmptyState Title="No balances on record yet."
+                                Icon="@Icons.Material.Outlined.AccountBalance" />
                 }
                 else
                 {
@@ -77,10 +75,8 @@
                          Icon="@Icons.Material.Outlined.History">
                 @if (Employee.Requests.Count == 0)
                 {
-                    <div class="leave-empty">
-                        <div class="leave-empty-icon">—</div>
-                        <MudText Typo="Typo.body2">No leave history.</MudText>
-                    </div>
+                    <EmptyState Title="No leave history."
+                                Icon="@Icons.Material.Outlined.History" />
                 }
                 else
                 {
@@ -145,7 +141,7 @@
 
     /* ── Balance cards ── */
     .bal-card {
-        border: 0.5px solid var(--mud-palette-divider);
+        border: 1px solid var(--mud-palette-divider);
         border-radius: 8px;
         padding: 10px 12px;
     }
@@ -184,7 +180,7 @@
         display: flex;
         gap: 12px;
         padding: 12px;
-        border-bottom: 0.5px solid var(--mud-palette-divider);
+        border-bottom: 1px solid var(--mud-palette-divider);
     }
     .emp-req-row:last-child { border-bottom: none; }
     .emp-req-date {

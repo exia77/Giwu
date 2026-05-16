@@ -11,6 +11,7 @@
 @inject Giwu.HRMS.Hybrid.Components.Pages.Settings.SettingsService AppSettings
 @inject Giwu.HRMS.Hybrid.Services.Notifications.INotificationsApi NotificationsApi
 @inject Giwu.HRMS.Hybrid.Services.Notifications.NotificationHubClient NotificationHub
+@inject NavBadgeService NavBadges
 @implements IDisposable
 @using Giwu.Domain.Attendance
 
@@ -177,7 +178,7 @@
              Style="border-bottom:1px solid var(--mud-palette-divider);background:var(--mud-palette-background)">
     <div style="flex:1">
       <MudText Typo="Typo.h6" Class="fw-semibold" Style="line-height:1.1">@TopbarTitle</MudText>
-      <MudText Typo="Typo.caption" Style="opacity:.55">@Today.ToString("dddd, MMMM d, yyyy")</MudText>
+      <MudText Typo="Typo.caption" Class="giwu-text-muted">@Today.ToString("dddd, MMMM d, yyyy")</MudText>
     </div>
     <div class="topbar-actions">
     <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined"
@@ -454,6 +455,11 @@ private string RelPath => Navigation.ToBaseRelativePath(Navigation.Uri);
         Theme.OnChange += StateHasChanged;
         RoleAuth.OnChange += StateHasChanged;
         Session.SessionExpired += OnSessionExpired;
+
+        // Pages that mutate badge-affecting state (approve/reject leave,
+        // resolve overtime, etc.) publish here so badges stay accurate.
+        NavBadges.RefreshRequested += OnNavBadgeRefreshRequested;
+
         await RefreshNavBadgesAsync();
         await RefreshUnreadCountAsync();
 
@@ -582,6 +588,18 @@ private string RelPath => Navigation.ToBaseRelativePath(Navigation.Uri);
         RoleAuth.OnChange -= StateHasChanged;
         Session.SessionExpired -= OnSessionExpired;
         NotificationHub.NotificationReceived -= OnNotificationPushed;
+        NavBadges.RefreshRequested -= OnNavBadgeRefreshRequested;
         _notifPollTimer?.Dispose();
+    }
+
+    /// <summary>Subscriber for <see cref="NavBadgeService"/>. Pages call
+    /// <c>NavBadges.RequestRefreshAsync()</c> after mutations that change
+    /// the sidebar counters (leave approval, overtime resolution, etc.).
+    /// Also refreshes the bell-icon unread count since a mutation usually
+    /// resolves a notification that was the source of the badge.</summary>
+    private async Task OnNavBadgeRefreshRequested()
+    {
+        await RefreshNavBadgesAsync();
+        await RefreshUnreadCountAsync();
     }
 }

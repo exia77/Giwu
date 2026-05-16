@@ -12,7 +12,8 @@ public static class ResultMapper
     {
         ResultKind.Success    => Results.Ok(r.Value),
         ResultKind.NotFound   => Results.NotFound(new { message = r.Message ?? "Not found" }),
-        ResultKind.Forbidden  => Results.Forbid(),
+        ResultKind.Forbidden  => Results.Json(new { message = r.Message ?? "Forbidden" }, statusCode: 403),
+        ResultKind.PaymentRequired => Results.Json(new { message = r.Message ?? "Subscription upgrade required." }, statusCode: 402),
         ResultKind.Conflict   => Results.Conflict(new { message = r.Message }),
         ResultKind.Invalid    => Results.ValidationProblem(r.Errors!),
         _                     => Results.StatusCode(500),
@@ -22,7 +23,8 @@ public static class ResultMapper
     {
         ResultKind.Success    => Results.NoContent(),
         ResultKind.NotFound   => Results.NotFound(new { message = r.Message ?? "Not found" }),
-        ResultKind.Forbidden  => Results.Forbid(),
+        ResultKind.Forbidden  => Results.Json(new { message = r.Message ?? "Forbidden" }, statusCode: 403),
+        ResultKind.PaymentRequired => Results.Json(new { message = r.Message ?? "Subscription upgrade required." }, statusCode: 402),
         ResultKind.Conflict   => Results.Conflict(new { message = r.Message }),
         ResultKind.Invalid    => Results.ValidationProblem(r.Errors!),
         _                     => Results.StatusCode(500),

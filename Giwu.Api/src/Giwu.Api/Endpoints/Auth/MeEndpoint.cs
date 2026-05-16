@@ -1,6 +1,7 @@
 using Giwu.Api.Common;
-using Giwu.Application.Common;
-using Giwu.Contracts.Auth;
+using Giwu.Api.Middleware;
+using Giwu.Application.Auth.Queries;
+using MediatR;
 
 namespace Giwu.Api.Endpoints.Auth;
 
@@ -10,13 +11,12 @@ public sealed class MeEndpoint : IEndpoint
         app.MapGet("/api/auth/me", Handle)
            .RequireAuthorization()
            .WithTags("Auth")
-           .WithSummary("Returns the signed-in user's profile and permissions");
+           .WithSummary("Returns the signed-in user's profile and permissions, freshly loaded from the database");
 
-    private static IResult Handle(ICurrentUser user) =>
-        user.IsAuthenticated
-            ? Results.Ok(new UserMeDto(
-                user.Id, user.TenantId, user.EmployeeId,
-                user.Email, user.DisplayName,
-                user.Roles.ToArray(), user.Permissions.ToArray()))
-            : Results.Unauthorized();
+    // The handler hits the DB so role/permission changes show up on the next
+    // /me call (typically: client app boot via TryRestoreAsync). The JWT's own
+    // claims stay valid until expiry — only the client UI's view of the role
+    // updates immediately.
+    private static async Task<IResult> Handle(IMediator mediator, CancellationToken ct) =>
+        (await mediator.Send(new GetCurrentUserQuery(), ct)).ToHttp();
 }

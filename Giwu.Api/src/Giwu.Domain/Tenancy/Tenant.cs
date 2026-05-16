@@ -32,4 +32,20 @@ public class Tenant : AuditableEntity
     public PayrollDefaults       Payroll       { get; set; } = new();
     public NotificationSettings  Notifications { get; set; } = new();
     public SecuritySettings      Security      { get; set; } = new();
+
+    // ── Subscription / billing ─────────────────────────────────────────────
+    /// <summary>Current paid tier. Defaults to Basic for new tenants.</summary>
+    public SubscriptionTier SubscriptionTier { get; set; } = SubscriptionTier.Basic;
+
+    /// <summary>Lifecycle state — Trial / Active / PastDue / etc.</summary>
+    public SubscriptionStatus SubscriptionStatus { get; set; } = SubscriptionStatus.Active;
+
+    /// <summary>Stripe (or future provider) customer id. Null until first checkout.</summary>
+    public string? BillingCustomerId { get; set; }
+
+    /// <summary>When the current billing period ends. Null for tenants without a billing relationship yet.</summary>
+    public DateTimeOffset? CurrentPeriodEndsAt { get; set; }
+
+    /// <summary>When the trial expires. Null if not in trial.</summary>
+    public DateTimeOffset? TrialEndsAt { get; set; }
 }

@@ -9,7 +9,7 @@
             </MudAvatar>
             <div style="flex:1;min-width:0">
                 <MudText Typo="Typo.subtitle1" Class="fw-medium">@Request.EmployeeName</MudText>
-                <MudText Typo="Typo.caption" Style="opacity:.55">
+                <MudText Typo="Typo.caption" Class="giwu-text-muted">
                     @Request.Dept · Filed @RelativeTime(Request.FiledOn)
                 </MudText>
             </div>
@@ -96,7 +96,10 @@
         }
     </DialogContent>
     <DialogActions>
-        @if (Request.Status == LeaveRequestStatus.Pending)
+        @* Approve/Reject only when (a) the request is Pending AND (b) the caller
+           has the resolve permission. Defaults to true so the existing HR call
+           sites keep working without explicitly passing CanResolve. *@
+        @if (Request.Status == LeaveRequestStatus.Pending && CanResolve)
         {
             <MudButton Color="Color.Error" Variant="Variant.Outlined"
                        OnClick="HandleReject">Reject</MudButton>
@@ -150,7 +153,7 @@
     .detail-day {
         flex: 0 0 auto;
         width: 60px;
-        border: 0.5px solid var(--mud-palette-divider);
+        border: 1px solid var(--mud-palette-divider);
         border-radius: 6px;
         padding: 6px 4px;
         text-align: center;
@@ -184,7 +187,7 @@
     }
 
     .detail-resolution {
-        border: 0.5px solid var(--mud-palette-divider);
+        border: 1px solid var(--mud-palette-divider);
         border-radius: 8px;
         overflow: hidden;
     }
@@ -194,7 +197,7 @@
         align-items: flex-start;
         padding: 8px 12px;
         font-size: 13px;
-        border-bottom: 0.5px solid var(--mud-palette-divider);
+        border-bottom: 1px solid var(--mud-palette-divider);
         gap: 10px;
     }
     .detail-info-row:last-child { border-bottom: none; }
@@ -206,6 +209,11 @@
     [Parameter] public LeaveRequest Request { get; set; } = default!;
     [Parameter] public EventCallback<string> OnApprove { get; set; }
     [Parameter] public EventCallback<string> OnReject { get; set; }
+
+    /// <summary>True when the viewer has permission to approve/reject (HR/Manager).
+    /// Defaults to true so existing callers don't need to set it. Pages that
+    /// support Employee role MUST set this from their own permission check.</summary>
+    [Parameter] public bool CanResolve { get; set; } = true;
 
     private async Task HandleApprove()
     {

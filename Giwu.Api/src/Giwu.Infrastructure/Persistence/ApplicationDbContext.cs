@@ -86,6 +86,7 @@ public sealed class ApplicationDbContext(
             e.Property(x => x.DoleEstablishmentNumber).HasMaxLength(64);
             e.Property(x => x.DefaultCurrency).HasMaxLength(8);
             e.Property(x => x.DefaultTimeZone).HasMaxLength(64);
+            e.Property(x => x.BillingCustomerId).HasMaxLength(128);
 
             e.OwnsOne(x => x.Branding, br =>
             {

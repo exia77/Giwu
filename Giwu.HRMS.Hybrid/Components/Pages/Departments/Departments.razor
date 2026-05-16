@@ -38,7 +38,7 @@
             <MudPaper Elevation="0"
                       Style="border:1px solid var(--mud-palette-divider);border-radius:10px;padding:16px">
                 <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
-                    <MudText Typo="Typo.caption" Style="opacity:.55">@s.Label</MudText>
+                    <MudText Typo="Typo.caption" Class="giwu-text-muted">@s.Label</MudText>
                 </div>
                 <MudText Typo="Typo.h5" Style="font-weight:700;line-height:1">@s.Value</MudText>
             </MudPaper>
@@ -48,9 +48,7 @@
 
 @if (_loading)
 {
-    <div style="padding:32px;display:flex;justify-content:center">
-        <MudProgressCircular Indeterminate="true" Size="Size.Medium" />
-    </div>
+    <LoadingSkeleton Variant="LoadingSkeleton.Shape.Stat" Count="6" />
 }
 else if (_loadError is not null)
 {
@@ -77,7 +75,7 @@ else
                                 </div>
                                 <div>
                                     <MudText Typo="Typo.body1" Style="font-weight:700;line-height:1.2">@d.Name</MudText>
-                                    <MudText Typo="Typo.caption" Style="opacity:.45">@d.Code</MudText>
+                                    <MudText Typo="Typo.caption" Class="giwu-text-faint">@d.Code</MudText>
                                 </div>
                             </div>
                             <MudMenu Icon="@Icons.Material.Outlined.MoreVert" Size="Size.Small"
@@ -126,7 +124,7 @@ else
 }
 
 <div style="display:flex;justify-content:space-between;align-items:center;margin-top:16px;padding-bottom:60px">
-    <MudText Typo="Typo.caption" Style="opacity:.55">
+    <MudText Typo="Typo.caption" Class="giwu-text-muted">
         Showing @FilteredDepts.Count() of @_departments.Count departments
     </MudText>
 </div>

@@ -1,6 +1,7 @@
 @inject Giwu.HRMS.Hybrid.Services.Attendance.IAttendanceApi AttendanceApi
 @inject ISnackbar Snackbar
 @inject RoleAuthService Roles
+@inject Giwu.HRMS.Hybrid.Services.NavBadgeService NavBadges
 @using Giwu.Contracts.Attendance
 @using Giwu.Domain.Attendance
 @using Giwu.HRMS.Hybrid.Services
@@ -196,6 +197,7 @@
             Snackbar.Add("Overtime request submitted.", Severity.Success);
             _filing = false;
             await LoadAsync();
+            await NavBadges.RequestRefreshAsync();
         }
         else
         {
@@ -210,6 +212,7 @@
         {
             Snackbar.Add("Overtime approved.", Severity.Success);
             await LoadAsync();
+            await NavBadges.RequestRefreshAsync();
         }
         else
         {
@@ -224,6 +227,7 @@
         {
             Snackbar.Add("Overtime rejected.", Severity.Info);
             await LoadAsync();
+            await NavBadges.RequestRefreshAsync();
         }
         else
         {

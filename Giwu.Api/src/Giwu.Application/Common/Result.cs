@@ -1,6 +1,6 @@
 namespace Giwu.Application.Common;
 
-public enum ResultKind { Success, NotFound, Forbidden, Conflict, Invalid }
+public enum ResultKind { Success, NotFound, Forbidden, Conflict, Invalid, PaymentRequired }
 
 public sealed class Result
 {
@@ -17,6 +17,7 @@ public sealed class Result
     public static Result Success() => new(ResultKind.Success);
     public static Result NotFound(string? msg = null) => new(ResultKind.NotFound, msg);
     public static Result Forbidden(string? msg = null) => new(ResultKind.Forbidden, msg);
+    public static Result PaymentRequired(string? msg = null) => new(ResultKind.PaymentRequired, msg);
     public static Result Conflict(string? msg = null) => new(ResultKind.Conflict, msg);
     public static Result Invalid(string field, string error) =>
         new(ResultKind.Invalid, "Validation failed",
@@ -39,6 +40,7 @@ public sealed class Result<T>
     public static Result<T> Success(T value) => new(ResultKind.Success, value);
     public static Result<T> NotFound(string? msg = null) => new(ResultKind.NotFound, default, msg);
     public static Result<T> Forbidden(string? msg = null) => new(ResultKind.Forbidden, default, msg);
+    public static Result<T> PaymentRequired(string? msg = null) => new(ResultKind.PaymentRequired, default, msg);
     public static Result<T> Conflict(string? msg = null) => new(ResultKind.Conflict, default, msg);
     public static Result<T> Invalid(string field, string error) =>
         new(ResultKind.Invalid, default, "Validation failed",

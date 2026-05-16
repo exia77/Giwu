@@ -12,7 +12,7 @@
                 <MudText Typo="Typo.subtitle1" Style="font-weight:600;line-height:1.2;color:#C62828">
                     Remove Employee
                 </MudText>
-                <MudText Typo="Typo.caption" Style="opacity:.55">This action cannot be undone</MudText>
+                <MudText Typo="Typo.caption" Class="giwu-text-muted">This action cannot be undone</MudText>
             </div>
         </div>
     </TitleContent>
@@ -26,8 +26,8 @@
             </MudAvatar>
             <div style="flex:1;min-width:0">
                 <MudText Typo="Typo.body2" Style="font-weight:600;line-height:1.2">@Employee.Name</MudText>
-                <MudText Typo="Typo.caption" Style="opacity:.55">@Employee.Role · @Employee.Dept</MudText>
-                <MudText Typo="Typo.caption" Style="opacity:.45">@Employee.Email</MudText>
+                <MudText Typo="Typo.caption" Class="giwu-text-muted">@Employee.Role · @Employee.Dept</MudText>
+                <MudText Typo="Typo.caption" Class="giwu-text-faint">@Employee.Email</MudText>
             </div>
             <MudChip T="string" Size="Size.Small" Color="@Employee.ChipColor"
                      Variant="Variant.Filled" Style="height:22px;font-size:.68rem">

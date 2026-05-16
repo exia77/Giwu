@@ -1,0 +1,81 @@
+@*  Standard page header row: Title (+ optional subtitle) on the left,
+    arbitrary action content on the right. Replaces the per-page
+    inline div-flex headers each page reinvents.
+
+    Usage:
+        <PageHeader Title="Today's Attendance — May 16, 2026"
+                    Subtitle="@($"{Filtered} of {Total} records")">
+            <Actions>
+                <Toolbar>
+                    <ToolbarGroup>...</ToolbarGroup>
+                </Toolbar>
+            </Actions>
+        </PageHeader> *@
+
+<div class="giwu-page-header @(Tight ? "is-tight" : "")">
+    <div class="giwu-page-header-text">
+        @if (TitleContent is not null) { @TitleContent }
+        else { <div class="giwu-page-header-title">@Title</div> }
+
+        @if (SubtitleContent is not null)
+        {
+            <div class="giwu-page-header-subtitle">@SubtitleContent</div>
+        }
+        else if (!string.IsNullOrEmpty(Subtitle))
+        {
+            <div class="giwu-page-header-subtitle">@Subtitle</div>
+        }
+    </div>
+
+    @if (Actions is not null)
+    {
+        <div class="giwu-page-header-actions">@Actions</div>
+    }
+</div>
+
+@code {
+    [Parameter] public string Title { get; set; } = "";
+    [Parameter] public string Subtitle { get; set; } = "";
+    [Parameter] public RenderFragment? TitleContent { get; set; }
+    [Parameter] public RenderFragment? SubtitleContent { get; set; }
+    [Parameter] public RenderFragment? Actions { get; set; }
+
+    /// <summary>Use inside a card; reduces vertical padding.</summary>
+    [Parameter] public bool Tight { get; set; }
+}
+
+<style>
+    .giwu-page-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: var(--giwu-space-3);
+        flex-wrap: wrap;
+        padding: var(--giwu-space-4) 0 var(--giwu-space-5);
+    }
+    .giwu-page-header.is-tight { padding: var(--giwu-space-3) var(--giwu-space-4); border-bottom: var(--giwu-border); }
+
+    .giwu-page-header-text { min-width: 0; }
+    .giwu-page-header-title {
+        font-size: var(--giwu-fs-2xl);
+        font-weight: var(--giwu-fw-semibold);
+        line-height: 1.2;
+        letter-spacing: -0.01em;
+    }
+    .giwu-page-header.is-tight .giwu-page-header-title {
+        font-size: var(--giwu-fs-lg);
+        font-weight: var(--giwu-fw-medium);
+    }
+    .giwu-page-header-subtitle {
+        font-size: var(--giwu-fs-sm);
+        opacity: var(--giwu-opacity-muted);
+        margin-top: var(--giwu-space-1);
+    }
+
+    .giwu-page-header-actions {
+        display: flex;
+        align-items: center;
+        gap: var(--giwu-space-2);
+        flex-wrap: wrap;
+    }
+</style>

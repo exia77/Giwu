@@ -42,6 +42,26 @@ public static class SampleDataSeeder
         await SeedPayrollAsync(db, employees, ct);
         await SeedBenefitsAsync(db, employees, ct);
         await SeedReportsAsync(db, ct);
+
+        // Demo users are seeded outside SeedCorePeopleAsync so that adding a new
+        // role's demo account in code "tops up" already-seeded databases —
+        // EnsureDemoUserAsync is itself idempotent (skips if email exists).
+        await SeedDemoUsersAsync(db, hasher, employees, ct);
+    }
+
+    private static async Task SeedDemoUsersAsync(
+        ApplicationDbContext db, IPasswordHasher hasher, List<Employee> employees, CancellationToken ct)
+    {
+        await EnsureDemoUserAsync(db, hasher, "hrspecialist@manna-hris.example", "ChangeMe!123",
+            SystemRoles.HrSpecialist, employees.First(e => e.LastName == "Reyes").Id, "Demo HR Specialist", ct);
+        await EnsureDemoUserAsync(db, hasher, "manager@manna-hris.example", "ChangeMe!123",
+            SystemRoles.Manager, employees.First(e => e.LastName == "Aquino").Id, "Demo Manager", ct);
+        await EnsureDemoUserAsync(db, hasher, "finance@manna-hris.example", "ChangeMe!123",
+            SystemRoles.Finance, employees.First(e => e.LastName == "Gonzales").Id, "Demo Finance", ct);
+        await EnsureDemoUserAsync(db, hasher, "employee@manna-hris.example", "ChangeMe!123",
+            SystemRoles.Employee, employees.First(e => e.LastName == "Tolentino").Id, "Demo Employee", ct);
+
+        await db.SaveChangesAsync(ct);
     }
 
     private static async Task SeedCorePeopleAsync(
@@ -216,11 +236,8 @@ public static class SampleDataSeeder
             if (presentCount >= 8) break; // keep today's attendance modest
         }
 
-        // ── A couple of demo user accounts for the non-admin roles ────────
-        await EnsureDemoUserAsync(db, hasher, "manager@manna-hris.example", "ChangeMe!123",
-            SystemRoles.Manager, employees.First(e => e.LastName == "Aquino").Id, "Demo Manager", ct);
-        await EnsureDemoUserAsync(db, hasher, "employee@manna-hris.example", "ChangeMe!123",
-            SystemRoles.Employee, employees.First(e => e.LastName == "Tolentino").Id, "Demo Employee", ct);
+        // Demo users are seeded by SeedDemoUsersAsync (called from SeedAsync)
+        // so adding a new role tops up already-seeded databases.
 
         await db.SaveChangesAsync(ct);
     }

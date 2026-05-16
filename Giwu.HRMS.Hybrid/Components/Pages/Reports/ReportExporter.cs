@@ -43,28 +43,72 @@ internal static class ReportExporter
         return ms.ToArray();
     }
 
-    public static byte[] BuildPdf(string title, string csv)
+    /// <summary>
+    /// Branded PDF export. The header carries the tenant's company name + an
+    /// accent-coloured rule; the body is a zebra-striped table; the footer has
+    /// the timestamp on the left and page numbers on the right.
+    /// </summary>
+    public static byte[] BuildPdf(
+        string title,
+        string csv,
+        string companyName,
+        string? periodText = null,
+        string? accentHex = null)
     {
-        var rows = ParseCsv(csv);
+        var rows   = ParseCsv(csv);
         var header = rows.Count > 0 ? rows[0] : Array.Empty<string>();
         var data   = rows.Count > 1 ? rows.GetRange(1, rows.Count - 1) : new List<string[]>();
+
+        var accent      = NormalizeHex(accentHex) ?? "#1D9E75";
+        var accentLight = LightenHex(accent, 0.92f); // tinted band for header row
+        var company     = string.IsNullOrWhiteSpace(companyName) ? "Giwu HRMS" : companyName.Trim();
 
         var doc = Document.Create(container =>
         {
             container.Page(page =>
             {
                 page.Size(PageSizes.A4.Landscape());
-                page.Margin(28);
-                page.DefaultTextStyle(t => t.FontSize(9));
+                page.Margin(36);                            // generous breathing room
+                page.PageColor(PdfColors.White);
+                page.DefaultTextStyle(t => t
+                    .FontSize(9.5f)
+                    .FontColor(PdfColors.Grey.Darken4));
 
-                page.Header().Column(col =>
+                // ── Branded header ────────────────────────────────────────
+                page.Header().PaddingBottom(14).Column(col =>
                 {
-                    col.Item().Text(title).FontSize(14).SemiBold();
-                    col.Item().Text($"Generated {DateTime.Now:yyyy-MM-dd HH:mm}")
-                        .FontSize(8).FontColor(PdfColors.Grey.Darken2);
+                    col.Item().Row(r =>
+                    {
+                        r.RelativeItem().Column(c =>
+                        {
+                            c.Item().Text(company)
+                                .FontSize(10).SemiBold().FontColor(accent).LetterSpacing(0.4f);
+                            c.Item().PaddingTop(2).Text(title)
+                                .FontSize(18).Bold().FontColor(PdfColors.Grey.Darken4);
+                        });
+                        r.ConstantItem(170).AlignRight().Column(c =>
+                        {
+                            if (!string.IsNullOrWhiteSpace(periodText))
+                            {
+                                c.Item().Text("Period").FontSize(7.5f)
+                                    .FontColor(PdfColors.Grey.Medium).LetterSpacing(0.4f);
+                                c.Item().Text(periodText)
+                                    .FontSize(10).FontColor(PdfColors.Grey.Darken3);
+                                c.Item().PaddingTop(2);
+                            }
+                            c.Item().Text("Generated").FontSize(7.5f)
+                                .FontColor(PdfColors.Grey.Medium).LetterSpacing(0.4f);
+                            c.Item().Text($"{DateTime.Now:MMM d, yyyy · h:mm tt}")
+                                .FontSize(9.5f).FontColor(PdfColors.Grey.Darken3);
+                        });
+                    });
+
+                    // Accent rule — subtle brand cue separating header from data.
+                    col.Item().PaddingTop(10).LineHorizontal(1.5f).LineColor(accent);
                 });
 
-                page.Content().PaddingTop(10).Table(table =>
+                // ── Content table ─────────────────────────────────────────
+                page.Content().Table(table =>
                 {
                     table.ColumnsDefinition(cols =>
                     {
@@ -72,28 +116,79 @@ internal static class ReportExporter
                             cols.RelativeColumn();
                     });
 
+                    // Table header
                     foreach (var h in header)
-                        table.Cell().Background(PdfColors.Grey.Lighten3).Padding(4).Text(h).SemiBold();
+                        table.Cell()
+                            .Background(accentLight)
+                            .BorderBottom(1).BorderColor(accent)
+                            .PaddingVertical(7).PaddingHorizontal(8)
+                            .Text(h).SemiBold().FontSize(9).FontColor(PdfColors.Grey.Darken4);
 
-                    foreach (var row in data)
+                    // Data rows with zebra striping
+                    for (int r = 0; r < data.Count; r++)
                     {
+                        var row = data[r];
+                        var rowBg = r % 2 == 0 ? PdfColors.White : PdfColors.Grey.Lighten4;
                         for (int c = 0; c < header.Length; c++)
-                            table.Cell().BorderBottom(0.5f).BorderColor(PdfColors.Grey.Lighten2).Padding(3)
-                                .Text(c < row.Length ? row[c] : "");
+                        {
+                            table.Cell()
+                                .Background(rowBg)
+                                .BorderBottom(0.5f).BorderColor(PdfColors.Grey.Lighten2)
+                                .PaddingVertical(5).PaddingHorizontal(8)
+                                .Text(c < row.Length ? row[c] : "")
+                                .FontSize(9);
+                        }
                     }
                 });
 
-                page.Footer().AlignRight().Text(t =>
+                // ── Footer: company on the left, page count on the right ──
+                page.Footer().PaddingTop(8).Row(r =>
                 {
-                    t.Span("Page ");
-                    t.CurrentPageNumber();
-                    t.Span(" / ");
-                    t.TotalPages();
+                    r.RelativeItem().Text(company)
+                        .FontSize(8).FontColor(PdfColors.Grey.Medium);
+                    r.RelativeItem().AlignRight().Text(t =>
+                    {
+                        t.DefaultTextStyle(s => s.FontSize(8).FontColor(PdfColors.Grey.Medium));
+                        t.Span("Page ");
+                        t.CurrentPageNumber();
+                        t.Span(" of ");
+                        t.TotalPages();
+                    });
                 });
             });
         });
 
         return doc.GeneratePdf();
+    }
+
+    // ── Hex utilities ─────────────────────────────────────────────────────
+    private static string? NormalizeHex(string? raw)
+    {
+        if (string.IsNullOrWhiteSpace(raw)) return null;
+        var s = raw.Trim();
+        if (!s.StartsWith('#')) s = "#" + s;
+        return s.Length == 7 ? s : null; // tolerate only #RRGGBB
+    }
+
+    /// <summary>Returns a pastel variant of <paramref name="hex"/> by blending
+    /// it with white at <paramref name="amount"/> (0 = same, 1 = white).</summary>
+    private static string LightenHex(string hex, float amount)
+    {
+        if (string.IsNullOrEmpty(hex) || hex.Length != 7) return "#F1F3F5";
+        try
+        {
+            var r = Convert.ToInt32(hex.Substring(1, 2), 16);
+            var g = Convert.ToInt32(hex.Substring(3, 2), 16);
+            var b = Convert.ToInt32(hex.Substring(5, 2), 16);
+            r = (int)(r + (255 - r) * amount);
+            g = (int)(g + (255 - g) * amount);
+            b = (int)(b + (255 - b) * amount);
+            return $"#{r:X2}{g:X2}{b:X2}";
+        }
+        catch
+        {
+            return "#F1F3F5";
+        }
     }
 
     public static string MimeFor(string extension) => extension.ToLowerInvariant() switch

@@ -195,7 +195,7 @@
                 <div class="settings-card-header" style="display:flex;align-items:center;justify-content:space-between">
                     <div>
                         <MudText Typo="Typo.subtitle2" Class="fw-medium">Connected Tenant</MudText>
-                        <MudText Typo="Typo.caption" Style="opacity:.55">
+                        <MudText Typo="Typo.caption" Class="giwu-text-muted">
                             @if (TenantLoading)
                             {
                                 <span>Loading from API…</span>
@@ -303,7 +303,7 @@
                 <div class="settings-card-header">
                     <div>
                         <MudText Typo="Typo.subtitle2" Class="fw-medium">PH Employer Registration</MudText>
-                        <MudText Typo="Typo.caption" Style="opacity:.55">Used on BIR, SSS, PhilHealth, Pag-IBIG, and DOLE filings.</MudText>
+                        <MudText Typo="Typo.caption" Class="giwu-text-muted">Used on BIR, SSS, PhilHealth, Pag-IBIG, and DOLE filings.</MudText>
                     </div>
                 </div>
                 <div class="settings-card-body">
@@ -663,6 +663,17 @@
             </div>
         }
 
+        else if (ActiveSection == "billing" && IsAdmin)
+        {
+            @* ══ PLAN & BILLING ══ *@
+            <SettingsSectionHeader
+                Title="Plan & Billing"
+                Description="Your subscription tier, usage against limits, and (eventually) payment history."
+                Dirty="false" />
+
+            <BillingSection />
+        }
+
         else if (ActiveSection == "roles" && IsAdmin)
         {
             @* ══ ROLES & PERMISSIONS ══ *@
@@ -754,7 +765,7 @@
     }
 
     .settings-card {
-        border: 0.5px solid var(--mud-palette-divider);
+        border: 1px solid var(--mud-palette-divider);
         border-radius: 10px;
         background: var(--mud-palette-background);
         margin-bottom: 16px;
@@ -762,7 +773,7 @@
     }
     .settings-card-header {
         padding: 14px 18px;
-        border-bottom: 0.5px solid var(--mud-palette-divider);
+        border-bottom: 1px solid var(--mud-palette-divider);
         display: flex;
         justify-content: space-between;
         align-items: flex-start;
@@ -802,7 +813,7 @@
     }
     .settings-logo-preview {
         width: 64px; height: 64px;
-        border: 0.5px solid var(--mud-palette-divider);
+        border: 1px solid var(--mud-palette-divider);
         border-radius: 8px;
         display: flex; align-items: center; justify-content: center;
         background: var(--mud-palette-background-grey);
@@ -848,8 +859,8 @@
         display: flex; flex-direction: column; padding: 6px;
         gap: 4px;
     }
-    .settings-theme-light { background: #F8F9FA; border: 0.5px solid #E5E7EB; }
-    .settings-theme-dark  { background: #1F2937; border: 0.5px solid #374151; }
+    .settings-theme-light { background: #F8F9FA; border: 1px solid #E5E7EB; }
+    .settings-theme-dark  { background: #1F2937; border: 1px solid #374151; }
     .settings-theme-bar {
         height: 6px; border-radius: 2px;
         background: var(--set-green);
@@ -900,7 +911,7 @@
         display: flex; align-items: flex-start; justify-content: space-between;
         gap: 16px;
         padding: 14px 18px;
-        border-bottom: 0.5px solid var(--mud-palette-divider);
+        border-bottom: 1px solid var(--mud-palette-divider);
     }
     .settings-notif-row:last-child { border-bottom: none; }
     .settings-notif-meta { flex: 1; min-width: 0; }
@@ -928,7 +939,7 @@
     .settings-integ-row {
         display: flex; gap: 14px; align-items: flex-start;
         padding: 16px 18px;
-        border-bottom: 0.5px solid var(--mud-palette-divider);
+        border-bottom: 1px solid var(--mud-palette-divider);
     }
     .settings-integ-row:last-child { border-bottom: none; }
     .settings-integ-icon {
@@ -964,7 +975,7 @@
         .settings-nav {
             width: 100%; position: relative; top: auto;
             flex-direction: row; overflow-x: auto;
-            border-bottom: 0.5px solid var(--mud-palette-divider);
+            border-bottom: 1px solid var(--mud-palette-divider);
             padding-bottom: 8px; margin-bottom: 8px;
         }
         .settings-nav-item { white-space: nowrap; }
@@ -987,12 +998,15 @@
         new("payroll",       "Payroll",             MudBlazor.Icons.Material.Outlined.Payments),
         new("notifications", "Notifications",       MudBlazor.Icons.Material.Outlined.NotificationsNone),
         new("security",      "Security",            MudBlazor.Icons.Material.Outlined.Lock),
+        new("billing",       "Plan & Billing",      MudBlazor.Icons.Material.Outlined.CreditCard),
         new("roles",         "Roles & Permissions", MudBlazor.Icons.Material.Outlined.AdminPanelSettings),
     };
 
     /// <summary>HR-Admin-only sections are filtered out for everyone else.</summary>
     private IEnumerable<Section> VisibleSections =>
-        Sections.Where(s => s.Id != "roles" || IsAdmin);
+        Sections.Where(s =>
+            (s.Id != "roles"   || IsAdmin) &&
+            (s.Id != "billing" || IsAdmin));
 
     private bool IsAdmin => Roles.CurrentUser.Role == UserRole.HrAdmin;
 

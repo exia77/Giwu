@@ -5,7 +5,7 @@
     <div class="settings-card-header">
         <div>
             <MudText Typo="Typo.subtitle2" Class="fw-medium">Permission matrix</MudText>
-            <MudText Typo="Typo.caption" Style="opacity:.6">
+            <MudText Typo="Typo.caption" Class="giwu-text-muted">
                 Toggle which sidebar areas each role can see. Changes take effect immediately
                 across the app for any user signed in with that role.
             </MudText>
@@ -67,7 +67,7 @@
     <div class="settings-card-header">
         <div>
             <MudText Typo="Typo.subtitle2" Class="fw-medium">Preview as user</MudText>
-            <MudText Typo="Typo.caption" Style="opacity:.6">
+            <MudText Typo="Typo.caption" Class="giwu-text-muted">
                 Switch the active demo user to verify what the sidebar looks like for each role.
             </MudText>
         </div>
@@ -107,7 +107,7 @@
     }
     .role-matrix th, .role-matrix td {
         padding: 10px 12px;
-        border-bottom: 0.5px solid var(--mud-palette-divider);
+        border-bottom: 1px solid var(--mud-palette-divider);
         text-align: center;
     }
     .role-matrix thead th {
@@ -141,7 +141,7 @@
         text-align: left;
         cursor: pointer;
         font-family: inherit;
-        border-bottom: 0.5px solid var(--mud-palette-divider);
+        border-bottom: 1px solid var(--mud-palette-divider);
         transition: background .1s;
     }
     .role-preview-row:last-child { border-bottom: none; }

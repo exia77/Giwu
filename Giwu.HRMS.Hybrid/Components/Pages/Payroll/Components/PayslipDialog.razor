@@ -10,7 +10,7 @@
             </MudAvatar>
             <div style="flex:1;min-width:0">
                 <MudText Typo="Typo.subtitle1" Class="fw-medium">@Slip.Name</MudText>
-                <MudText Typo="Typo.caption" Style="opacity:.55">
+                <MudText Typo="Typo.caption" Class="giwu-text-muted">
                     @Slip.Role · @Slip.Dept
                 </MudText>
             </div>
@@ -18,7 +18,7 @@
         </div>
 
         <div class="slip-period-banner">
-            <MudIcon Icon="@Icons.Material.Outlined.CalendarMonth" Size="Size.Small" Style="opacity:.6" />
+            <MudIcon Icon="@Icons.Material.Outlined.CalendarMonth" Size="Size.Small" Class="giwu-text-muted" />
             <span>@Run.Period · @FmtPeriodRange(Run.PeriodStart, Run.PeriodEnd)</span>
         </div>
 
@@ -246,7 +246,7 @@
         margin-bottom: 16px;
     }
     .slip-section {
-        border: 0.5px solid var(--mud-palette-divider);
+        border: 1px solid var(--mud-palette-divider);
         border-radius: 8px;
         margin-bottom: 12px;
         overflow: hidden;
@@ -254,7 +254,7 @@
     .slip-section-header {
         padding: 8px 12px;
         background: var(--mud-palette-background-grey);
-        border-bottom: 0.5px solid var(--mud-palette-divider);
+        border-bottom: 1px solid var(--mud-palette-divider);
         font-size: 11px;
         font-weight: 500;
         letter-spacing: .06em;
@@ -275,7 +275,7 @@
         display: flex; justify-content: space-between; align-items: center;
         padding: 7px 12px;
         font-size: 13px;
-        border-bottom: 0.5px solid var(--mud-palette-divider);
+        border-bottom: 1px solid var(--mud-palette-divider);
         gap: 10px;
     }
     .slip-line:last-child { border-bottom: none; }
@@ -310,7 +310,7 @@
         padding: 9px 12px;
         font-size: 13px;
         font-weight: 500;
-        border-top: 0.5px solid var(--mud-palette-divider);
+        border-top: 1px solid var(--mud-palette-divider);
     }
     .slip-total-gross     { background: var(--pay-green-light); color: var(--pay-green-text); }
     .slip-total-statutory { background: var(--mud-palette-background-grey); }

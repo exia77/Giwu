@@ -15,7 +15,7 @@
                         <span class="ben-mandatory-chip">Mandatory</span>
                     }
                 </div>
-                <MudText Typo="Typo.caption" Style="opacity:.55">@Program.Provider</MudText>
+                <MudText Typo="Typo.caption" Class="giwu-text-muted">@Program.Provider</MudText>
             </div>
             <span class="@($"ben-badge {CategoryBadgeClass(Program.Category)}")">@CategoryLabel(Program.Category)</span>
         </div>
@@ -140,7 +140,7 @@
         margin-bottom: 14px;
     }
     .prog-stat {
-        border: 0.5px solid var(--mud-palette-divider);
+        border: 1px solid var(--mud-palette-divider);
         border-radius: 8px;
         padding: 10px 12px;
     }
@@ -177,7 +177,7 @@
     }
 
     .prog-info {
-        border: 0.5px solid var(--mud-palette-divider);
+        border: 1px solid var(--mud-palette-divider);
         border-radius: 8px;
         margin-bottom: 12px;
         overflow: hidden;
@@ -187,7 +187,7 @@
         justify-content: space-between;
         padding: 8px 12px;
         font-size: 13px;
-        border-bottom: 0.5px solid var(--mud-palette-divider);
+        border-bottom: 1px solid var(--mud-palette-divider);
     }
     .prog-info-row:last-child { border-bottom: none; }
     .prog-info-key { opacity: .55; }
@@ -207,7 +207,7 @@
         display: flex; flex-direction: column; gap: 8px;
     }
     .prog-tier {
-        border: 0.5px solid var(--mud-palette-divider);
+        border: 1px solid var(--mud-palette-divider);
         border-radius: 8px;
         padding: 10px 12px;
     }

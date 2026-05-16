@@ -39,7 +39,7 @@
                         @foreach (var email in Working.Recipients.ToList())
                         {
                             <div class="recipient-chip">
-                                <MudIcon Icon="@Icons.Material.Outlined.Email" Size="Size.Small" Style="opacity:.6" />
+                                <MudIcon Icon="@Icons.Material.Outlined.Email" Size="Size.Small" Class="giwu-text-muted" />
                                 <span>@email</span>
                                 <button type="button" class="recipient-remove" title="Remove"
                                         @onclick="@(() => RemoveRecipient(email))">×</button>
@@ -124,7 +124,7 @@
     .run-format-btn {
         display: inline-flex; align-items: center; gap: 6px;
         padding: 8px 14px;
-        border: 0.5px solid var(--mud-palette-divider);
+        border: 1px solid var(--mud-palette-divider);
         border-radius: 8px;
         background: var(--mud-palette-background);
         cursor: pointer;
