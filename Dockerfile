@@ -10,9 +10,10 @@
 # Mirrors Giwu.Api/deploy/Dockerfile (which is kept for builds run from
 # the Giwu.Api/ directory locally).
 # ─────────────────────────────────────────────────────────────────────
-ARG DOTNET_VERSION=10.0
+ARG DOTNET_SDK_TAG=10.0-bookworm-slim
+ARG DOTNET_RUNTIME_TAG=10.0-bookworm-slim
 
-FROM mcr.microsoft.com/dotnet/sdk:${DOTNET_VERSION} AS build
+FROM mcr.microsoft.com/dotnet/sdk:${DOTNET_SDK_TAG} AS build
 WORKDIR /src
 
 # Copy csproj files first for cached restore.
@@ -35,7 +36,7 @@ RUN dotnet publish Giwu.Api/src/Giwu.Api/Giwu.Api.csproj \
     -o /app/publish \
     /p:UseAppHost=false
 
-FROM mcr.microsoft.com/dotnet/aspnet:${DOTNET_VERSION} AS runtime
+FROM mcr.microsoft.com/dotnet/aspnet:${DOTNET_RUNTIME_TAG} AS runtime
 WORKDIR /app
 
 # Bind to whatever PORT the platform injects (Render injects PORT=10000
