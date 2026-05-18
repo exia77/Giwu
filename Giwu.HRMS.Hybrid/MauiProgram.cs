@@ -19,11 +19,16 @@ namespace Giwu.HRMS.Hybrid
 {
     public static class MauiProgram
     {
-        // Override at runtime: env var GIWU_API_BASE_URL > #if DEBUG default
+        // Resolution order: GIWU_API_BASE_URL env var > build-config default.
+        //  · DEBUG default targets the dockerized API on localhost.
+        //  · Release default targets the Render-hosted QA API. Swap to the
+        //    production hostname when one exists; for now the same instance
+        //    serves QA so QA testers don't need to set an env var to point
+        //    a Release build at the right backend.
 #if DEBUG
         private const string DefaultApiBaseUrl = "http://localhost:5080";
 #else
-        private const string DefaultApiBaseUrl = "https://api.giwu-hrms.com";
+        private const string DefaultApiBaseUrl = "https://manna-hris-api.onrender.com";
 #endif
 
         public static MauiApp CreateMauiApp()
