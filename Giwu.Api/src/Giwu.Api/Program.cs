@@ -19,11 +19,6 @@ using Microsoft.IdentityModel.Tokens;
 using Scalar.AspNetCore;
 using Serilog;
 
-Console.WriteLine($"[boot] managed entry. PORT={Environment.GetEnvironmentVariable("PORT")} ASPNETCORE_ENVIRONMENT={Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT")} runtime={Environment.Version}");
-
-try
-{
-
 var builder = WebApplication.CreateBuilder(args);
 
 // ── Logging ────────────────────────────────────────────────────────────────
@@ -162,15 +157,6 @@ app.MapHub<NotificationsHub>("/hubs/notifications").RequireAuthorization();
         await SampleDataSeeder.SeedAsync(db, hasher);
 }
 
-Console.WriteLine("[boot] startup complete, calling app.Run()");
 app.Run();
-
-}
-catch (Exception ex)
-{
-    Console.Error.WriteLine($"[boot] FATAL: {ex.GetType().FullName}: {ex.Message}");
-    Console.Error.WriteLine(ex.ToString());
-    throw;
-}
 
 public partial class Program;   // for WebApplicationFactory in tests
